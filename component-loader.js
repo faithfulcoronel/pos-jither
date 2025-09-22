@@ -1,6 +1,9 @@
 (function () {
     const COMPONENT_EVENT = 'componentsLoaded';
 
+    const FALLBACK_TEMPLATES = window.COMPONENT_TEMPLATES || {};
+    const IS_FILE_PROTOCOL = window.location.protocol === 'file:';
+
     function injectMarkup(target, markup) {
         target.innerHTML = markup;
     }
@@ -8,6 +11,23 @@
     function renderError(target, componentName, error) {
         console.error(`Failed to load component "${componentName}":`, error);
         target.innerHTML = `<div class="component-error">Unable to load component: ${componentName}</div>`;
+    }
+  
+    function getFallbackMarkup(componentName) {
+        return FALLBACK_TEMPLATES[componentName] || null;
+    }
+
+    async function fetchComponentMarkup(componentName) {
+        if (IS_FILE_PROTOCOL) {
+            return getFallbackMarkup(componentName);
+        }
+
+        const response = await fetch(`components/${componentName}.html`, { cache: 'no-cache' });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return response.text();
     }
 
     async function loadComponent(target) {
@@ -17,14 +37,26 @@
         }
 
         try {
-            const response = await fetch(`components/${componentName}.html`, { cache: 'no-cache' });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            const markup = await fetchComponentMarkup(componentName);
+            if (markup) {
+                injectMarkup(target, markup);
+                return;
             }
 
-            const markup = await response.text();
-            injectMarkup(target, markup);
+            const fallbackMarkup = getFallbackMarkup(componentName);
+            if (fallbackMarkup) {
+                injectMarkup(target, fallbackMarkup);
+                return;
+            }
+
+            throw new Error('No markup available');
         } catch (error) {
+            const fallbackMarkup = getFallbackMarkup(componentName);
+            if (fallbackMarkup) {
+                injectMarkup(target, fallbackMarkup);
+                return;
+            }
+
             renderError(target, componentName, error);
         }
     }
