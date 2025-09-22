@@ -101,14 +101,28 @@ $currentRole = $_SESSION['role'] ?? null;
                         <div id="menu-content" class="content-section hidden">
                             <div class="dashboard-header"><h1>Menu Items</h1></div>
                             <h3>Menu Management</h3>
-                            <button onclick="toggleForm('menuFormContainer')">Add New Drink</button>
-                            <div id="menuFormContainer" class="menu-form hidden">
-                                <input type="text" id="newItemName" placeholder="Drink Name">
-                                <input type="number" id="newItemPrice" placeholder="Price">
-                                <input type="text" id="newItemImage" placeholder="Image path (e.g. images/drink.jpg)">
-                                <button onclick="addMenuItem()">Add Drink</button>
+                            <div class="menu-actions">
+                                <button onclick="toggleForm('menuFormContainer')">Add New Product</button>
+                                <button onclick="toggleForm('categoryFormContainer')">Add New Category</button>
                             </div>
-                            <div id="menuItemsContainer" class="menu-grid"></div>
+                            <div class="menu-filter">
+                                <label for="menuCategoryFilter">Filter by Category:</label>
+                                <select id="menuCategoryFilter" onchange="displayMenuItems()"></select>
+                            </div>
+                            <div id="menuFormContainer" class="menu-form hidden">
+                                <input type="text" id="newItemName" placeholder="Product Name">
+                                <input type="number" id="newItemPrice" placeholder="Price">
+                                <input type="text" id="newItemImage" placeholder="Image filename (e.g. espresso.jpeg)">
+                                <select id="newItemCategory"></select>
+                                <button onclick="addMenuItem()">Add Product</button>
+                            </div>
+                            <div id="categoryFormContainer" class="menu-form hidden">
+                                <input type="text" id="newCategoryName" placeholder="Category Name">
+                                <input type="text" id="newCategoryDescription" placeholder="Description (optional)">
+                                <button onclick="addProductCategory()">Save Category</button>
+                            </div>
+                            <div id="categoryList" class="category-list"></div>
+                            <div id="menuItemsContainer" class="menu-category-container"></div>
                         </div>
 
                         <div id="inventory-content" class="content-section hidden">
@@ -231,6 +245,10 @@ $currentRole = $_SESSION['role'] ?? null;
                                 <button onclick="clearOrder()">Clear All</button>
                             </div>
                             <ul id="orderList" class="order-list"></ul>
+                            <div class="menu-filter">
+                                <label for="cashierCategoryFilter">Browse by Category:</label>
+                                <select id="cashierCategoryFilter" onchange="displayMenuGallery()"></select>
+                            </div>
                             <div class="menu-grid" id="menuItemsGallery"></div>
                         </div>
 
