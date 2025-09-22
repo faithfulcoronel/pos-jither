@@ -1,8 +1,6 @@
 (function () {
     const COMPONENT_EVENT = 'componentsLoaded';
-
-    const FALLBACK_TEMPLATES = window.COMPONENT_TEMPLATES || {};
-    const IS_FILE_PROTOCOL = window.location.protocol === 'file:';
+    const COMPONENTS_DIR = 'components';
 
     function injectMarkup(target, markup) {
         target.innerHTML = markup;
@@ -12,22 +10,45 @@
         console.error(`Failed to load component "${componentName}":`, error);
         target.innerHTML = `<div class="component-error">Unable to load component: ${componentName}</div>`;
     }
-  
-    function getFallbackMarkup(componentName) {
-        return FALLBACK_TEMPLATES[componentName] || null;
+
+    function buildComponentUrl(componentName) {
+        return new URL(`${COMPONENTS_DIR}/${componentName}.html`, window.location.href).toString();
+    }
+
+    function fetchComponentViaXHR(url) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', url);
+            xhr.overrideMimeType('text/html');
+            xhr.onload = () => {
+                if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
+                    resolve(xhr.responseText);
+                } else {
+                    reject(new Error(`HTTP ${xhr.status}`));
+                }
+            };
+            xhr.onerror = () => reject(new Error('Network error'));
+            xhr.send();
+        });
     }
 
     async function fetchComponentMarkup(componentName) {
-        if (IS_FILE_PROTOCOL) {
-            return getFallbackMarkup(componentName);
-        }
+        const url = buildComponentUrl(componentName);
 
-        const response = await fetch(`components/${componentName}.html`, { cache: 'no-cache' });
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        try {
+            const response = await fetch(url, { cache: 'no-cache' });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
 
-        return response.text();
+            return await response.text();
+        } catch (error) {
+            if (url.startsWith('file://')) {
+                return fetchComponentViaXHR(url);
+            }
+
+            throw error;
+        }
     }
 
     async function loadComponent(target) {
@@ -38,25 +59,8 @@
 
         try {
             const markup = await fetchComponentMarkup(componentName);
-            if (markup) {
-                injectMarkup(target, markup);
-                return;
-            }
-
-            const fallbackMarkup = getFallbackMarkup(componentName);
-            if (fallbackMarkup) {
-                injectMarkup(target, fallbackMarkup);
-                return;
-            }
-
-            throw new Error('No markup available');
+            injectMarkup(target, markup);
         } catch (error) {
-            const fallbackMarkup = getFallbackMarkup(componentName);
-            if (fallbackMarkup) {
-                injectMarkup(target, fallbackMarkup);
-                return;
-            }
-
             renderError(target, componentName, error);
         }
     }
