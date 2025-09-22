@@ -634,9 +634,6 @@ function clearQty() {
     document.getElementById("drinkQty").value = "1";
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('index.html') || currentPath === '/') {
-        showManagerContent('home');
-    }
+document.addEventListener('componentsLoaded', () => {
+    showManagerContent('home');
 });
