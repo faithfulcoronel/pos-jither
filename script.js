@@ -9,12 +9,171 @@ const cloneArray = (data) => {
     return Array.isArray(cloned) ? cloned : [];
 };
 
-let menuItems = cloneArray(initialData.menuItems);
+const FALLBACK_CATEGORY_ID = 'uncategorized';
+
+const rawProducts = Array.isArray(initialData.products) && initialData.products.length > 0
+    ? initialData.products
+    : initialData.menuItems;
+
+let productCategories = cloneArray(initialData.productCategories);
+let products = cloneArray(rawProducts);
 let inventory = cloneArray(initialData.inventory);
 let staffAccounts = cloneArray(initialData.staffAccounts);
 let timekeepingRecords = cloneArray(initialData.timekeepingRecords);
 let completedTransactions = cloneArray(initialData.completedTransactions);
 let currentOrder = [];
+
+if (!productCategories.some(category => category.id === FALLBACK_CATEGORY_ID)) {
+    productCategories.push({
+        id: FALLBACK_CATEGORY_ID,
+        name: 'Uncategorized',
+        description: 'Items that are awaiting classification.'
+    });
+}
+
+products = products.map((product, index) => ({
+    id: product.id || `product-${index + 1}`,
+    name: product.name,
+    price: Number(product.price) || 0,
+    image: product.image || '',
+    categoryId: product.categoryId || FALLBACK_CATEGORY_ID,
+    description: product.description || ''
+}));
+
+products.forEach(product => {
+    ensureCategoryExists(product.categoryId);
+});
+
+function ensureCategoryExists(categoryId) {
+    const normalizedId = categoryId || FALLBACK_CATEGORY_ID;
+    if (!productCategories.some(category => category.id === normalizedId)) {
+        const generatedName = normalizedId
+            .split(/[-_]+/)
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ')
+            .trim() || 'Uncategorized';
+
+        productCategories.push({
+            id: normalizedId,
+            name: generatedName,
+            description: ''
+        });
+    }
+
+    return normalizedId;
+}
+
+function getCategoryName(categoryId) {
+    const normalizedId = categoryId || FALLBACK_CATEGORY_ID;
+    const category = productCategories.find(item => item.id === normalizedId);
+    if (category) {
+        return category.name;
+    }
+
+    const generatedName = normalizedId
+        .split(/[-_]+/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ')
+        .trim();
+
+    return generatedName || 'Uncategorized';
+}
+
+function renderCategorySelectOptions(selectId, includeAllOption = false) {
+    const select = document.getElementById(selectId);
+    if (!select) {
+        return;
+    }
+
+    const previousValue = select.value;
+    select.innerHTML = '';
+
+    if (includeAllOption) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'All Categories';
+        select.appendChild(option);
+    }
+
+    const sortedCategories = [...productCategories].sort((a, b) => a.name.localeCompare(b.name));
+    sortedCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        select.appendChild(option);
+    });
+
+    const hasPrevious = [...select.options].some(option => option.value === previousValue);
+    if (hasPrevious) {
+        select.value = previousValue;
+    } else if (!includeAllOption && sortedCategories.length > 0) {
+        select.value = sortedCategories[0].id;
+    } else {
+        select.value = '';
+    }
+}
+
+function renderCategoryList() {
+    const container = document.getElementById('categoryList');
+    if (!container) {
+        return;
+    }
+
+    if (productCategories.length === 0) {
+        container.innerHTML = '<p class="empty-state">No categories available.</p>';
+        return;
+    }
+
+    const sortedCategories = [...productCategories].sort((a, b) => a.name.localeCompare(b.name));
+    container.innerHTML = sortedCategories
+        .map(category => `<span class="category-pill" data-category="${category.id}">${category.name}</span>`)
+        .join('');
+}
+
+function refreshCategoryUI() {
+    renderCategorySelectOptions('menuCategoryFilter', true);
+    renderCategorySelectOptions('newItemCategory');
+    renderCategorySelectOptions('cashierCategoryFilter', true);
+    renderCategoryList();
+}
+
+function generateSlug(text) {
+    return text
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function generateCategoryId(name) {
+    const baseSlug = generateSlug(name);
+    if (!baseSlug) {
+        return `category-${Date.now()}`;
+    }
+
+    let candidate = baseSlug;
+    let counter = 1;
+    while (productCategories.some(category => category.id === candidate)) {
+        counter += 1;
+        candidate = `${baseSlug}-${counter}`;
+    }
+    return candidate;
+}
+
+function generateProductId(name) {
+    const baseSlug = generateSlug(name);
+    if (!baseSlug) {
+        return `product-${Date.now()}`;
+    }
+
+    let candidate = baseSlug;
+    let counter = 1;
+    while (products.some(product => product.id === candidate)) {
+        counter += 1;
+        candidate = `${baseSlug}-${counter}`;
+    }
+    return candidate;
+}
 
 function showManagerContent(id) {
     document.querySelectorAll('#manager-dashboard .content-section').forEach(section => {
@@ -62,49 +221,176 @@ function showManagerContent(id) {
 
 function displayMenuItems() {
     const container = document.getElementById('menuItemsContainer');
-    if (!container) return;
+    if (!container) {
+        return;
+    }
+
+    const filterSelect = document.getElementById('menuCategoryFilter');
+    const selectedCategory = filterSelect ? filterSelect.value : '';
+    const itemsWithIndex = products.map((item, index) => ({ item, index }));
+    const filteredItems = selectedCategory
+        ? itemsWithIndex.filter(entry => (entry.item.categoryId || FALLBACK_CATEGORY_ID) === selectedCategory)
+        : itemsWithIndex;
+
     container.innerHTML = '';
-    menuItems.forEach((item, index) => {
-        container.innerHTML += `
-            <div class="menu-item">
-                <img src="images/${item.image}" alt="${item.name}">
+
+    if (filteredItems.length === 0) {
+        container.innerHTML = '<p class="empty-state">No products found for the selected category.</p>';
+        return;
+    }
+
+    const grouped = filteredItems.reduce((acc, entry) => {
+        const categoryId = entry.item.categoryId || FALLBACK_CATEGORY_ID;
+        if (!acc[categoryId]) {
+            acc[categoryId] = [];
+        }
+        acc[categoryId].push(entry);
+        return acc;
+    }, {});
+
+    const sortedCategoryIds = Object.keys(grouped).sort((a, b) => getCategoryName(a).localeCompare(getCategoryName(b)));
+
+    sortedCategoryIds.forEach(categoryId => {
+        const section = document.createElement('section');
+        section.className = 'menu-category-section';
+
+        const title = document.createElement('h4');
+        title.className = 'menu-category-title';
+        title.textContent = getCategoryName(categoryId);
+        section.appendChild(title);
+
+        const grid = document.createElement('div');
+        grid.className = 'menu-grid';
+
+        grouped[categoryId].forEach(({ item, index }) => {
+            const card = document.createElement('div');
+            card.className = 'menu-item';
+            const imagePath = item.image ? `images/${item.image}` : 'images/jowens.png';
+            card.innerHTML = `
+                <img src="${imagePath}" alt="${item.name}">
                 <p>${item.name} - ₱${item.price}</p>
+                <p class="menu-item-category">${getCategoryName(item.categoryId)}</p>
                 <button onclick="editMenuItem(${index})">Edit</button>
                 <button onclick="deleteMenuItem(${index})">Delete</button>
-            </div>`;
+            `;
+            grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        container.appendChild(section);
     });
 }
 
-function addMenuItem() {
-    const name = document.getElementById('newItemName').value;
-    const price = parseFloat(document.getElementById('newItemPrice').value);
-    const image = document.getElementById('newItemImage').value;
+function addProductCategory() {
+    const nameInput = document.getElementById('newCategoryName');
+    const descriptionInput = document.getElementById('newCategoryDescription');
 
-    if (!name || isNaN(price)) return alert("Fill all fields correctly.");
-    menuItems.push({ name, price, image });
+    const name = nameInput ? nameInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+
+    if (!name) {
+        alert('Enter a category name.');
+        return;
+    }
+
+    const existingByName = productCategories.find(
+        category => category.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (existingByName) {
+        alert('A category with this name already exists.');
+        return;
+    }
+
+    const id = generateCategoryId(name);
+    productCategories.push({ id, name, description });
+
+    if (nameInput) nameInput.value = '';
+    if (descriptionInput) descriptionInput.value = '';
+
+    refreshCategoryUI();
     displayMenuItems();
+    displayMenuGallery();
+}
+
+function addMenuItem() {
+    const nameInput = document.getElementById('newItemName');
+    const priceInput = document.getElementById('newItemPrice');
+    const imageInput = document.getElementById('newItemImage');
+    const categorySelect = document.getElementById('newItemCategory');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const price = priceInput ? parseFloat(priceInput.value) : NaN;
+    const image = imageInput ? imageInput.value.trim() : '';
+    const selectedCategory = categorySelect && categorySelect.value ? categorySelect.value : FALLBACK_CATEGORY_ID;
+
+    if (!name || isNaN(price) || price < 0 || !image) {
+        alert('Fill all fields correctly.');
+        return;
+    }
+
+    const productId = generateProductId(name);
+    const categoryId = ensureCategoryExists(selectedCategory);
+
+    products.push({
+        id: productId,
+        name,
+        price,
+        image,
+        categoryId,
+        description: ''
+    });
+
+    if (nameInput) nameInput.value = '';
+    if (priceInput) priceInput.value = '';
+    if (imageInput) imageInput.value = '';
+    if (categorySelect) categorySelect.value = categoryId;
+
+    refreshCategoryUI();
+    displayMenuItems();
+    displayMenuGallery();
 }
 
 function editMenuItem(index) {
-    const item = menuItems[index];
-    const newName = prompt("Update name:", item.name);
-    const newPrice = parseFloat(prompt("Update price:", item.price));
-    const newImage = prompt("Update image path (e.g., images/drink.jpg):", item.image);
+    const item = products[index];
+    if (!item) {
+        return;
+    }
 
-    if (newName && !isNaN(newPrice) && newImage) {
-        menuItems[index].name = newName;
-        menuItems[index].price = newPrice;
-        menuItems[index].image = newImage;
+    const newName = prompt('Update name:', item.name);
+    const newPrice = parseFloat(prompt('Update price:', item.price));
+    const categoryChoices = productCategories
+        .map(category => `${category.name} [${category.id}]`)
+        .join(', ');
+    const categoryPrompt = categoryChoices
+        ? `Update category ID (${categoryChoices}):`
+        : 'Update category ID:';
+    const newCategoryIdInput = prompt(categoryPrompt, item.categoryId || FALLBACK_CATEGORY_ID);
+    const newImage = prompt('Update image filename (e.g., espresso.jpeg):', item.image);
+
+    if (newName && !isNaN(newPrice) && newPrice >= 0 && newImage && newCategoryIdInput !== null) {
+        const normalizedCategory = ensureCategoryExists(newCategoryIdInput.trim() || FALLBACK_CATEGORY_ID);
+        products[index] = {
+            ...item,
+            name: newName.trim(),
+            price: newPrice,
+            image: newImage.trim(),
+            categoryId: normalizedCategory
+        };
+
+        refreshCategoryUI();
         displayMenuItems();
+        displayMenuGallery();
     } else {
-        alert("Invalid input. No changes were made.");
+        alert('Invalid input. No changes were made.');
     }
 }
 
 function deleteMenuItem(index) {
-    if (confirm("Delete this item?")) {
-        menuItems.splice(index, 1);
+    if (confirm('Delete this item?')) {
+        products.splice(index, 1);
         displayMenuItems();
+        displayMenuGallery();
     }
 }
 
@@ -402,14 +688,43 @@ function showCashierContent(id) {
 
 function displayMenuGallery() {
     const container = document.getElementById('menuItemsGallery');
-    if (!container) return;
+    if (!container) {
+        return;
+    }
+
+    const categorySelect = document.getElementById('cashierCategoryFilter');
+    const selectedCategory = categorySelect ? categorySelect.value : '';
+    const filteredProducts = selectedCategory
+        ? products.filter(product => (product.categoryId || FALLBACK_CATEGORY_ID) === selectedCategory)
+        : products;
+
     container.innerHTML = '';
-    menuItems.forEach(item => {
-        container.innerHTML += `
-            <div class="menu-item" onclick="selectDrink('${item.name}', ${item.price})">
-                <img src="images/${item.image}" alt="${item.name}">
-                <p>${item.name}<br>₱${item.price}</p>
-            </div>`;
+
+    if (filteredProducts.length === 0) {
+        container.innerHTML = '<p class="empty-state">No menu items available for this category.</p>';
+        return;
+    }
+
+    filteredProducts.forEach(product => {
+        const card = document.createElement('div');
+        card.className = 'menu-item';
+        card.addEventListener('click', () => selectDrink(product.name, product.price));
+
+        const img = document.createElement('img');
+        img.src = product.image ? `images/${product.image}` : 'images/jowens.png';
+        img.alt = product.name;
+        card.appendChild(img);
+
+        const nameParagraph = document.createElement('p');
+        nameParagraph.innerHTML = `${product.name}<br>₱${product.price}`;
+        card.appendChild(nameParagraph);
+
+        const categoryParagraph = document.createElement('p');
+        categoryParagraph.className = 'menu-item-category';
+        categoryParagraph.textContent = getCategoryName(product.categoryId);
+        card.appendChild(categoryParagraph);
+
+        container.appendChild(card);
     });
 }
 
@@ -477,9 +792,9 @@ function generateDailySummary() {
 
     todaysTransactions.forEach(transaction => {
         transaction.items.forEach(item => {
-            const menuItem = menuItems.find(m => m.name === item.name);
-            const itemPrice = menuItem ? menuItem.price : 0;
-            
+            const product = products.find(m => m.name === item.name);
+            const itemPrice = product ? product.price : 0;
+
             if (!itemSales[item.name]) {
                 itemSales[item.name] = { qty: 0, revenue: 0 };
             }
@@ -606,6 +921,8 @@ function clearQty() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    refreshCategoryUI();
+
     if (currentUserRole === 'manager') {
         showManagerContent('home');
     } else if (currentUserRole === 'cashier') {

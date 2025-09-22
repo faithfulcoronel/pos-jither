@@ -24,6 +24,10 @@
                     <button onclick="clearOrder()">Clear All</button>
                 </div>
                 <ul id="orderList" class="order-list"></ul>
+                <div class="menu-filter">
+                    <label for="cashierCategoryFilter">Browse by Category:</label>
+                    <select id="cashierCategoryFilter" onchange="displayMenuGallery()"></select>
+                </div>
                 <div class="menu-grid" id="menuItemsGallery"></div>
             </div>
 
