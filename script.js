@@ -634,6 +634,6 @@ function clearQty() {
     document.getElementById("drinkQty").value = "1";
 }
 
-document.addEventListener('componentsLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     showManagerContent('home');
 });
