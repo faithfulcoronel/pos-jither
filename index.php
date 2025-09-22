@@ -17,8 +17,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $authenticatedRole = null;
         foreach ($users as $role => $credentials) {
-            if ($normalizedUsername === strtolower($credentials['username']) && $password === $credentials['password']) {
-                $authenticatedRole = $role;
+            $storedUsername = strtolower((string)($credentials['username'] ?? ''));
+            if ($storedUsername === '' || $normalizedUsername !== $storedUsername) {
+                continue;
+            }
+
+            $isValidPassword = false;
+            $storedHash = $credentials['password_hash'] ?? null;
+            if (is_string($storedHash) && $storedHash !== '') {
+                $isValidPassword = password_verify($password, $storedHash);
+            } else {
+                $storedPassword = $credentials['password'] ?? null;
+                if (is_string($storedPassword) && $storedPassword !== '') {
+                    $isValidPassword = hash_equals($storedPassword, (string)$password);
+                }
+            }
+
+            if ($isValidPassword) {
+                $authenticatedRole = $credentials['role'] ?? $role;
                 break;
             }
         }
