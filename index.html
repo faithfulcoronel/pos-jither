@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jither POS</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand__mark">J</div>
+          <div>
+            <p class="brand__overline">Jither POS</p>
+            <h1 class="brand__title">Point of Sale</h1>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <a class="nav__item nav__item--active" href="#">Dashboard</a>
+          <a class="nav__item" href="#">Sales</a>
+          <a class="nav__item" href="#">Inventory</a>
+          <a class="nav__item" href="#">Customers</a>
+          <a class="nav__item" href="#">Staff</a>
+          <a class="nav__item" href="#">Settings</a>
+        </nav>
+
+        <div class="sidebar__footer">
+          <div>
+            <p class="eyebrow">Shift lead</p>
+            <p class="sidebar__user">Jamie Rivera</p>
+          </div>
+          <button class="btn btn--ghost" type="button">Sign out</button>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="workspace__header">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h2 class="workspace__title">Store overview</h2>
+            <p class="workspace__subtitle">
+              Monitor live sales, inventory health, and customer sentiment in a single view.
+            </p>
+          </div>
+          <div class="workspace__actions">
+            <button class="btn btn--ghost" type="button">Download report</button>
+            <button class="btn btn--primary" type="button">New sale</button>
+          </div>
+        </header>
+
+        <section class="metrics">
+          <article class="card metric">
+            <header class="metric__header">
+              <h3>Gross sales</h3>
+              <span class="pill pill--success">+12.4%</span>
+            </header>
+            <p class="metric__value">$18,540</p>
+            <p class="metric__caption">vs. last week</p>
+          </article>
+
+          <article class="card metric">
+            <header class="metric__header">
+              <h3>Average order</h3>
+              <span class="pill pill--neutral">$3.10</span>
+            </header>
+            <p class="metric__value">$58.70</p>
+            <p class="metric__caption">per transaction</p>
+          </article>
+
+          <article class="card metric">
+            <header class="metric__header">
+              <h3>Inventory health</h3>
+              <span class="pill pill--warning">7 low</span>
+            </header>
+            <p class="metric__value">92%</p>
+            <p class="metric__caption">in-stock rate</p>
+          </article>
+
+          <article class="card metric">
+            <header class="metric__header">
+              <h3>Loyalty signups</h3>
+              <span class="pill pill--success">+38</span>
+            </header>
+            <p class="metric__value">412</p>
+            <p class="metric__caption">active members</p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <header class="panel__header">
+            <div class="tabs" role="tablist">
+              <button class="tab is-active" type="button" role="tab" aria-selected="true">
+                Products
+              </button>
+              <button class="tab" type="button" role="tab">Orders</button>
+              <button class="tab" type="button" role="tab">Customers</button>
+            </div>
+
+            <div class="panel__filters">
+              <label class="field field--search">
+                <span aria-hidden="true">🔍</span>
+                <input type="search" placeholder="Search by name or SKU" />
+              </label>
+              <div class="chip-group" role="group">
+                <button class="chip is-active" type="button">In stock</button>
+                <button class="chip" type="button">Low stock</button>
+                <button class="chip" type="button">Archived</button>
+              </div>
+            </div>
+          </header>
+
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Product</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">SKU</th>
+                  <th scope="col">In stock</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" class="numeric">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="table-product">
+                      <span class="table-product__thumb" aria-hidden="true">🍵</span>
+                      <div>
+                        <p class="table-product__name">Matcha Latte</p>
+                        <p class="table-product__meta">12 oz • Bar</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Drinks</td>
+                  <td>DRK-2091</td>
+                  <td>36</td>
+                  <td><span class="status status--success">Live</span></td>
+                  <td class="numeric">$5.90</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="table-product">
+                      <span class="table-product__thumb" aria-hidden="true">🥐</span>
+                      <div>
+                        <p class="table-product__name">Butter Croissant</p>
+                        <p class="table-product__meta">Bakery • Deli</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Food</td>
+                  <td>FD-0018</td>
+                  <td>18</td>
+                  <td><span class="status status--warning">Low</span></td>
+                  <td class="numeric">$3.20</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="table-product">
+                      <span class="table-product__thumb" aria-hidden="true">🥤</span>
+                      <div>
+                        <p class="table-product__name">Sparkling Raspberry</p>
+                        <p class="table-product__meta">16 oz • Bar</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Drinks</td>
+                  <td>DRK-1182</td>
+                  <td>58</td>
+                  <td><span class="status status--success">Live</span></td>
+                  <td class="numeric">$4.10</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="table-product">
+                      <span class="table-product__thumb" aria-hidden="true">🥪</span>
+                      <div>
+                        <p class="table-product__name">Roasted Veggie Sandwich</p>
+                        <p class="table-product__meta">Lunch • Deli</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Food</td>
+                  <td>FD-1084</td>
+                  <td>12</td>
+                  <td><span class="status status--neutral">Prep</span></td>
+                  <td class="numeric">$8.50</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <aside class="activity">
+        <header class="activity__header">
+          <p class="eyebrow">Queue</p>
+          <h2>Active orders</h2>
+        </header>
+
+        <div class="card activity__card">
+          <header class="activity__card-header">
+            <h3>#0145 • Dine in</h3>
+            <span class="status status--success">Preparing</span>
+          </header>
+          <ul class="activity__items">
+            <li>
+              <span>2 × Matcha Latte</span>
+              <span>$11.80</span>
+            </li>
+            <li>
+              <span>1 × Avocado Toast</span>
+              <span>$9.50</span>
+            </li>
+          </ul>
+          <footer class="activity__footer">
+            <span class="activity__time">Ordered 4 min ago</span>
+            <button class="btn btn--subtle" type="button">Mark ready</button>
+          </footer>
+        </div>
+
+        <div class="card activity__card activity__card--ghost">
+          <header class="activity__card-header">
+            <h3>#0144 • Pickup</h3>
+            <span class="status status--neutral">Awaiting</span>
+          </header>
+          <p class="activity__empty">Customer notified • Due in 6 minutes</p>
+          <footer class="activity__footer">
+            <span class="activity__time">Last update 2 min ago</span>
+            <button class="btn btn--ghost" type="button">Send reminder</button>
+          </footer>
+        </div>
+
+        <button class="floating-action" type="button">+</button>
+      </aside>
+    </div>
+  </body>
+</html>
