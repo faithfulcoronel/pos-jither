@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/data_functions.php';
 
 $pdo = getDatabaseConnection();
 if ($pdo !== null) {
@@ -83,13 +84,13 @@ return array_merge(
     $catalog->toArray(),
     [
         'inventory' => [
-            ['item' => 'Coffee Beans', 'qty' => 10, 'unit' => 'kg'],
-            ['item' => 'Milk', 'qty' => 25, 'unit' => 'L'],
-            ['item' => 'Cups', 'qty' => 300, 'unit' => 'pcs'],
+            ['id' => 1, 'item' => 'Coffee Beans', 'qty' => 10, 'unit' => 'kg'],
+            ['id' => 2, 'item' => 'Milk', 'qty' => 25, 'unit' => 'L'],
+            ['id' => 3, 'item' => 'Cups', 'qty' => 300, 'unit' => 'pcs'],
         ],
         'staffAccounts' => [
-            ['role' => 'Manager', 'name' => 'Jowen', 'status' => 'Inactive', 'timeIn' => null, 'timeOut' => null],
-            ['role' => 'Cashier', 'name' => 'Elsa', 'status' => 'Inactive', 'timeIn' => null, 'timeOut' => null],
+            ['id' => 1, 'role' => 'Manager', 'name' => 'Jowen', 'status' => 'Inactive', 'timeIn' => null, 'timeOut' => null],
+            ['id' => 2, 'role' => 'Cashier', 'name' => 'Elsa', 'status' => 'Inactive', 'timeIn' => null, 'timeOut' => null],
         ],
         'timekeepingRecords' => [],
         'completedTransactions' => [
@@ -104,183 +105,3 @@ return array_merge(
         ],
     ]
 );
-
-/**
- * @return array<string, mixed>
- */
-function loadDataFromDatabase(\PDO $pdo): array
-{
-    return [
-        'productCategories' => fetchProductCategories($pdo),
-        'products' => fetchProducts($pdo),
-        'inventory' => fetchInventoryItems($pdo),
-        'staffAccounts' => fetchStaffAccounts($pdo),
-        'timekeepingRecords' => fetchTimekeepingRecords($pdo),
-        'completedTransactions' => fetchCompletedTransactions($pdo),
-    ];
-}
-
-/**
- * @return array<int, array<string, mixed>>
- */
-function fetchProductCategories(\PDO $pdo): array
-{
-    $statement = $pdo->query('SELECT id, name, description FROM product_categories ORDER BY name');
-
-    $categories = [];
-    foreach ($statement as $row) {
-        $categories[] = [
-            'id' => (string)($row['id'] ?? ''),
-            'name' => (string)($row['name'] ?? ''),
-            'description' => (string)($row['description'] ?? ''),
-        ];
-    }
-
-    return $categories;
-}
-
-/**
- * @return array<int, array<string, mixed>>
- */
-function fetchProducts(\PDO $pdo): array
-{
-    $statement = $pdo->query('SELECT id, name, price, category_id, image, description FROM products ORDER BY name');
-
-    $products = [];
-    foreach ($statement as $row) {
-        $products[] = [
-            'id' => (string)($row['id'] ?? ''),
-            'name' => (string)($row['name'] ?? ''),
-            'price' => (float)($row['price'] ?? 0),
-            'categoryId' => (string)($row['category_id'] ?? 'uncategorized'),
-            'image' => (string)($row['image'] ?? ''),
-            'description' => (string)($row['description'] ?? ''),
-        ];
-    }
-
-    return $products;
-}
-
-/**
- * @return array<int, array<string, mixed>>
- */
-function fetchInventoryItems(\PDO $pdo): array
-{
-    $statement = $pdo->query('SELECT item, quantity, unit FROM inventory_items ORDER BY item');
-
-    $inventory = [];
-    foreach ($statement as $row) {
-        $quantity = $row['quantity'];
-        $inventory[] = [
-            'item' => (string)($row['item'] ?? ''),
-            'qty' => is_numeric($quantity) ? (float)$quantity : 0,
-            'unit' => (string)($row['unit'] ?? ''),
-        ];
-    }
-
-    return $inventory;
-}
-
-/**
- * @return array<int, array<string, mixed>>
- */
-function fetchStaffAccounts(\PDO $pdo): array
-{
-    $statement = $pdo->query('SELECT role, name, status, time_in, time_out FROM staff_accounts ORDER BY id');
-
-    $staff = [];
-    foreach ($statement as $row) {
-        $staff[] = [
-            'role' => (string)($row['role'] ?? ''),
-            'name' => (string)($row['name'] ?? ''),
-            'status' => (string)($row['status'] ?? 'Inactive'),
-            'timeIn' => formatDateTime($row['time_in'] ?? null),
-            'timeOut' => formatDateTime($row['time_out'] ?? null),
-        ];
-    }
-
-    return $staff;
-}
-
-/**
- * @return array<int, array<string, mixed>>
- */
-function fetchTimekeepingRecords(\PDO $pdo): array
-{
-    $statement = $pdo->query('SELECT staff_name, role, time_in, time_out FROM timekeeping_records ORDER BY time_in DESC');
-
-    $records = [];
-    foreach ($statement as $row) {
-        $records[] = [
-            'name' => (string)($row['staff_name'] ?? ''),
-            'role' => (string)($row['role'] ?? ''),
-            'timeIn' => formatDateTime($row['time_in'] ?? null),
-            'timeOut' => formatDateTime($row['time_out'] ?? null),
-        ];
-    }
-
-    return $records;
-}
-
-/**
- * @return array<int, array<string, mixed>>
- */
-function fetchCompletedTransactions(\PDO $pdo): array
-{
-    $statement = $pdo->query('SELECT id, reference, total, occurred_at FROM sales_transactions ORDER BY occurred_at DESC');
-    $itemsStatement = $pdo->prepare('SELECT product_name, quantity FROM sales_transaction_items WHERE transaction_id = :transaction ORDER BY id');
-
-    $transactions = [];
-    foreach ($statement as $row) {
-        $transactionId = (int)($row['id'] ?? 0);
-        $itemsStatement->execute(['transaction' => $transactionId]);
-
-        $items = [];
-        foreach ($itemsStatement->fetchAll() as $itemRow) {
-            $items[] = [
-                'name' => (string)($itemRow['product_name'] ?? ''),
-                'qty' => (int)($itemRow['quantity'] ?? 0),
-            ];
-        }
-
-        $timestamp = formatDateTime($row['occurred_at'] ?? null);
-        if ($timestamp === null) {
-            $timestamp = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
-        }
-
-        $transactions[] = [
-            'id' => normalizeTransactionReference($row['reference'] ?? '', $transactionId),
-            'total' => (float)($row['total'] ?? 0),
-            'timestamp' => $timestamp,
-            'items' => $items,
-        ];
-    }
-
-    return $transactions;
-}
-
-/**
- * @return int|string
- */
-function normalizeTransactionReference(string $reference, int $fallback): int|string
-{
-    $trimmed = trim($reference);
-    if ($trimmed === '') {
-        return $fallback;
-    }
-
-    return ctype_digit($trimmed) ? (int)$trimmed : $trimmed;
-}
-
-function formatDateTime(?string $value): ?string
-{
-    if ($value === null || $value === '') {
-        return null;
-    }
-
-    try {
-        return (new \DateTimeImmutable($value))->format(\DateTimeInterface::ATOM);
-    } catch (\Exception $exception) {
-        return null;
-    }
-}
