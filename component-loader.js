@@ -12,7 +12,7 @@
         console.error(`Failed to load component "${componentName}":`, error);
         target.innerHTML = `<div class="component-error">Unable to load component: ${componentName}</div>`;
     }
-
+  
     function getFallbackMarkup(componentName) {
         return FALLBACK_TEMPLATES[componentName] || null;
     }
