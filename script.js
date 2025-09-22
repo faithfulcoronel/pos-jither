@@ -1,69 +1,20 @@
-const users = {
-    manager: { username: 'manager', password: '1234' },
-    cashier: { username: 'cashier', password: '1234' }
+const initialData = window.initialData || {};
+const currentUserRole = window.currentUserRole || null;
+
+const cloneArray = (data) => {
+    if (!data) {
+        return [];
+    }
+    const cloned = JSON.parse(JSON.stringify(data));
+    return Array.isArray(cloned) ? cloned : [];
 };
 
-let menuItems = [
-    { name: 'Espresso', price: 80, image: 'espresso.jpeg' },
-    { name: 'Cappuccino', price: 120, image: 'cappuccino.jpeg' },
-    { name: 'Latte', price: 110, image: 'latte.jpeg' },
-    { name: 'Mocha', price: 130, image: 'mocha.jpeg' }
-];
-
-let inventory = [
-    { item: 'Coffee Beans', qty: 10, unit: 'kg' },
-    { item: 'Milk', qty: 25, unit: 'L' },
-    { item: 'Cups', qty: 300, unit: 'pcs' }
-];
-
-let staffAccounts = [
-    { role: 'Manager', name: 'Jowen', status: 'Inactive', timeIn: null, timeOut: null },
-    { role: 'Cashier', name: 'Elsa', status: 'Inactive', timeIn: null, timeOut: null }
-];
-let timekeepingRecords = [];
-
-// Sample data with item details
-let completedTransactions = [
-    { id: 101, total: 360, timestamp: '2025-09-19T10:00:00Z', items: [{name: 'Cappuccino', qty: 2}] },
-    { id: 102, total: 240, timestamp: '2025-09-19T11:30:00Z', items: [{name: 'Latte', qty: 1}, {name: 'Espresso', qty: 1}] },
-    { id: 103, total: 110, timestamp: '2025-09-19T14:00:00Z', items: [{name: 'Mocha', qty: 1}] },
-    { id: 104, total: 120, timestamp: '2025-09-19T15:00:00Z', items: [{name: 'Cappuccino', qty: 1}] },
-    { id: 105, total: 260, timestamp: '2025-09-19T16:30:00Z', items: [{name: 'Mocha', qty: 2}] },
-];
-
+let menuItems = cloneArray(initialData.menuItems);
+let inventory = cloneArray(initialData.inventory);
+let staffAccounts = cloneArray(initialData.staffAccounts);
+let timekeepingRecords = cloneArray(initialData.timekeepingRecords);
+let completedTransactions = cloneArray(initialData.completedTransactions);
 let currentOrder = [];
-
-// Login/Logout Functions
-function login() {
-    const username = document.getElementById('username').value.toLowerCase();
-    const password = document.getElementById('password').value;
-
-    document.body.classList.remove('manager-mode', 'cashier-mode');
-
-    if (username === 'manager' && password === '1234') {
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('manager-dashboard').classList.remove('hidden');
-        document.body.classList.add('manager-mode');
-        showManagerContent('home');
-    } else if (username === 'cashier' && password === '1234') {
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('cashier-dashboard').classList.remove('hidden');
-        document.body.classList.add('cashier-mode');
-        showCashierContent('order');
-    } else {
-        alert('Invalid username or password');
-    }
-}
-
-function logout() {
-    document.getElementById('manager-dashboard').classList.add('hidden');
-    document.getElementById('cashier-dashboard').classList.add('hidden');
-    document.getElementById('login-section').classList.remove('hidden');
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-    document.body.classList.remove('manager-mode', 'cashier-mode');
-    currentOrder = [];
-}
 
 function showManagerContent(id) {
     document.querySelectorAll('#manager-dashboard .content-section').forEach(section => {
@@ -74,8 +25,17 @@ function showManagerContent(id) {
         item.classList.remove('active');
     });
 
-    document.getElementById(id + '-content').classList.remove('hidden');
-    document.querySelector(`#manager-dashboard .sidebar a[onclick="showManagerContent('${id}')"]`).classList.add('active');
+    const targetSection = document.getElementById(`${id}-content`);
+    if (!targetSection) {
+        return;
+    }
+
+    targetSection.classList.remove('hidden');
+
+    const navLink = document.querySelector(`#manager-dashboard .sidebar a[onclick="showManagerContent('${id}')"]`);
+    if (navLink) {
+        navLink.classList.add('active');
+    }
 
     if (id === 'menu') displayMenuItems();
     if (id === 'inventory') displayInventory();
@@ -98,6 +58,7 @@ function showManagerContent(id) {
         renderSalesChart([], []);
     }
 }
+
 
 function displayMenuItems() {
     const container = document.getElementById('menuItemsContainer');
@@ -417,8 +378,17 @@ function showCashierContent(id) {
         item.classList.remove('active');
     });
 
-    document.getElementById(id + '-content').classList.remove('hidden');
-    document.querySelector(`#cashier-dashboard .sidebar a[onclick="showCashierContent('${id}')"]`).classList.add('active');
+    const targetSection = document.getElementById(`${id}-content`);
+    if (!targetSection) {
+        return;
+    }
+
+    targetSection.classList.remove('hidden');
+
+    const navLink = document.querySelector(`#cashier-dashboard .sidebar a[onclick="showCashierContent('${id}')"]`);
+    if (navLink) {
+        navLink.classList.add('active');
+    }
 
     if (id === 'order') {
         displayMenuGallery();
@@ -426,8 +396,9 @@ function showCashierContent(id) {
     } else if (id === 'daily') { // Idagdag ang bagong kondisyon na ito
         generateDailySummary();
     }
-    
+
 }
+
 
 function displayMenuGallery() {
     const container = document.getElementById('menuItemsGallery');
@@ -635,5 +606,9 @@ function clearQty() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    showManagerContent('home');
+    if (currentUserRole === 'manager') {
+        showManagerContent('home');
+    } else if (currentUserRole === 'cashier') {
+        showCashierContent('order');
+    }
 });
