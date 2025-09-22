@@ -1,0 +1,6 @@
+SetEnv DB_HOST 127.0.0.1
+SetEnv DB_PORT 3306
+SetEnv DB_NAME pos_jither
+SetEnv DB_USER root
+SetEnv DB_PASSWORD ""
+SetEnv DB_CHARSET utf8mb4
