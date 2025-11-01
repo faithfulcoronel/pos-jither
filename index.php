@@ -259,6 +259,7 @@ $currentRole = $_SESSION['role'] ?? null;
                                 <input type="hidden" id="drinkPrice" />
                                 <button onclick="addOrder()">Add Order</button>
                                 <button onclick="clearOrder()">Clear All</button>
+                                <button onclick="checkOut()">Checkout</button>
                             </div>
                             <ul id="orderList" class="order-list"></ul>
                             <div class="menu-filter">
@@ -275,6 +276,7 @@ $currentRole = $_SESSION['role'] ?? null;
                             <div id="receipt" class="receipt">
                                 <h4>Jowen's Kitchen & Cafe</h4>
                                 <p>Date: <span id="receipt-date"></span></p>
+                                <p>Order Number: <span id="receipt-ordernumber"></span></p>
                                 <div id="receipt-items"></div>
                                 <p class="receipt-total">Total: ₱<span id="receipt-total">0</span></p>
                             </div>

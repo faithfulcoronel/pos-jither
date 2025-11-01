@@ -975,7 +975,11 @@ function renderOrderList() {
         `;
         orderList.appendChild(li);
     });
-    updateReceipt();
+    //updateReceipt();
+}
+
+function checkOut(){
+     updateReceipt();
 }
 
 function filterInventory() {
@@ -1034,25 +1038,70 @@ function clearOrder() {
     }
 }
 
-function updateReceipt() {
+async function updateReceipt() {
+    const receiptOrderNumber = document.getElementById('receipt-ordernumber');
     const receiptItems = document.getElementById('receipt-items');
     const receiptTotalEl = document.getElementById('receipt-total');
+    const receiptDate = document.getElementById('receipt-date');
+
     if (!receiptItems || !receiptTotalEl) return;
+
+    // Reset and build receipt items
     receiptItems.innerHTML = '';
     let total = 0;
-
     currentOrder.forEach(item => {
         const itemTotal = item.qty * item.price;
         total += itemTotal;
-        receiptItems.innerHTML += `<p>${item.qty}x ${item.name} - ₱${itemTotal}</p>`;
+        receiptItems.innerHTML += `<p>${item.qty}x ${item.name} - ₱${itemTotal.toFixed(2)}</p>`;
     });
 
     receiptTotalEl.textContent = total.toFixed(2);
-    const receiptDate = document.getElementById('receipt-date');
-    if (receiptDate) {
-        receiptDate.textContent = new Date().toLocaleString();
+    if (receiptDate) receiptDate.textContent = new Date().toLocaleString();
+
+    // ONLY update the order number
+    if (receiptOrderNumber) {
+        try {
+            const nextRef = await getNextReference();
+            receiptOrderNumber.textContent = nextRef;
+        } catch (error) {
+            console.error('Error fetching next order number:', error);
+            receiptOrderNumber.textContent = 'N/A';
+        }
+
+        finalizeSale();
     }
 }
+
+async function getNextReference() {
+    const response = await apiRequest('sales-transactions', 'get-next-reference', null, { skipAutoApply: true });
+    return response.data.next_reference;
+}
+
+async function finalizeSale() {
+    if (!currentOrder || currentOrder.length === 0) return;
+
+    const receiptOrderNumber = document.getElementById('receipt-ordernumber').textContent;
+    const receiptTotal = parseFloat(document.getElementById('receipt-total').textContent);
+
+    const transactionData = {
+        reference: receiptOrderNumber,
+        items: currentOrder,
+        total: receiptTotal,
+        occurred_at: new Date().toISOString() 
+    };
+
+
+    try {
+        // Save transaction via API
+        await apiRequest('sales-transactions', 'create', transactionData);
+
+        alert('Sale successfully recorded!');
+    } catch (err) {
+        alert(err.message || 'Unable to save sale.');
+        console.error(err);
+    }
+}
+
 
 function openKeypad() {
     const keypad = document.getElementById('keypad');
@@ -1085,32 +1134,38 @@ function clearQty() {
 }
 
 async function apiRequest(resource, action = null, data = null, options = {}) {
-    const method = options.method || 'POST';
+    const method = (options.method || 'POST').toUpperCase();
     let url = `php/api.php?resource=${encodeURIComponent(resource)}`;
+
+    // Include action for GET requests
+    if (method === 'GET' && action) {
+        url += `&action=${encodeURIComponent(action)}`;
+    }
 
     const fetchOptions = {
         method,
-        headers: {
-            'Accept': 'application/json'
-        },
+        headers: { 'Accept': 'application/json' },
         credentials: 'same-origin'
     };
 
-    if (method === 'GET') {
-        if (action) {
-            url += `&action=${encodeURIComponent(action)}`;
-        }
-    } else {
+    // Include body for non-GET requests
+    if (method !== 'GET') {
         fetchOptions.headers['Content-Type'] = 'application/json';
         fetchOptions.body = JSON.stringify({ resource, action, data });
     }
 
-    const response = await fetch(url, fetchOptions);
-    let payload = null;
+    let response;
+    try {
+        response = await fetch(url, fetchOptions);
+    } catch (networkError) {
+        throw new Error('Network error: ' + networkError.message);
+    }
+
+    let payload;
     try {
         payload = await response.json();
-    } catch (error) {
-        payload = null;
+    } catch (jsonError) {
+        throw new Error('Invalid JSON response from server.');
     }
 
     if (!response.ok || !payload || payload.success !== true) {
@@ -1120,7 +1175,9 @@ async function apiRequest(resource, action = null, data = null, options = {}) {
         throw new Error(message);
     }
 
-    if (payload.data) {
+    // Only auto-apply server data for resources that are not "read-only"
+    const skipAutoApply = options.skipAutoApply || ['sales-transactions'].includes(resource);
+    if (payload.data && !skipAutoApply) {
         applyServerData(payload.data);
     }
 

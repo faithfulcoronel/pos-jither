@@ -117,6 +117,16 @@ function handlePostRequest(PDO $pdo, string $resource, string $action, $data): v
             }
             break;
 
+        case 'sales-transactions':
+            if ($action === 'get-next-reference') {
+                $nextRef = getNextTransactionReference($pdo);
+                sendSuccess(['next_reference' => $nextRef]);
+            } elseif ($action === 'create') {
+                createSalesTransaction($pdo, $data);
+            } else {
+                throw new InvalidArgumentException('Unsupported action for sales transactions.');
+            }
+            break;
         default:
             throw new InvalidArgumentException('Unsupported resource.');
     }

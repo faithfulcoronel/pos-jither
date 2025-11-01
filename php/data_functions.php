@@ -13,7 +13,7 @@ function loadDataFromDatabase(PDO $pdo): array
         'inventory' => fetchInventoryItems($pdo),
         'staffAccounts' => fetchStaffAccounts($pdo),
         'timekeepingRecords' => fetchTimekeepingRecords($pdo),
-        'completedTransactions' => fetchCompletedTransactions($pdo),
+        'completedTransactions' => fetchCompletedTransactions($pdo)
     ];
 }
 
@@ -611,4 +611,32 @@ function clockOutStaffAccount(PDO $pdo, array $payload): void
         $pdo->rollBack();
         throw $exception;
     }
+}
+
+function getNextTransactionReference(PDO $pdo): string
+{
+    $stmt = $pdo->query("
+        SELECT LPAD(CAST(COALESCE(MAX(CAST(reference AS UNSIGNED)), 100) + 1 AS CHAR), 3, '0') AS next_reference
+        FROM sales_transactions
+    ");
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row['next_reference'] ?? '101';
+}
+
+function createSalesTransaction(PDO $pdo, array $data): void
+{
+    if (empty($data['reference']) || !isset($data['total']) || empty($data['occurred_at'])) {
+        throw new InvalidArgumentException('Missing required sales transaction data.');
+    }
+
+    $sql = "INSERT INTO sales_transactions (reference, total, occurred_at, created_at) 
+            VALUES (:reference, :total, :occurred_at, NOW())";
+
+    $stmt = $pdo->prepare($sql);
+
+    $stmt->execute([
+        ':reference' => $data['reference'],
+        ':total' => $data['total'],
+        ':occurred_at' => $data['occurred_at']
+    ]);
 }
