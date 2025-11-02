@@ -406,6 +406,7 @@ select:focus {
 .category-pill {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
     padding: 6px 14px;
     border-radius: 999px;
     background: rgba(194, 112, 61, 0.12);
@@ -413,6 +414,39 @@ select:focus {
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--primary-dark);
+    position: relative;
+}
+
+.category-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin: 0;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: rgba(194, 112, 61, 0.2);
+    border: none;
+    color: var(--primary-dark);
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+
+.category-delete-btn:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(194, 112, 61, 0.3);
+}
+
+.category-delete-btn:active {
+    transform: scale(0.95);
 }
 
 .menu-category-container {
@@ -547,6 +581,26 @@ select:focus {
     filter: brightness(1.08);
 }
 
+/* Transaction Layout - Side by Side */
+.transaction-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    margin-top: 20px;
+}
+
+.transaction-list-panel {
+    flex: 0 0 45%;
+    min-width: 0;
+}
+
+.receipt-panel {
+    flex: 0 0 55%;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+}
+
 /* Lists & receipts */
 #orderList,
 #transactionList {
@@ -556,6 +610,69 @@ select:focus {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.transaction-item {
+    padding: 14px 18px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(194, 112, 61, 0.08), #fff);
+    border: 1px solid rgba(194, 112, 61, 0.16);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.transaction-item:hover {
+    background: linear-gradient(135deg, rgba(194, 112, 61, 0.15), #fff);
+    border-color: rgba(194, 112, 61, 0.3);
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(194, 112, 61, 0.15);
+}
+
+.transaction-item.selected {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-color: var(--primary-dark);
+    color: #fff;
+}
+
+.transaction-item.selected .transaction-date,
+.transaction-item.selected .transaction-total {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.transaction-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.transaction-info strong {
+    font-size: 1.05rem;
+    color: var(--primary-dark);
+}
+
+.transaction-item.selected .transaction-info strong {
+    color: #fff;
+}
+
+.transaction-date {
+    font-size: 0.85rem;
+    color: var(--muted-text);
+}
+
+.transaction-total {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.empty-state,
+.error-state {
+    padding: 20px;
+    text-align: center;
+    color: var(--muted-text);
+    font-style: italic;
 }
 
 .order-list li {
@@ -573,7 +690,7 @@ select:focus {
     border-radius: 18px;
     padding: 22px;
     background: linear-gradient(160deg, #ffffff, #f9f1e8);
-    margin-top: 24px;
+    margin-top: 0;
     width: 100%;
     max-width: 420px;
     font-family: 'Courier New', monospace;
@@ -648,12 +765,104 @@ select:focus {
     display: flex;
     gap: 12px;
     align-items: center;
-    margin: 18px 0;
+    margin: 18px 0 24px 0;
 }
 
 .report-controls label {
     font-weight: 600;
     color: var(--muted-text);
+}
+
+.report-controls input[type="date"] {
+    width: auto;
+    min-width: 180px;
+}
+
+/* Time Clock Styles */
+.timeclock-panel {
+    background: linear-gradient(135deg, #fff, #faf6f2);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 24px rgba(45, 36, 31, 0.08);
+}
+
+.timeclock-status {
+    margin-bottom: 24px;
+}
+
+.status-display {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    border: 2px solid rgba(194, 112, 61, 0.15);
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.status-clocked-in {
+    color: #2e7d32;
+    border-color: rgba(46, 125, 50, 0.3);
+    background: rgba(46, 125, 50, 0.05);
+}
+
+.status-clocked-out {
+    color: #d32f2f;
+    border-color: rgba(211, 47, 47, 0.3);
+    background: rgba(211, 47, 47, 0.05);
+}
+
+.timeclock-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.timeclock-btn {
+    flex: 1;
+    max-width: 200px;
+    padding: 16px 24px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.time-in-btn {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    color: #fff;
+}
+
+.time-in-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+}
+
+.time-out-btn {
+    background: linear-gradient(135deg, #f44336, #c62828);
+    color: #fff;
+}
+
+.time-out-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4);
+}
+
+.timeclock-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Hidden Utility */

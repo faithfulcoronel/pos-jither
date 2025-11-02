@@ -265,6 +265,43 @@ function createProductCategory(PDO $pdo, array $payload): void
     ]);
 }
 
+function deleteProductCategory(PDO $pdo, array $payload): void
+{
+    $id = trim((string)($payload['id'] ?? ''));
+    if ($id === '') {
+        throw new InvalidArgumentException('Category ID is required.');
+    }
+
+    // Prevent deletion of the uncategorized fallback category
+    if ($id === 'uncategorized') {
+        throw new RuntimeException('Cannot delete the Uncategorized category.');
+    }
+
+    // Check if the category exists
+    $checkStatement = $pdo->prepare('SELECT COUNT(*) FROM product_categories WHERE id = :id');
+    $checkStatement->execute(['id' => $id]);
+    if ((int)$checkStatement->fetchColumn() === 0) {
+        throw new RuntimeException('Category not found.');
+    }
+
+    // Check if any products are using this category
+    $productCheckStatement = $pdo->prepare('SELECT COUNT(*) FROM products WHERE category_id = :id');
+    $productCheckStatement->execute(['id' => $id]);
+    $productCount = (int)$productCheckStatement->fetchColumn();
+
+    if ($productCount > 0) {
+        throw new RuntimeException("Cannot delete category. It has {$productCount} product(s) assigned to it. Please reassign or delete the products first.");
+    }
+
+    // Delete the category
+    $statement = $pdo->prepare('DELETE FROM product_categories WHERE id = :id');
+    $statement->execute(['id' => $id]);
+
+    if ($statement->rowCount() === 0) {
+        throw new RuntimeException('Failed to delete category.');
+    }
+}
+
 function createProduct(PDO $pdo, array $payload): void
 {
     $name = trim((string)($payload['name'] ?? ''));
@@ -473,11 +510,45 @@ function createStaffAccount(PDO $pdo, array $payload): void
 {
     $role = trim((string)($payload['role'] ?? ''));
     $name = trim((string)($payload['name'] ?? ''));
+    $username = trim((string)($payload['username'] ?? ''));
+    $password = (string)($payload['password'] ?? '');
 
     if ($role === '' || $name === '') {
         throw new InvalidArgumentException('Staff role and name are required.');
     }
 
+    // If username and password are provided, create user account
+    if ($username !== '' && $password !== '') {
+        // Check if username already exists
+        $checkUser = $pdo->prepare('SELECT COUNT(*) FROM users WHERE username = :username');
+        $checkUser->execute(['username' => $username]);
+        if ((int)$checkUser->fetchColumn() > 0) {
+            throw new RuntimeException('Username already exists. Please choose a different username.');
+        }
+
+        // Check if role already has a user account
+        $checkRole = $pdo->prepare('SELECT COUNT(*) FROM users WHERE role = :role');
+        $checkRole->execute(['role' => strtolower($role)]);
+        if ((int)$checkRole->fetchColumn() > 0) {
+            throw new RuntimeException('A user account already exists for this role. Each role can only have one login account.');
+        }
+
+        // Validate password
+        if (strlen($password) < 4) {
+            throw new InvalidArgumentException('Password must be at least 4 characters long.');
+        }
+
+        // Create user account with hashed password
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        $userStatement = $pdo->prepare('INSERT INTO users (role, username, password_hash) VALUES (:role, :username, :password_hash)');
+        $userStatement->execute([
+            'role' => strtolower($role),
+            'username' => $username,
+            'password_hash' => $passwordHash,
+        ]);
+    }
+
+    // Create staff account
     $status = normalizeStaffStatus((string)($payload['status'] ?? 'Inactive'));
 
     $statement = $pdo->prepare('INSERT INTO staff_accounts (role, name, status, time_in, time_out) VALUES (:role, :name, :status, NULL, NULL)');

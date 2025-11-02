@@ -35,12 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($isValidPassword) {
                 $authenticatedRole = $credentials['role'] ?? $role;
+                $authenticatedUsername = $credentials['username'] ?? '';
                 break;
             }
         }
 
         if ($authenticatedRole) {
             $_SESSION['role'] = $authenticatedRole;
+            $_SESSION['username'] = $authenticatedUsername ?? '';
             header('Location: index.php');
             exit;
         } else {
@@ -167,9 +169,13 @@ $currentRole = $_SESSION['role'] ?? null;
                             <h3>👥 Staff Accounts</h3>
                             <button onclick="toggleForm('staffFormContainer')">Add New Staff</button>
                             <div id="staffFormContainer" class="staff-form hidden">
-                                <input type="text" id="staffRole" placeholder="Role (e.g. Cashier)">
-                                <input type="text" id="staffName" placeholder="Name">
+                                <input type="text" id="staffRole" placeholder="Role (e.g. Cashier)" required>
+                                <input type="text" id="staffName" placeholder="Full Name" required>
+                                <input type="text" id="staffUsername" placeholder="Username for login" required>
+                                <input type="password" id="staffPassword" placeholder="Password" required>
+                                <input type="password" id="staffPasswordConfirm" placeholder="Confirm Password" required>
                                 <button onclick="addStaff()">Add Staff</button>
+                                <button onclick="toggleForm('staffFormContainer')" style="background: #888;">Cancel</button>
                             </div>
                             <table id="staff" class="summary-table">
                                 <thead>
@@ -193,20 +199,22 @@ $currentRole = $_SESSION['role'] ?? null;
                             <canvas id="salesChart"></canvas>
                             <br>
                             <div class="dashboard-header"><h3>📅 Daily Sales Calendar</h3></div>
-                            <div class="report-controls" style="display: flex; gap: 10px; align-items: center;">
+                            <div class="report-controls">
                                 <label for="datePicker">Select Date:</label>
-                                <input type="text" id="datePicker" placeholder="Select a date">
+                                <input type="date" id="datePicker" onchange="loadSalesByDate()">
+                                <button onclick="clearDateFilter()">Show All</button>
                             </div>
                             <table id="dailySalesTable" class="summary-table">
                                 <thead>
                                     <tr>
                                         <th>Order ID</th>
+                                        <th>Date</th>
                                         <th>Time</th>
                                         <th>Total (₱)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr><td colspan="3">Select a date to view sales.</td></tr>
+                                    <tr><td colspan="4">Loading sales data...</td></tr>
                                 </tbody>
                             </table>
                             <div class="total-sales" style="text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 10px;">
@@ -242,6 +250,7 @@ $currentRole = $_SESSION['role'] ?? null;
                             <a href="#" class="sidebar-item active" onclick="showCashierContent('order')">Take Order</a>
                             <a href="#" class="sidebar-item" onclick="showCashierContent('transaction')">Transactions</a>
                             <a href="#" class="sidebar-item" onclick="showCashierContent('daily')">Daily Summary</a>
+                            <a href="#" class="sidebar-item" onclick="showCashierContent('timeclock')">Time Clock</a>
                         </nav>
                         <form method="post" class="logout-form">
                             <input type="hidden" name="action" value="logout" />
@@ -272,13 +281,19 @@ $currentRole = $_SESSION['role'] ?? null;
                         <div id="transaction-content" class="content-section hidden">
                             <div class="dashboard-header"><h1>Transactions</h1></div>
                             <h3>🧾 Receipt Transactions</h3>
-                            <ul id="transactionList"></ul>
-                            <div id="receipt" class="receipt">
-                                <h4>Jowen's Kitchen & Cafe</h4>
-                                <p>Date: <span id="receipt-date"></span></p>
-                                <p>Order Number: <span id="receipt-ordernumber"></span></p>
-                                <div id="receipt-items"></div>
-                                <p class="receipt-total">Total: ₱<span id="receipt-total">0</span></p>
+                            <div class="transaction-layout">
+                                <div class="transaction-list-panel">
+                                    <ul id="transactionList"></ul>
+                                </div>
+                                <div class="receipt-panel">
+                                    <div id="receipt" class="receipt">
+                                        <h4>Jowen's Kitchen & Cafe</h4>
+                                        <p>Date: <span id="receipt-date"></span></p>
+                                        <p>Order Number: <span id="receipt-ordernumber"></span></p>
+                                        <div id="receipt-items"></div>
+                                        <p class="receipt-total">Total: ₱<span id="receipt-total">0</span></p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -307,6 +322,40 @@ $currentRole = $_SESSION['role'] ?? null;
                                 </tbody>
                             </table>
                         </div>
+
+                        <div id="timeclock-content" class="content-section hidden">
+                            <div class="dashboard-header"><h1>Time Clock</h1></div>
+                            <div class="timeclock-panel">
+                                <div class="timeclock-status">
+                                    <h3>⏰ Current Status</h3>
+                                    <div id="currentTimeClockStatus" class="status-display">
+                                        <p class="status-text">Loading...</p>
+                                    </div>
+                                </div>
+                                <div class="timeclock-actions">
+                                    <button id="timeInBtn" onclick="cashierTimeIn()" class="timeclock-btn time-in-btn">
+                                        ⏱️ Time In
+                                    </button>
+                                    <button id="timeOutBtn" onclick="cashierTimeOut()" class="timeclock-btn time-out-btn">
+                                        ⏹️ Time Out
+                                    </button>
+                                </div>
+                            </div>
+                            <h3>📋 My Attendance History (Today)</h3>
+                            <table id="cashierAttendanceTable" class="summary-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time In</th>
+                                        <th>Time Out</th>
+                                        <th>Hours Worked</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="4">Loading attendance records...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </main>
                 </div>
             </section>
@@ -316,6 +365,7 @@ $currentRole = $_SESSION['role'] ?? null;
     <script>
         window.initialData = <?= json_encode($initialData, JSON_UNESCAPED_UNICODE) ?>;
         window.currentUserRole = <?= json_encode($currentRole) ?>;
+        window.currentUsername = <?= json_encode($_SESSION['username'] ?? '') ?>;
     </script>
     <script defer src="script.js"></script>
 </body>

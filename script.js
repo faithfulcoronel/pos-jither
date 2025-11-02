@@ -136,7 +136,13 @@ function applyServerData(data) {
     displayInventory();
     displayStaff();
     displayTimekeepingRecords();
-    generateDailySummary();
+
+    // Generate daily summary but don't let it block other UI updates
+    generateDailySummary().catch(error => {
+        console.error('Failed to generate daily summary:', error);
+        // Silently fail - daily summary is non-critical for category management
+    });
+
     renderOrderList();
 }
 
@@ -187,7 +193,16 @@ function renderCategoryList() {
 
     const sortedCategories = [...productCategories].sort((a, b) => a.name.localeCompare(b.name));
     container.innerHTML = sortedCategories
-        .map(category => `<span class="category-pill" data-category="${category.id}">${category.name}</span>`)
+        .map(category => {
+            // Don't show delete button for uncategorized category
+            const deleteButton = category.id !== 'uncategorized'
+                ? `<button class="category-delete-btn" onclick="deleteCategory('${category.id}')" title="Delete category">&times;</button>`
+                : '';
+            return `<span class="category-pill" data-category="${category.id}">
+                ${category.name}
+                ${deleteButton}
+            </span>`;
+        })
         .join('');
 }
 
@@ -272,9 +287,42 @@ async function addProductCategory() {
         await apiRequest('product-categories', 'create', { name, description });
         if (nameInput) nameInput.value = '';
         if (descriptionInput) descriptionInput.value = '';
-        alert('Category saved successfully.');
+        // Success - UI will auto-refresh via applyServerData
+        console.log('Category saved successfully:', name);
     } catch (error) {
         alert(error.message || 'Unable to save the category.');
+    }
+}
+
+async function deleteCategory(categoryId) {
+    if (!categoryId) {
+        alert('Invalid category.');
+        return;
+    }
+
+    // Find the category to get its name for the confirmation message
+    const category = productCategories.find(cat => cat.id === categoryId);
+    const categoryName = category ? category.name : categoryId;
+
+    // Check if any products are using this category
+    const productsInCategory = products.filter(product => product.categoryId === categoryId);
+
+    if (productsInCategory.length > 0) {
+        alert(`Cannot delete "${categoryName}" because it has ${productsInCategory.length} product(s) assigned to it.\n\nPlease reassign or delete those products first.`);
+        return;
+    }
+
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete the category "${categoryName}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        await apiRequest('product-categories', 'delete', { id: categoryId });
+        // Success - UI will auto-refresh via applyServerData
+        console.log('Category deleted successfully:', categoryName);
+    } catch (error) {
+        alert(error.message || 'Unable to delete the category.');
     }
 }
 
@@ -522,19 +570,61 @@ function displayStaff() {
 async function addStaff() {
     const roleInput = document.getElementById('staffRole');
     const nameInput = document.getElementById('staffName');
+    const usernameInput = document.getElementById('staffUsername');
+    const passwordInput = document.getElementById('staffPassword');
+    const passwordConfirmInput = document.getElementById('staffPasswordConfirm');
+
     const role = roleInput ? roleInput.value.trim() : '';
     const name = nameInput ? nameInput.value.trim() : '';
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value : '';
+    const passwordConfirm = passwordConfirmInput ? passwordConfirmInput.value : '';
 
+    // Validation
     if (!role || !name) {
-        alert('Fill in role and name.');
+        alert('Please fill in role and name.');
+        return;
+    }
+
+    if (!username) {
+        alert('Please provide a username for login.');
+        return;
+    }
+
+    if (!password) {
+        alert('Please provide a password.');
+        return;
+    }
+
+    if (password.length < 4) {
+        alert('Password must be at least 4 characters long.');
+        return;
+    }
+
+    if (password !== passwordConfirm) {
+        alert('Passwords do not match.');
         return;
     }
 
     try {
-        await apiRequest('staff-accounts', 'create', { role, name });
+        await apiRequest('staff-accounts', 'create', {
+            role,
+            name,
+            username,
+            password
+        });
+
+        // Clear form
         if (roleInput) roleInput.value = '';
         if (nameInput) nameInput.value = '';
-        displayStaff();
+        if (usernameInput) usernameInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        if (passwordConfirmInput) passwordConfirmInput.value = '';
+
+        // Hide form
+        toggleForm('staffFormContainer');
+
+        alert('Staff member and login credentials created successfully!');
     } catch (error) {
         alert(error.message || 'Unable to add the staff member.');
     }
@@ -549,7 +639,8 @@ async function timeIn(index) {
 
     try {
         await apiRequest('staff-accounts', 'time-in', { id: staff.id });
-        alert(`${staff.name} has timed in.`);
+        // Success - UI will auto-refresh via applyServerData
+        console.log(`${staff.name} has timed in.`);
     } catch (error) {
         alert(error.message || 'Unable to time in the staff member.');
     }
@@ -564,7 +655,8 @@ async function timeOut(index) {
 
     try {
         await apiRequest('staff-accounts', 'time-out', { id: staff.id });
-        alert(`${staff.name} has timed out.`);
+        // Success - UI will auto-refresh via applyServerData
+        console.log(`${staff.name} has timed out.`);
     } catch (error) {
         alert(error.message || 'Unable to time out the staff member.');
     }
@@ -689,53 +781,194 @@ function renderSalesChart(labels, data) {
     });
 }
 
-function generateDailySalesChart(selectedDate) {
-    const hourlySales = {};
-    const filteredTransactions = completedTransactions.filter(transaction => {
-        const transactionDate = new Date(transaction.timestamp);
-        return transactionDate.toDateString() === selectedDate.toDateString();
-    });
-
-    filteredTransactions.forEach(transaction => {
-        const date = new Date(transaction.timestamp);
-        const key = date.toLocaleDateString('en-US') + ', ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-        if (!hourlySales[key]) {
-            hourlySales[key] = 0;
-        }
-        hourlySales[key] += transaction.total;
-    });
-
-    const dates = Object.keys(hourlySales).sort((a, b) => new Date(a) - new Date(b));
-    const salesData = dates.map(key => hourlySales[key]);
-
-    renderSalesChart(dates, salesData);
+async function loadSalesByDate() {
+    const datePicker = document.getElementById('datePicker');
+    const selectedDate = datePicker ? datePicker.value : '';
 
     const reportTableBody = document.querySelector('#dailySalesTable tbody');
     if (!reportTableBody) {
         return;
     }
+
+    try {
+        reportTableBody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+        // Build URL with date parameter if date is selected
+        let url = 'php/api.php?resource=sales-transactions&action=get-by-date';
+        if (selectedDate) {
+            url += `&date=${encodeURIComponent(selectedDate)}`;
+        }
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to load sales data');
+        }
+
+        const transactions = result.data || [];
+        displaySalesTable(transactions, selectedDate);
+
+        // Update the chart based on the filtered data
+        updateSalesChart(transactions, selectedDate);
+
+    } catch (error) {
+        console.error('Error loading sales:', error);
+        reportTableBody.innerHTML = `<tr><td colspan="4" style="color: red;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+function displaySalesTable(transactions, filterDate) {
+    const reportTableBody = document.querySelector('#dailySalesTable tbody');
+    const dailySalesTotal = document.getElementById('dailySalesTotal');
+
+    if (!reportTableBody) {
+        return;
+    }
+
     reportTableBody.innerHTML = '';
     let totalSales = 0;
 
-    if (filteredTransactions.length === 0) {
-        reportTableBody.innerHTML = `<tr><td colspan="3">No sales found for ${selectedDate.toDateString()}.</td></tr>`;
+    if (transactions.length === 0) {
+        const message = filterDate
+            ? `No sales found for ${filterDate}.`
+            : 'No sales records found.';
+        reportTableBody.innerHTML = `<tr><td colspan="4">${message}</td></tr>`;
     } else {
-        filteredTransactions.forEach(record => {
-            totalSales += record.total;
+        transactions.forEach(transaction => {
+            const createdAt = new Date(transaction.created_at);
+            const dateStr = createdAt.toLocaleDateString();
+            const timeStr = createdAt.toLocaleTimeString();
+            const total = parseFloat(transaction.total);
+
+            totalSales += total;
+
             reportTableBody.innerHTML += `
                 <tr>
-                    <td>${record.id}</td>
-                    <td>${new Date(record.timestamp).toLocaleTimeString()}</td>
-                    <td>₱${record.total.toFixed(2)}</td>
+                    <td>${transaction.reference || transaction.id}</td>
+                    <td>${dateStr}</td>
+                    <td>${timeStr}</td>
+                    <td>₱${total.toFixed(2)}</td>
                 </tr>
             `;
         });
     }
 
-    const dailySalesTotal = document.getElementById('dailySalesTotal');
     if (dailySalesTotal) {
         dailySalesTotal.textContent = totalSales.toFixed(2);
+    }
+}
+
+function clearDateFilter() {
+    const datePicker = document.getElementById('datePicker');
+    if (datePicker) {
+        datePicker.value = '';
+    }
+    loadSalesByDate();
+}
+
+async function generateOverallSalesChart() {
+    const canvas = document.getElementById('salesChart');
+    if (!canvas) {
+        return;
+    }
+
+    try {
+        // Fetch all transactions to generate the chart
+        const response = await fetch('php/api.php?resource=sales-transactions&action=get-by-date', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to load sales data');
+        }
+
+        const transactions = result.data || [];
+
+        // Group sales by date
+        const salesByDate = {};
+        transactions.forEach(transaction => {
+            const date = new Date(transaction.created_at);
+            const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            if (!salesByDate[dateKey]) {
+                salesByDate[dateKey] = 0;
+            }
+            salesByDate[dateKey] += parseFloat(transaction.total);
+        });
+
+        // Sort dates chronologically
+        const sortedDates = Object.keys(salesByDate).sort((a, b) => {
+            return new Date(a) - new Date(b);
+        });
+
+        const salesData = sortedDates.map(date => salesByDate[date]);
+
+        // Render the chart
+        renderSalesChart(sortedDates, salesData);
+
+    } catch (error) {
+        console.error('Error generating sales chart:', error);
+    }
+}
+
+function updateSalesChart(transactions, filterDate) {
+    const canvas = document.getElementById('salesChart');
+    if (!canvas) {
+        return;
+    }
+
+    if (filterDate) {
+        // For a specific date, show hourly breakdown
+        const hourlySales = {};
+
+        transactions.forEach(transaction => {
+            const date = new Date(transaction.created_at);
+            const hourKey = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+            if (!hourlySales[hourKey]) {
+                hourlySales[hourKey] = 0;
+            }
+            hourlySales[hourKey] += parseFloat(transaction.total);
+        });
+
+        const sortedTimes = Object.keys(hourlySales).sort((a, b) => {
+            const timeA = new Date('1970/01/01 ' + a);
+            const timeB = new Date('1970/01/01 ' + b);
+            return timeA - timeB;
+        });
+
+        const salesData = sortedTimes.map(time => hourlySales[time]);
+
+        renderSalesChart(sortedTimes, salesData);
+    } else {
+        // For all dates, show daily breakdown
+        const salesByDate = {};
+
+        transactions.forEach(transaction => {
+            const date = new Date(transaction.created_at);
+            const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            if (!salesByDate[dateKey]) {
+                salesByDate[dateKey] = 0;
+            }
+            salesByDate[dateKey] += parseFloat(transaction.total);
+        });
+
+        const sortedDates = Object.keys(salesByDate).sort((a, b) => {
+            return new Date(a) - new Date(b);
+        });
+
+        const salesData = sortedDates.map(date => salesByDate[date]);
+
+        renderSalesChart(sortedDates, salesData);
     }
 }
 
@@ -767,8 +1000,9 @@ function showManagerContent(id) {
         displayTimekeepingRecords();
     }
     if (id === 'sales') {
-        const today = new Date();
-        generateDailySalesChart(today);
+        // Load overall sales chart and sales table
+        generateOverallSalesChart();
+        loadSalesByDate();
     }
 }
 
@@ -794,7 +1028,7 @@ function displayMenuGallery() {
     filteredProducts.forEach(product => {
         const card = document.createElement('div');
         card.className = 'menu-item';
-        card.addEventListener('click', () => selectDrink(product.name, product.price));
+        card.addEventListener('click', () => selectDrink(product.id, product.name, product.price));
 
         const img = document.createElement('img');
         img.src = product.image ? `images/${product.image}` : 'images/jowens.png';
@@ -838,19 +1072,37 @@ function showCashierContent(id) {
     if (id === 'order') {
         displayMenuGallery();
         renderOrderList();
+    } else if (id === 'transaction') {
+        displayTransactionList();
     } else if (id === 'daily') {
         generateDailySummary();
+    } else if (id === 'timeclock') {
+        loadCashierTimeClockStatus();
+        loadCashierAttendance();
     }
 }
 
-function selectDrink(name, price) {
+function selectDrink(productId, name, price) {
     const nameField = document.getElementById('drinkName');
     const priceField = document.getElementById('drinkPrice');
+    const productIdField = document.getElementById('drinkProductId');
+
     if (nameField) {
         nameField.value = name;
     }
     if (priceField) {
         priceField.value = price;
+    }
+    // Store product ID in a hidden field or data attribute
+    if (productIdField) {
+        productIdField.value = productId;
+    } else {
+        // Create hidden field if it doesn't exist
+        const hiddenField = document.createElement('input');
+        hiddenField.type = 'hidden';
+        hiddenField.id = 'drinkProductId';
+        hiddenField.value = productId;
+        nameField.parentNode.appendChild(hiddenField);
     }
     closeKeypad();
 }
@@ -859,10 +1111,12 @@ function addOrder() {
     const nameField = document.getElementById('drinkName');
     const qtyField = document.getElementById('drinkQty');
     const priceField = document.getElementById('drinkPrice');
+    const productIdField = document.getElementById('drinkProductId');
 
     const name = nameField ? nameField.value : '';
     const qty = qtyField ? parseInt(qtyField.value, 10) : NaN;
     const price = priceField ? parseFloat(priceField.value) : NaN;
+    const productId = productIdField ? productIdField.value : null;
 
     if (!name || isNaN(qty) || qty < 1) {
         alert('Select a drink and enter a valid quantity.');
@@ -873,90 +1127,206 @@ function addOrder() {
     if (existingIndex >= 0) {
         currentOrder[existingIndex].qty += qty;
     } else {
-        currentOrder.push({ name, qty, price });
+        currentOrder.push({
+            product_id: productId,
+            name,
+            qty,
+            price
+        });
     }
 
     renderOrderList();
     resetOrderForm();
 }
 
-function generateDailySummary() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const todaysTransactions = completedTransactions.filter(transaction => {
-        const transactionDate = new Date(transaction.timestamp);
-        return transactionDate.toDateString() === today.toDateString();
-    });
-
+async function generateDailySummary() {
     const orderSummaryBody = document.querySelector('#daily-orders-summary tbody');
+    const itemSummaryBody = document.querySelector('#daily-item-summary tbody');
     const dailySalesTotalEl = document.getElementById('dailySalesTotal');
-    if (orderSummaryBody) {
-        orderSummaryBody.innerHTML = '';
-    }
-    let totalRevenue = 0;
 
-    if (orderSummaryBody) {
+    if (orderSummaryBody) orderSummaryBody.innerHTML = '';
+    if (itemSummaryBody) itemSummaryBody.innerHTML = '';
+    if (dailySalesTotalEl) dailySalesTotalEl.textContent = '0.00';
+
+    try {
+        // Fetch today's transactions from backend
+        const response = await apiRequest('sales-transactions', 'get-daily', null, {
+            method: 'GET',
+            skipAutoApply: true
+        });
+
+        const todaysTransactions = response.data || [];
+
         if (todaysTransactions.length === 0) {
-            orderSummaryBody.innerHTML = '<tr><td colspan="3">No orders for today.</td></tr>';
-            if (dailySalesTotalEl) {
-                dailySalesTotalEl.textContent = '0.00';
-            }
+            if (orderSummaryBody)
+                orderSummaryBody.innerHTML = '<tr><td colspan="3">No orders for today.</td></tr>';
+            if (itemSummaryBody)
+                itemSummaryBody.innerHTML = '<tr><td colspan="3">No items sold today.</td></tr>';
+            return;
+        }
+
+        let totalRevenue = 0;
+        const itemSales = {};
+
+        // Build order summary
+        todaysTransactions.forEach(transaction => {
+            const items = transaction.items || [];
+            const itemDetails = items.map(i => `${i.qty}x ${i.name}`).join(', ');
+
+            orderSummaryBody.innerHTML += `
+                <tr>
+                    <td>#${transaction.reference || transaction.id}</td>
+                    <td>${itemDetails}</td>
+                    <td>₱${parseFloat(transaction.total).toFixed(2)}</td>
+                </tr>
+            `;
+
+            totalRevenue += parseFloat(transaction.total);
+
+            // Build per-item summary
+            items.forEach(item => {
+                const itemName = item.name;
+                if (!itemSales[itemName]) {
+                    itemSales[itemName] = { qty: 0, revenue: 0 };
+                }
+                itemSales[itemName].qty += Number(item.qty);
+                itemSales[itemName].revenue += Number(item.qty) * Number(item.price);
+            });
+        });
+
+        // Show total sales
+        if (dailySalesTotalEl)
+            dailySalesTotalEl.textContent = totalRevenue.toFixed(2);
+
+        // Render item summary
+        const sortedItems = Object.keys(itemSales).sort();
+        if (sortedItems.length === 0) {
+            itemSummaryBody.innerHTML = '<tr><td colspan="3">No items sold today.</td></tr>';
         } else {
-            todaysTransactions.forEach(transaction => {
-                const itemDetails = transaction.items.map(item => `${item.qty}x ${item.name}`).join(', ');
-                orderSummaryBody.innerHTML += `
+            sortedItems.forEach(itemName => {
+                const data = itemSales[itemName];
+                itemSummaryBody.innerHTML += `
                     <tr>
-                        <td>#${transaction.id}</td>
-                        <td>${itemDetails}</td>
-                        <td>₱${transaction.total.toFixed(2)}</td>
+                        <td>${itemName}</td>
+                        <td>${data.qty}</td>
+                        <td>₱${data.revenue.toFixed(2)}</td>
                     </tr>
                 `;
-                totalRevenue += transaction.total;
             });
-            if (dailySalesTotalEl) {
-                dailySalesTotalEl.textContent = totalRevenue.toFixed(2);
-            }
         }
-    }
 
-    const itemSummaryBody = document.querySelector('#daily-item-summary tbody');
-    if (!itemSummaryBody) {
+    } catch (error) {
+        console.error('Error generating daily summary:', error);
+        if (orderSummaryBody)
+            orderSummaryBody.innerHTML = '<tr><td colspan="3">Error loading data.</td></tr>';
+        if (itemSummaryBody)
+            itemSummaryBody.innerHTML = '<tr><td colspan="3">Error loading data.</td></tr>';
+        // Don't show alert - this error is logged to console for debugging
+    }
+}
+
+async function displayTransactionList() {
+    const transactionList = document.getElementById('transactionList');
+    if (!transactionList) {
         return;
     }
 
-    const itemSales = {};
-
-    todaysTransactions.forEach(transaction => {
-        transaction.items.forEach(item => {
-            const product = products.find(m => m.name === item.name);
-            const itemPrice = product ? product.price : 0;
-
-            if (!itemSales[item.name]) {
-                itemSales[item.name] = { qty: 0, revenue: 0 };
-            }
-            itemSales[item.name].qty += item.qty;
-            itemSales[item.name].revenue += item.qty * itemPrice;
+    try {
+        // Fetch today's transactions
+        const response = await apiRequest('sales-transactions', 'get-daily', null, {
+            method: 'GET',
+            skipAutoApply: true
         });
-    });
 
-    itemSummaryBody.innerHTML = '';
-    const sortedItems = Object.keys(itemSales).sort();
-    if (sortedItems.length === 0) {
-        itemSummaryBody.innerHTML = '<tr><td colspan="3">No items sold today.</td></tr>';
-    } else {
-        sortedItems.forEach(itemName => {
-            const data = itemSales[itemName];
-            itemSummaryBody.innerHTML += `
-                <tr>
-                    <td>${itemName}</td>
-                    <td>${data.qty}</td>
-                    <td>₱${data.revenue.toFixed(2)}</td>
-                </tr>
+        const transactions = response.data || [];
+
+        if (transactions.length === 0) {
+            transactionList.innerHTML = '<li class="empty-state">No transactions found for today.</li>';
+            // Clear receipt display
+            clearReceiptDisplay();
+            return;
+        }
+
+        // Reverse to show latest transaction first
+        const reversedTransactions = [...transactions].reverse();
+
+        // Display transactions as clickable list
+        transactionList.innerHTML = '';
+        reversedTransactions.forEach((transaction) => {
+            const li = document.createElement('li');
+            li.className = 'transaction-item';
+            li.innerHTML = `
+                <div class="transaction-info">
+                    <strong>${transaction.reference || transaction.id}</strong>
+                    <span class="transaction-date">${new Date(transaction.created_at).toLocaleString()}</span>
+                    <span class="transaction-total">₱${parseFloat(transaction.total).toFixed(2)}</span>
+                </div>
             `;
+            li.onclick = (e) => displayReceiptForTransaction(transaction, e.currentTarget);
+            transactionList.appendChild(li);
         });
+
+        // Automatically display the most recent transaction (first in reversed list)
+        if (reversedTransactions.length > 0) {
+            const firstListItem = transactionList.querySelector('.transaction-item');
+            displayReceiptForTransaction(reversedTransactions[0], firstListItem);
+        }
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        transactionList.innerHTML = '<li class="error-state">Error loading transactions.</li>';
     }
 }
+
+function displayReceiptForTransaction(transaction, clickedElement) {
+    const receiptOrderNumber = document.getElementById('receipt-ordernumber');
+    const receiptItems = document.getElementById('receipt-items');
+    const receiptTotal = document.getElementById('receipt-total');
+    const receiptDate = document.getElementById('receipt-date');
+
+    if (!receiptItems || !receiptTotal) {
+        return;
+    }
+
+    // Update receipt header
+    if (receiptOrderNumber) {
+        receiptOrderNumber.textContent = transaction.reference || transaction.id;
+    }
+    if (receiptDate) {
+        receiptDate.textContent = new Date(transaction.created_at).toLocaleString();
+    }
+
+    // Update receipt items
+    receiptItems.innerHTML = '';
+    const items = transaction.items || [];
+    items.forEach(item => {
+        const itemTotal = item.qty * item.price;
+        receiptItems.innerHTML += `<p>${item.qty}x ${item.name} - ₱${itemTotal.toFixed(2)}</p>`;
+    });
+
+    // Update total
+    receiptTotal.textContent = parseFloat(transaction.total).toFixed(2);
+
+    // Highlight selected transaction
+    document.querySelectorAll('.transaction-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    if (clickedElement) {
+        clickedElement.classList.add('selected');
+    }
+}
+
+function clearReceiptDisplay() {
+    const receiptOrderNumber = document.getElementById('receipt-ordernumber');
+    const receiptItems = document.getElementById('receipt-items');
+    const receiptTotal = document.getElementById('receipt-total');
+    const receiptDate = document.getElementById('receipt-date');
+
+    if (receiptOrderNumber) receiptOrderNumber.textContent = '';
+    if (receiptItems) receiptItems.innerHTML = '';
+    if (receiptTotal) receiptTotal.textContent = '0';
+    if (receiptDate) receiptDate.textContent = '';
+}
+
 
 function renderOrderList() {
     const orderList = document.getElementById('orderList');
@@ -1063,39 +1433,71 @@ async function updateReceipt() {
         try {
             const nextRef = await getNextReference();
             receiptOrderNumber.textContent = nextRef;
+            // Only finalize sale after successfully getting order number
+            await finalizeSale();
         } catch (error) {
             console.error('Error fetching next order number:', error);
+            alert('Unable to generate order number. Please try again.\nError: ' + error.message);
             receiptOrderNumber.textContent = 'N/A';
+            return; // Don't finalize sale if order number generation failed
         }
-
-        finalizeSale();
     }
 }
 
 async function getNextReference() {
-    const response = await apiRequest('sales-transactions', 'get-next-reference', null, { skipAutoApply: true });
-    return response.data.next_reference;
+    console.log('Fetching next reference number...');
+    const response = await apiRequest('sales-transactions', 'get-next-reference', null, {
+        method: 'GET',
+        skipAutoApply: true
+    });
+    console.log('API Response:', response);
+    const nextRef = response.data.next_reference;
+    console.log('Next reference:', nextRef);
+    return nextRef;
 }
 
 async function finalizeSale() {
-    if (!currentOrder || currentOrder.length === 0) return;
+    if (!currentOrder || currentOrder.length === 0) {
+        alert('No items in the order. Please add items before checkout.');
+        return;
+    }
 
     const receiptOrderNumber = document.getElementById('receipt-ordernumber').textContent;
     const receiptTotal = parseFloat(document.getElementById('receipt-total').textContent);
 
+    // Format items with correct field names for the API
+    const formattedItems = currentOrder.map(item => ({
+        product_id: item.product_id || null,
+        product_name: item.name,
+        quantity: item.qty,
+        unit_price: item.price
+    }));
+
     const transactionData = {
         reference: receiptOrderNumber,
-        items: currentOrder,
-        total: receiptTotal,
-        occurred_at: new Date().toISOString() 
+        items: formattedItems,
+        total: receiptTotal
     };
-
 
     try {
         // Save transaction via API
         await apiRequest('sales-transactions', 'create', transactionData);
 
-        alert('Sale successfully recorded!');
+        // Clear the current order after successful save
+        currentOrder = [];
+        renderOrderList();
+
+        // Refresh daily summary
+        generateDailySummary().catch(error => {
+            console.error('Failed to refresh daily summary:', error);
+        });
+
+        alert(`Sale successfully recorded!\nOrder Number: ${receiptOrderNumber}\nTotal: ₱${receiptTotal.toFixed(2)}`);
+
+        // Reset receipt display
+        document.getElementById('receipt-items').innerHTML = '';
+        document.getElementById('receipt-total').textContent = '0';
+        document.getElementById('receipt-ordernumber').textContent = '';
     } catch (err) {
         alert(err.message || 'Unable to save sale.');
         console.error(err);
@@ -1200,6 +1602,171 @@ function logout() {
     form.innerHTML = '<input type="hidden" name="action" value="logout">';
     document.body.appendChild(form);
     form.submit();
+}
+
+// Cashier Time Clock Functions
+async function loadCashierTimeClockStatus() {
+    const statusDisplay = document.getElementById('currentTimeClockStatus');
+    const timeInBtn = document.getElementById('timeInBtn');
+    const timeOutBtn = document.getElementById('timeOutBtn');
+
+    if (!statusDisplay) return;
+
+    try {
+        // Find current user's staff account by matching role
+        // Cashier user logs in with role 'cashier', match to staff with role 'Cashier'
+        const userRole = window.currentUserRole;
+        const currentUser = staffAccounts.find(staff =>
+            staff.role.toLowerCase() === userRole.toLowerCase()
+        );
+
+        if (!currentUser) {
+            statusDisplay.innerHTML = '<p class="status-text">Staff account not found.</p>';
+            return;
+        }
+
+        // Check if user is currently clocked in (status is "Active" when clocked in)
+        const isClockedIn = currentUser.status === 'Active';
+
+        if (isClockedIn) {
+            const timeInAt = currentUser.timeIn ? new Date(currentUser.timeIn).toLocaleTimeString() : 'Unknown';
+            statusDisplay.className = 'status-display status-clocked-in';
+            statusDisplay.innerHTML = `<p class="status-text">✅ Clocked In at ${timeInAt}</p>`;
+
+            if (timeInBtn) timeInBtn.disabled = true;
+            if (timeOutBtn) timeOutBtn.disabled = false;
+        } else {
+            statusDisplay.className = 'status-display status-clocked-out';
+            statusDisplay.innerHTML = '<p class="status-text">⏸️ Not Clocked In</p>';
+
+            if (timeInBtn) timeInBtn.disabled = false;
+            if (timeOutBtn) timeOutBtn.disabled = true;
+        }
+    } catch (error) {
+        console.error('Error loading time clock status:', error);
+        statusDisplay.innerHTML = '<p class="status-text">Error loading status</p>';
+    }
+}
+
+async function loadCashierAttendance() {
+    const tableBody = document.querySelector('#cashierAttendanceTable tbody');
+    if (!tableBody) return;
+
+    try {
+        // Find current user's staff account by matching role
+        const userRole = window.currentUserRole;
+        const currentUser = staffAccounts.find(staff =>
+            staff.role.toLowerCase() === userRole.toLowerCase()
+        );
+
+        if (!currentUser || !currentUser.id) {
+            tableBody.innerHTML = '<tr><td colspan="4">Staff account not found.</td></tr>';
+            return;
+        }
+
+        // Filter today's attendance records for this user by name and role
+        const today = new Date().toDateString();
+        const todayRecords = timekeepingRecords.filter(record => {
+            if (!record.timeIn) return false;
+            const recordDate = new Date(record.timeIn).toDateString();
+            return record.name === currentUser.name &&
+                   record.role === currentUser.role &&
+                   recordDate === today;
+        });
+
+        if (todayRecords.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4">No attendance records for today.</td></tr>';
+            return;
+        }
+
+        tableBody.innerHTML = '';
+        todayRecords.forEach(record => {
+            const date = record.timeIn ? new Date(record.timeIn).toLocaleDateString() : '-';
+            const timeIn = record.timeIn ? new Date(record.timeIn).toLocaleTimeString() : '-';
+            const timeOut = record.timeOut ? new Date(record.timeOut).toLocaleTimeString() : '-';
+
+            // Calculate hours worked if both timeIn and timeOut exist
+            let hoursWorked = '0.00';
+            if (record.timeIn && record.timeOut) {
+                const start = new Date(record.timeIn);
+                const end = new Date(record.timeOut);
+                const diffMs = end - start;
+                hoursWorked = (diffMs / (1000 * 60 * 60)).toFixed(2);
+            }
+
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${date}</td>
+                    <td>${timeIn}</td>
+                    <td>${timeOut}</td>
+                    <td>${hoursWorked} hrs</td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        tableBody.innerHTML = '<tr><td colspan="4">Error loading attendance records.</td></tr>';
+    }
+}
+
+async function cashierTimeIn() {
+    try {
+        // Find current user's staff account by matching role
+        const userRole = window.currentUserRole;
+        const currentUser = staffAccounts.find(staff =>
+            staff.role.toLowerCase() === userRole.toLowerCase()
+        );
+
+        if (!currentUser || !currentUser.id) {
+            alert('Staff account not found.');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to clock in?')) {
+            return;
+        }
+
+        await apiRequest('staff-accounts', 'time-in', { id: currentUser.id });
+
+        alert('Successfully clocked in!');
+
+        // Reload status and attendance after data refresh
+        await loadCashierTimeClockStatus();
+        await loadCashierAttendance();
+    } catch (error) {
+        alert(error.message || 'Unable to clock in. Please try again.');
+        console.error(error);
+    }
+}
+
+async function cashierTimeOut() {
+    try {
+        // Find current user's staff account by matching role
+        const userRole = window.currentUserRole;
+        const currentUser = staffAccounts.find(staff =>
+            staff.role.toLowerCase() === userRole.toLowerCase()
+        );
+
+        if (!currentUser || !currentUser.id) {
+            alert('Staff account not found.');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to clock out?')) {
+            return;
+        }
+
+        await apiRequest('staff-accounts', 'time-out', { id: currentUser.id });
+
+        alert('Successfully clocked out!');
+
+        // Reload status and attendance after data refresh
+        await loadCashierTimeClockStatus();
+        await loadCashierAttendance();
+    } catch (error) {
+        alert(error.message || 'Unable to clock out. Please try again.');
+        console.error(error);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
