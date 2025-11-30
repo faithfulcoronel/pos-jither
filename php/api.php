@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/data_functions.php';
+require_once __DIR__ . '/recipe_functions.php';
 
 $pdo = getDatabaseConnection();
 if ($pdo === null) {
@@ -147,6 +148,59 @@ try {
                     }
                     break;
 
+                case 'recipes':
+                    if ($action === 'get-by-product') {
+                        $productId = $_GET['product_id'] ?? '';
+                        if (empty($productId)) {
+                            sendError('Product ID is required', 400);
+                        }
+                        $recipes = fetchProductRecipes($pdo, $productId);
+                        sendSuccess(['recipes' => $recipes]);
+                    } elseif ($action === 'get-all') {
+                        $recipes = fetchAllProductRecipes($pdo);
+                        sendSuccess(['recipes' => $recipes]);
+                    } elseif ($action === 'check-availability') {
+                        $productId = $_GET['product_id'] ?? '';
+                        $quantity = (int)($_GET['quantity'] ?? 1);
+                        if (empty($productId)) {
+                            sendError('Product ID is required', 400);
+                        }
+                        $availability = checkInventoryAvailability($pdo, $productId, $quantity);
+                        sendSuccess($availability);
+                    } else {
+                        sendError('Unsupported action for recipes', 400);
+                    }
+                    break;
+
+                case 'profitability':
+                    if ($action === 'get-by-product') {
+                        $productId = $_GET['product_id'] ?? '';
+                        if (empty($productId)) {
+                            sendError('Product ID is required', 400);
+                        }
+                        $profitability = getProductProfitability($pdo, $productId);
+                        if ($profitability === null) {
+                            sendError('Product not found', 404);
+                        }
+                        sendSuccess($profitability);
+                    } elseif ($action === 'get-all') {
+                        $profitability = getAllProductsProfitability($pdo);
+                        sendSuccess(['products' => $profitability]);
+                    } else {
+                        sendError('Unsupported action for profitability', 400);
+                    }
+                    break;
+
+                case 'inventory-with-cost':
+                    $inventory = fetchInventoryItemsWithCost($pdo);
+                    sendSuccess(['inventory' => $inventory]);
+                    break;
+
+                case 'products-with-profitability':
+                    $products = fetchProductsWithProfitability($pdo);
+                    sendSuccess(['products' => $products]);
+                    break;
+
                 default:
                     throw new InvalidArgumentException('Unsupported GET resource.');
             }
@@ -258,7 +312,10 @@ function handlePostRequest(PDO $pdo, string $resource, string $action, $data): v
                     ]);
                     $transactionId = $pdo->lastInsertId();
 
-                    // Insert each item
+                    // Insert each item and deduct inventory
+                    $inventoryDeductions = [];
+                    $inventoryErrors = [];
+
                     if (!empty($data['items'])) {
                         $itemStmt = $pdo->prepare("
                             INSERT INTO sales_transaction_items (transaction_id, product_id, product_name, quantity, unit_price, created_at)
@@ -272,13 +329,39 @@ function handlePostRequest(PDO $pdo, string $resource, string $action, $data): v
                                 $item['quantity'] ?? 0,
                                 $item['unit_price'] ?? 0
                             ]);
+
+                            // Deduct inventory for products with recipes
+                            $productId = $item['product_id'] ?? null;
+                            $quantity = (int)($item['quantity'] ?? 0);
+
+                            if ($productId && $quantity > 0) {
+                                $deductionResult = deductInventoryForSale($pdo, $productId, $quantity, (int)$transactionId);
+
+                                if ($deductionResult['success']) {
+                                    $inventoryDeductions[] = [
+                                        'productId' => $productId,
+                                        'productName' => $item['product_name'] ?? '',
+                                        'quantity' => $quantity,
+                                        'deductions' => $deductionResult['deductions'] ?? []
+                                    ];
+                                } else {
+                                    // Log errors but don't fail the transaction
+                                    $inventoryErrors[] = [
+                                        'productId' => $productId,
+                                        'productName' => $item['product_name'] ?? '',
+                                        'errors' => $deductionResult['errors'] ?? []
+                                    ];
+                                }
+                            }
                         }
                     }
 
                     $pdo->commit();
                     sendSuccess([
                         'transaction_id' => $transactionId,
-                        'reference' => $reference
+                        'reference' => $reference,
+                        'inventory_deductions' => $inventoryDeductions,
+                        'inventory_errors' => $inventoryErrors
                     ]);
                 } catch (Exception $e) {
                     $pdo->rollBack();
@@ -286,6 +369,120 @@ function handlePostRequest(PDO $pdo, string $resource, string $action, $data): v
                 }
             } else {
                 sendError('Unsupported action for sales-transactions.', 400);
+            }
+            break;
+
+        case 'recipes':
+            if ($action === 'add-ingredient') {
+                try {
+                    $productId = $data['product_id'] ?? '';
+                    $inventoryItemId = (int)($data['inventory_item_id'] ?? 0);
+                    $quantity = (float)($data['quantity'] ?? 0);
+                    $unit = $data['unit'] ?? '';
+                    $notes = $data['notes'] ?? null;
+
+                    if (empty($productId) || $inventoryItemId <= 0 || $quantity <= 0 || empty($unit)) {
+                        sendError('Missing required fields', 400);
+                    }
+
+                    addRecipeIngredient($pdo, $productId, $inventoryItemId, $quantity, $unit, $notes);
+                    $recipes = fetchProductRecipes($pdo, $productId);
+                    $profitability = getProductProfitability($pdo, $productId);
+
+                    sendSuccess([
+                        'recipes' => $recipes,
+                        'profitability' => $profitability
+                    ]);
+                } catch (Exception $e) {
+                    sendError('Failed to add ingredient: ' . $e->getMessage(), 500);
+                }
+            } elseif ($action === 'update-ingredient') {
+                try {
+                    $recipeId = (int)($data['recipe_id'] ?? 0);
+                    $quantity = (float)($data['quantity'] ?? 0);
+                    $unit = $data['unit'] ?? '';
+                    $notes = $data['notes'] ?? null;
+
+                    if ($recipeId <= 0 || $quantity <= 0 || empty($unit)) {
+                        sendError('Missing required fields', 400);
+                    }
+
+                    updateRecipeIngredient($pdo, $recipeId, $quantity, $unit, $notes);
+
+                    // Get product ID from recipe
+                    $stmt = $pdo->prepare('SELECT product_id FROM product_recipes WHERE id = ?');
+                    $stmt->execute([$recipeId]);
+                    $row = $stmt->fetch();
+                    $productId = $row['product_id'] ?? null;
+
+                    if ($productId) {
+                        $recipes = fetchProductRecipes($pdo, $productId);
+                        $profitability = getProductProfitability($pdo, $productId);
+
+                        sendSuccess([
+                            'recipes' => $recipes,
+                            'profitability' => $profitability
+                        ]);
+                    } else {
+                        sendSuccess(['message' => 'Recipe updated']);
+                    }
+                } catch (Exception $e) {
+                    sendError('Failed to update ingredient: ' . $e->getMessage(), 500);
+                }
+            } elseif ($action === 'delete-ingredient') {
+                try {
+                    $recipeId = (int)($data['recipe_id'] ?? 0);
+
+                    if ($recipeId <= 0) {
+                        sendError('Recipe ID is required', 400);
+                    }
+
+                    // Get product ID before deleting
+                    $stmt = $pdo->prepare('SELECT product_id FROM product_recipes WHERE id = ?');
+                    $stmt->execute([$recipeId]);
+                    $row = $stmt->fetch();
+                    $productId = $row['product_id'] ?? null;
+
+                    deleteRecipeIngredient($pdo, $recipeId);
+
+                    if ($productId) {
+                        $recipes = fetchProductRecipes($pdo, $productId);
+                        $profitability = getProductProfitability($pdo, $productId);
+
+                        sendSuccess([
+                            'recipes' => $recipes,
+                            'profitability' => $profitability
+                        ]);
+                    } else {
+                        sendSuccess(['message' => 'Recipe ingredient deleted']);
+                    }
+                } catch (Exception $e) {
+                    sendError('Failed to delete ingredient: ' . $e->getMessage(), 500);
+                }
+            } else {
+                sendError('Unsupported action for recipes', 400);
+            }
+            break;
+
+        case 'inventory-cost':
+            if ($action === 'update') {
+                try {
+                    $inventoryItemId = (int)($data['inventory_item_id'] ?? 0);
+                    $costPerUnit = (float)($data['cost_per_unit'] ?? 0);
+
+                    if ($inventoryItemId <= 0 || $costPerUnit < 0) {
+                        sendError('Invalid inventory item ID or cost', 400);
+                    }
+
+                    updateInventoryItemCost($pdo, $inventoryItemId, $costPerUnit);
+                    $inventory = fetchInventoryItemsWithCost($pdo);
+
+                    sendSuccess(['inventory' => $inventory]);
+                } catch (Exception $e) {
+                    sendError('Failed to update inventory cost: ' . $e->getMessage(), 500);
+                }
+            } else {
+                sendError('Unsupported action for inventory-cost', 400);
             }
             break;
 

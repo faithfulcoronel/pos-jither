@@ -43,7 +43,7 @@ $catalog->addCategory(new ProductCategory(
 ));
 $catalog->addCategory(new ProductCategory(
     'uncategorized',
-    'Uncategorized',
+    'Others',
     'Items that are awaiting classification.'
 ));
 

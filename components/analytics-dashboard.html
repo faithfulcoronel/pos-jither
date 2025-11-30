@@ -1,0 +1,206 @@
+<!-- Business Analytics Dashboard for Coffee Shop -->
+<div id="analytics-dashboard-content" class="content-section hidden">
+    <div class="analytics-dashboard">
+
+        <!-- Dashboard Header -->
+        <div class="analytics-header">
+            <h1>Business Analytics Dashboard</h1>
+            <p class="subtitle">Coffee Shop Performance & Insights</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="analytics-filters">
+            <div class="filter-group">
+                <label>Year</label>
+                <select id="analytics-year-filter" class="filter-select" onchange="refreshAnalyticsDashboard()">
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Quarter</label>
+                <select id="analytics-quarter-filter" class="filter-select" onchange="refreshAnalyticsDashboard()">
+                    <option value="all">All Quarters</option>
+                    <option value="Q1">Q1 (Jan-Mar)</option>
+                    <option value="Q2">Q2 (Apr-Jun)</option>
+                    <option value="Q3">Q3 (Jul-Sep)</option>
+                    <option value="Q4">Q4 (Oct-Dec)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Region</label>
+                <select id="analytics-region-filter" class="filter-select" onchange="refreshAnalyticsDashboard()">
+                    <option value="all">All Regions</option>
+                    <option value="north">North</option>
+                    <option value="south">South</option>
+                    <option value="east">East</option>
+                    <option value="west">West</option>
+                    <option value="central">Central</option>
+                </select>
+            </div>
+            <button class="refresh-btn" onclick="refreshAnalyticsDashboard()">
+                🔄 Refresh Data
+            </button>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-cards">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Revenue</div>
+                <div class="kpi-value" id="kpi-revenue">₱0.00</div>
+                <div class="kpi-change up" id="kpi-revenue-change">
+                    <span>↑</span> <span>0%</span> vs last period
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Gross Profit</div>
+                <div class="kpi-value" id="kpi-profit">₱0.00</div>
+                <div class="kpi-change up" id="kpi-profit-change">
+                    <span>↑</span> <span>0%</span> vs last period
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg Margin</div>
+                <div class="kpi-value" id="kpi-margin">0%</div>
+                <div class="kpi-change up" id="kpi-margin-change">
+                    <span>↑</span> <span>0%</span> vs last period
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Orders</div>
+                <div class="kpi-value" id="kpi-orders">0</div>
+                <div class="kpi-change up" id="kpi-orders-change">
+                    <span>↑</span> <span>0%</span> vs last period
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="analytics-grid">
+
+            <!-- Yearly Sales by Region (Stacked Bar) -->
+            <div class="chart-card span-8">
+                <div class="chart-card-header">
+                    <h3 class="chart-card-title">Yearly Sales by Region</h3>
+                    <span class="chart-card-icon">📊</span>
+                </div>
+                <div class="chart-card-body">
+                    <canvas id="chart-sales-by-region"></canvas>
+                </div>
+            </div>
+
+            <!-- Gross Margin by Category (Donut Charts) -->
+            <div class="chart-card span-4">
+                <div class="chart-card-header">
+                    <h3 class="chart-card-title">Gross Margin by Category</h3>
+                    <span class="chart-card-icon">🍩</span>
+                </div>
+                <div class="chart-card-body">
+                    <div class="donut-charts-container">
+                        <div class="donut-chart-wrapper">
+                            <div class="donut-chart-title">Revenue</div>
+                            <canvas id="chart-margin-revenue" class="donut-chart-canvas"></canvas>
+                        </div>
+                        <div class="donut-chart-wrapper">
+                            <div class="donut-chart-title">Profit</div>
+                            <canvas id="chart-margin-profit" class="donut-chart-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actual vs Plan by Sales Month (Line Chart) -->
+            <div class="chart-card span-8">
+                <div class="chart-card-header">
+                    <h3 class="chart-card-title">Actual vs Plan by Sales Month</h3>
+                    <span class="chart-card-icon">📈</span>
+                </div>
+                <div class="chart-card-body">
+                    <canvas id="chart-actual-vs-plan"></canvas>
+                </div>
+            </div>
+
+            <!-- Sales & Profit by Region (Horizontal Stacked Bar) -->
+            <div class="chart-card span-4">
+                <div class="chart-card-header">
+                    <h3 class="chart-card-title">Sales & Profit by Region</h3>
+                    <span class="chart-card-icon">🌍</span>
+                </div>
+                <div class="chart-card-body">
+                    <canvas id="chart-sales-profit-region"></canvas>
+                </div>
+            </div>
+
+            <!-- Sales Crosstab by Category and Region (Table) -->
+            <div class="chart-card span-6">
+                <div class="chart-card-header">
+                    <h3 class="chart-card-title">Sales Crosstab by Category & Region</h3>
+                    <span class="chart-card-icon">📋</span>
+                </div>
+                <div class="chart-card-body" style="overflow-x: auto;">
+                    <table class="analytics-table" id="table-crosstab">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th class="cell-number">North</th>
+                                <th class="cell-number">South</th>
+                                <th class="cell-number">East</th>
+                                <th class="cell-number">West</th>
+                                <th class="cell-number">Central</th>
+                                <th class="cell-number">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-crosstab">
+                            <tr>
+                                <td colspan="7" class="chart-loading">
+                                    <div class="chart-loading-spinner"></div>
+                                    Loading data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Actual Sales vs Plan Sales (Table) -->
+            <div class="chart-card span-6">
+                <div class="chart-card-header">
+                    <h3 class="chart-card-title">Actual Sales vs Plan Sales</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="export-btn" onclick="exportTableToCSV('table-variance')">
+                            📥 Export
+                        </button>
+                        <span class="chart-card-icon">💰</span>
+                    </div>
+                </div>
+                <div class="chart-card-body" style="overflow-x: auto;">
+                    <table class="analytics-table" id="table-variance">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th class="cell-currency">Plan</th>
+                                <th class="cell-currency">Actual</th>
+                                <th class="cell-currency">Variance</th>
+                                <th class="cell-percent">%</th>
+                                <th class="cell-currency">Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-variance">
+                            <tr>
+                                <td colspan="6" class="chart-loading">
+                                    <div class="chart-loading-spinner"></div>
+                                    Loading data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script src="js/analytics-dashboard.js"></script>

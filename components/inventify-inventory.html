@@ -1,0 +1,283 @@
+<!-- Inventify-Style Inventory Management Module -->
+<div id="inventify-inventory-content" class="content-section hidden">
+    <div class="inventify-container">
+        <!-- Header -->
+        <div class="inventify-header">
+            <h1 class="inventify-title">📦 Inventory Management</h1>
+            <p class="inventify-subtitle">Track, manage, and optimize your stock levels</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="inventify-summary">
+            <div class="inventify-summary-card">
+                <div class="inventify-summary-label">
+                    <span class="inventify-summary-icon">📊</span>
+                    Total Items
+                </div>
+                <div class="inventify-summary-value" id="inventify-total-items">0</div>
+            </div>
+            <div class="inventify-summary-card">
+                <div class="inventify-summary-label">
+                    <span class="inventify-summary-icon">💰</span>
+                    Current Value
+                </div>
+                <div class="inventify-summary-value" id="inventify-current-value">₱0.00</div>
+            </div>
+            <div class="inventify-summary-card">
+                <div class="inventify-summary-label">
+                    <span class="inventify-summary-icon">⚠️</span>
+                    Low Stock Items
+                </div>
+                <div class="inventify-summary-value" id="inventify-low-stock">0</div>
+            </div>
+            <div class="inventify-summary-card">
+                <div class="inventify-summary-label">
+                    <span class="inventify-summary-icon">🔴</span>
+                    Out of Stock
+                </div>
+                <div class="inventify-summary-value" id="inventify-out-of-stock">0</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="inventify-toolbar">
+            <div class="inventify-search">
+                <span class="inventify-search-icon">🔍</span>
+                <input type="text" id="inventify-search-input" placeholder="Search items by name, SKU, or category..." onkeyup="inventifySearch()">
+            </div>
+            <select id="inventify-category-filter" class="inventify-form-select" style="width: auto; min-width: 150px;" onchange="inventifyFilterByCategory()">
+                <option value="">All Categories</option>
+            </select>
+            <select id="inventify-status-filter" class="inventify-form-select" style="width: auto; min-width: 150px;" onchange="inventifyFilterByStatus()">
+                <option value="">All Status</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="below_reorder">Below Reorder</option>
+                <option value="out_of_stock">Out of Stock</option>
+            </select>
+            <button class="inventify-btn inventify-btn-primary" onclick="inventifyShowAddModal()">
+                ➕ Add Item
+            </button>
+            <button class="inventify-btn inventify-btn-secondary" onclick="inventifyShowBulkAddModal()">
+                📋 Bulk Add
+            </button>
+            <button class="inventify-btn inventify-btn-secondary" onclick="inventifyExportCSV()">
+                📥 Export
+            </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="inventify-tabs">
+            <button class="inventify-tab active" onclick="inventifySwitchTab('stock')">📦 Stock</button>
+            <button class="inventify-tab" onclick="inventifySwitchTab('cost')">💵 Cost</button>
+            <button class="inventify-tab" onclick="inventifySwitchTab('activities')">📈 Activities</button>
+            <button class="inventify-tab" onclick="inventifySwitchTab('audit')">🔍 Audit Logs</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="inventify-table-container">
+            <!-- Stock Tab -->
+            <div id="inventify-stock-tab" class="inventify-tab-content">
+                <table class="inventify-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Description</th>
+                            <th>SKU</th>
+                            <th>Category</th>
+                            <th>Available Qty</th>
+                            <th>Status</th>
+                            <th>Status (%)</th>
+                            <th>Reorder Level</th>
+                            <th>Location</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventify-stock-tbody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Cost Tab -->
+            <div id="inventify-cost-tab" class="inventify-tab-content hidden">
+                <table class="inventify-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Unit Size</th>
+                            <th>Unit</th>
+                            <th>Purchase Cost</th>
+                            <th>Cost/Unit</th>
+                            <th>Available Qty</th>
+                            <th>Total Value</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventify-cost-tbody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Activities Tab -->
+            <div id="inventify-activities-tab" class="inventify-tab-content hidden">
+                <div id="inventify-activities-container">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Audit Logs Tab -->
+            <div id="inventify-audit-tab" class="inventify-tab-content hidden">
+                <table class="inventify-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Item</th>
+                            <th>Action</th>
+                            <th>Field Changed</th>
+                            <th>Old Value</th>
+                            <th>New Value</th>
+                            <th>Changed By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventify-audit-tbody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Item Modal -->
+<div id="inventify-item-modal" class="inventify-modal hidden">
+    <div class="inventify-modal-content">
+        <div class="inventify-modal-header">
+            <h2 class="inventify-modal-title" id="inventify-modal-title">Add New Item</h2>
+            <button class="inventify-icon-btn delete" onclick="inventifyCloseModal()">✕</button>
+        </div>
+        <div class="inventify-modal-body">
+            <form id="inventify-item-form" class="inventify-form">
+                <input type="hidden" id="inventify-item-id">
+
+                <div class="inventify-form-grid">
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Item Name *</label>
+                        <input type="text" id="inventify-item-name" class="inventify-form-input" required placeholder="e.g., Coffee Beans">
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Category *</label>
+                        <select id="inventify-item-category" class="inventify-form-select" required>
+                            <option value="">Select Category</option>
+                        </select>
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Unit of Measurement *</label>
+                        <select id="inventify-item-unit" class="inventify-form-select" required>
+                            <option value="g">Grams (g)</option>
+                            <option value="ml">Milliliters (ml)</option>
+                            <option value="pcs">Pieces (pcs)</option>
+                            <option value="kg">Kilograms (kg)</option>
+                            <option value="L">Liters (L)</option>
+                            <option value="oz">Ounces (oz)</option>
+                        </select>
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Unit Size *</label>
+                        <input type="number" id="inventify-item-unit-size" class="inventify-form-input" step="0.01" min="0" required placeholder="e.g., 1000">
+                        <div class="inventify-form-helper">Size of one unit (e.g., 1000 for 1kg bag)</div>
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Purchase Cost *</label>
+                        <input type="number" id="inventify-item-cost" class="inventify-form-input" step="0.01" min="0" required placeholder="e.g., 500" onchange="inventifyCalculateCostPerUnit()">
+                        <div class="inventify-form-helper">Cost to buy one full unit</div>
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Cost per Unit (Auto)</label>
+                        <input type="number" id="inventify-item-cost-per-unit" class="inventify-form-input" step="0.0001" readonly>
+                        <div class="inventify-form-helper">Auto-calculated: cost ÷ unit_size</div>
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">SKU / Barcode</label>
+                        <input type="text" id="inventify-item-sku" class="inventify-form-input" placeholder="e.g., SKU-001">
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Initial Quantity *</label>
+                        <input type="number" id="inventify-item-quantity" class="inventify-form-input" step="0.01" min="0" required placeholder="e.g., 5000">
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Reorder Level *</label>
+                        <input type="number" id="inventify-item-reorder" class="inventify-form-input" step="0.01" min="0" required placeholder="e.g., 1000">
+                        <div class="inventify-form-helper">Alert when stock falls below this</div>
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Max Stock</label>
+                        <input type="number" id="inventify-item-max-stock" class="inventify-form-input" step="0.01" min="0" placeholder="e.g., 10000">
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Location</label>
+                        <input type="text" id="inventify-item-location" class="inventify-form-input" placeholder="e.g., Storage Room A">
+                    </div>
+
+                    <div class="inventify-form-group">
+                        <label class="inventify-form-label">Barcode</label>
+                        <input type="text" id="inventify-item-barcode" class="inventify-form-input" placeholder="e.g., 1234567890">
+                    </div>
+                </div>
+
+                <div class="inventify-form-group">
+                    <label class="inventify-form-label">Notes</label>
+                    <textarea id="inventify-item-notes" class="inventify-form-textarea" rows="3" placeholder="Additional notes about this item..."></textarea>
+                </div>
+
+                <!-- Movement History (Edit Mode Only) -->
+                <div id="inventify-movement-history-section" class="hidden" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 16px; color: var(--inventify-gray-900);">📊 Quantity Movement History</h3>
+                    <div id="inventify-movement-history">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="inventify-modal-footer">
+            <button type="button" class="inventify-btn inventify-btn-secondary" onclick="inventifyCloseModal()">Cancel</button>
+            <button type="button" class="inventify-btn inventify-btn-primary" onclick="inventifySaveItem()">Save Item</button>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Add Modal -->
+<div id="inventify-bulk-modal" class="inventify-modal hidden">
+    <div class="inventify-modal-content">
+        <div class="inventify-modal-header">
+            <h2 class="inventify-modal-title">📋 Bulk Add Items</h2>
+            <button class="inventify-icon-btn delete" onclick="inventifyCloseBulkModal()">✕</button>
+        </div>
+        <div class="inventify-modal-body">
+            <p style="margin-bottom: 16px; color: var(--inventify-gray-600);">
+                Paste CSV data (Name, Category, Unit, Unit Size, Cost, Quantity, Reorder Level, Location, SKU)
+            </p>
+            <textarea id="inventify-bulk-input" class="inventify-form-textarea" rows="10" placeholder="Coffee Beans,Raw Materials,g,1000,500,5000,1000,Storage Room A,SKU-001&#10;Milk,Beverages,ml,1000,80,25000,5000,Refrigerator,SKU-002"></textarea>
+            <div class="inventify-form-helper" style="margin-top: 8px;">
+                Format: Name, Category, Unit, Unit Size, Purchase Cost, Quantity, Reorder Level, Location, SKU
+            </div>
+        </div>
+        <div class="inventify-modal-footer">
+            <button type="button" class="inventify-btn inventify-btn-secondary" onclick="inventifyCloseBulkModal()">Cancel</button>
+            <button type="button" class="inventify-btn inventify-btn-primary" onclick="inventifyBulkAdd()">Add Items</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/inventify-inventory.js"></script>

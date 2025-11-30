@@ -1,0 +1,392 @@
+/* Recipe & Profitability Form Styles */
+
+.menu-form {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    margin: 20px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Two-column layout for the form */
+.menu-form-layout {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 30px;
+    margin-bottom: 25px;
+}
+
+.menu-form-left {
+    flex: 1;
+}
+
+.menu-form-right {
+    position: sticky;
+    top: 20px;
+    height: fit-content;
+}
+
+.menu-form h4 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #e0e0e0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.form-grid input,
+.form-grid select {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 100%;
+}
+
+.form-grid input:focus,
+.form-grid select:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+/* Recipe Ingredients Section */
+.recipe-ingredients-section {
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    margin: 15px 0;
+}
+
+.ingredients-list {
+    margin-bottom: 20px;
+    min-height: 50px;
+}
+
+.ingredient-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: #f5f5f5;
+    border-left: 4px solid #4CAF50;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.ingredient-item:hover {
+    background: #eeeeee;
+    transform: translateX(3px);
+}
+
+.ingredient-info {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 15px;
+    align-items: center;
+}
+
+.ingredient-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.ingredient-quantity {
+    color: #666;
+    font-size: 14px;
+}
+
+.ingredient-cost {
+    color: #2196F3;
+    font-weight: 500;
+}
+
+.ingredient-total {
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+.ingredient-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-remove-ingredient {
+    padding: 6px 12px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.3s;
+}
+
+.btn-remove-ingredient:hover {
+    background: #da190b;
+}
+
+/* Add Ingredient Form */
+.add-ingredient-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 10px;
+    padding: 15px;
+    background: #f0f8ff;
+    border-radius: 6px;
+    border: 2px dashed #2196F3;
+}
+
+.add-ingredient-form select,
+.add-ingredient-form input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.btn-add-ingredient {
+    padding: 10px 20px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background 0.3s;
+}
+
+.btn-add-ingredient:hover {
+    background: #0b7dda;
+}
+
+/* Profitability Preview */
+.profitability-preview {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.profit-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.profit-row:last-child {
+    border-bottom: none;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.profit-row label {
+    font-weight: 500;
+}
+
+.profit-value {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.profit-value.positive {
+    color: #4CAF50;
+}
+
+.profit-value.negative {
+    color: #f44336;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btn-primary {
+    padding: 12px 30px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-secondary {
+    padding: 12px 30px;
+    background: #757575;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+    background: #616161;
+}
+
+/* Empty State */
+.ingredients-empty {
+    text-align: center;
+    padding: 30px;
+    color: #999;
+    font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .menu-form-layout {
+        grid-template-columns: 1fr 350px;
+        gap: 20px;
+    }
+}
+
+@media (max-width: 992px) {
+    .menu-form-layout {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+
+    .menu-form-right {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .menu-form {
+        padding: 20px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .add-ingredient-form {
+        grid-template-columns: 1fr;
+    }
+
+    .ingredient-info {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+
+    .btn-add-ingredient {
+        width: 100%;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+    }
+}
+
+/* Menu Items Display with Profitability */
+.menu-item-card {
+    position: relative;
+}
+
+.menu-item-profitability {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.profitability-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.profitability-badge.excellent {
+    background: #4CAF50;
+    color: white;
+}
+
+.profitability-badge.good {
+    background: #8BC34A;
+    color: white;
+}
+
+.profitability-badge.low {
+    background: #FF9800;
+    color: white;
+}
+
+.profitability-badge.loss {
+    background: #f44336;
+    color: white;
+}
+
+.cost-info {
+    display: flex;
+    justify-content: space-between;
+    margin: 5px 0;
+    font-size: 12px;
+}
+
+.cost-label {
+    color: #666;
+}
+
+.cost-value {
+    font-weight: 600;
+    color: #333;
+}
+
+/* Loading State */
+.calculating-cost {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.calculating-cost::after {
+    content: "Calculating...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(\"c:\\Download\\htdocs\\pos-jither-main\\style.css\")",
+      "Bash(php -l:*)",
+      "Bash(findstr:*)",
+      "Bash(copy:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

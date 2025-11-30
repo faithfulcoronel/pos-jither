@@ -26,7 +26,7 @@ function ensureCategoryExists(categoryId) {
             .split(/[-_]+/)
             .map(part => part.charAt(0).toUpperCase() + part.slice(1))
             .join(' ')
-            .trim() || 'Uncategorized';
+            .trim() || 'Others';
 
         productCategories.push({
             id: normalizedId,
@@ -51,7 +51,7 @@ function getCategoryName(categoryId) {
         .join(' ')
         .trim();
 
-    return generatedName || 'Uncategorized';
+    return generatedName || 'Others';
 }
 
 function hydrateState(data) {
@@ -65,7 +65,7 @@ function hydrateState(data) {
     if (!productCategories.some(category => category.id === FALLBACK_CATEGORY_ID)) {
         productCategories.push({
             id: FALLBACK_CATEGORY_ID,
-            name: 'Uncategorized',
+            name: 'Others',
             description: 'Items that are awaiting classification.'
         });
     }
@@ -334,19 +334,52 @@ async function addMenuItem() {
 
     const name = nameInput ? nameInput.value.trim() : '';
     const price = priceInput ? parseFloat(priceInput.value) : NaN;
-    const image = imageInput ? imageInput.value.trim() : '';
     const selectedCategory = categorySelect && categorySelect.value ? categorySelect.value : FALLBACK_CATEGORY_ID;
 
-    if (!name || isNaN(price) || price < 0 || !image) {
+    if (!name || isNaN(price) || price < 0) {
         alert('Fill all fields correctly.');
         return;
     }
 
+    // Check if file is selected
+    const file = imageInput && imageInput.files && imageInput.files.length > 0 ? imageInput.files[0] : null;
+    if (!file) {
+        alert('Please select an image file.');
+        return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select a valid image file.');
+        return;
+    }
+
     try {
+        // Upload the image first
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const uploadResponse = await fetch('php/upload_image.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!uploadResponse.ok) {
+            throw new Error('Image upload failed.');
+        }
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResult.success) {
+            throw new Error(uploadResult.message || 'Image upload failed.');
+        }
+
+        const imageFilename = uploadResult.filename;
+
+        // Now create the product with the uploaded image filename
         await apiRequest('products', 'create', {
             name,
             price,
-            image,
+            image: imageFilename,
             categoryId: selectedCategory
         });
 
@@ -394,10 +427,58 @@ async function editMenuItem(index) {
         return;
     }
 
-    const newImage = prompt('Update image filename (e.g., espresso.jpeg):', item.image || '');
-    if (newImage === null || newImage.trim() === '') {
-        alert('Invalid input. No changes were made.');
-        return;
+    // Ask if user wants to upload a new image
+    const uploadNewImage = confirm('Do you want to upload a new image? Click OK to upload, or Cancel to keep the current image.');
+
+    let newImageFilename = item.image;
+
+    if (uploadNewImage) {
+        // Create a temporary file input for image upload
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+
+        // Wait for file selection
+        const fileSelected = await new Promise((resolve) => {
+            fileInput.onchange = () => resolve(true);
+            fileInput.oncancel = () => resolve(false);
+            fileInput.click();
+        });
+
+        if (fileSelected && fileInput.files && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+
+            try {
+                // Upload the image
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const uploadResponse = await fetch('php/upload_image.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error('Image upload failed.');
+                }
+
+                const uploadResult = await uploadResponse.json();
+                if (!uploadResult.success) {
+                    throw new Error(uploadResult.message || 'Image upload failed.');
+                }
+
+                newImageFilename = uploadResult.filename;
+            } catch (error) {
+                alert('Image upload error: ' + error.message);
+                return;
+            }
+        }
     }
 
     try {
@@ -405,7 +486,7 @@ async function editMenuItem(index) {
             id: item.id,
             name: newName.trim(),
             price: newPrice,
-            image: newImage.trim(),
+            image: newImageFilename,
             categoryId: categoryInput.trim() || FALLBACK_CATEGORY_ID
         });
 
@@ -536,131 +617,148 @@ async function deleteInventory(index) {
         alert(error.message || 'Unable to remove the inventory item.');
     }
 }
+// Display staff table: Employee #, Name, Role/Position, Actions (Edit/Delete)
+// NO Status, NO Time In/Out buttons
 function displayStaff() {
-    const tbody = document.querySelector('#staff-content tbody');
+    const tbody = document.querySelector('#staff tbody');
     if (!tbody) return;
+
+    // Clear table completely
     tbody.innerHTML = '';
-    staffAccounts.forEach((staff, i) => {
-        const timeInDisplay = staff.timeIn ? new Date(staff.timeIn).toLocaleString() : 'N/A';
-        const timeOutDisplay = staff.timeOut ? new Date(staff.timeOut).toLocaleString() : 'N/A';
 
-        let actionButtons = '';
-        if (staff.status === 'Active') {
-            actionButtons = `<button onclick="timeOut(${i})">Time Out</button>`;
-        } else {
-            actionButtons = `<button onclick="timeIn(${i})">Time In</button>`;
-        }
-
-        tbody.innerHTML += `
-            <tr>
-                <td>${staff.role}</td>
-                <td>${staff.name}</td>
-                <td>${timeInDisplay}</td>
-                <td>${timeOutDisplay}</td>
-                <td>${staff.status}</td>
-                <td>
-                    ${actionButtons}
-                    <button onclick="editStaff(${i})">Edit</button>
-                    <button onclick="deleteStaff(${i})">Delete</button>
+    // Show empty state if no staff
+    if (staffAccounts.length === 0) {
+        tbody.innerHTML = `
+            <tr class="staff-empty-row">
+                <td colspan="4">
+                    <div class="staff-empty-state">
+                        <div class="staff-empty-icon">👥</div>
+                        <h3>No Staff Members Yet</h3>
+                        <p>Click "Add New Staff" to create your first employee account</p>
+                    </div>
                 </td>
             </tr>`;
+        return;
+    }
+
+    // Render each staff member with 4 columns: Employee #, Name, Role, Actions
+    staffAccounts.forEach((staff, i) => {
+        const employeeNumber = staff.employee_number || 'Not Assigned';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <span class="staff-employee-number">${employeeNumber}</span>
+            </td>
+            <td>
+                <span class="staff-name">${staff.name}</span>
+            </td>
+            <td>
+                <span class="staff-role">${staff.role}</span>
+            </td>
+            <td>
+                <div class="staff-actions">
+                    <button class="staff-btn-edit" onclick="editStaff(${i})" title="Edit Staff">
+                        <span class="btn-icon">✏️</span> Edit
+                    </button>
+                    <button class="staff-btn-delete" onclick="deleteStaff(${i})" title="Delete Staff">
+                        <span class="btn-icon">🗑️</span> Delete
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
     });
+
+    // Update staff count
+    updateStaffCounts();
+}
+
+function updateStaffCounts() {
+    const totalCount = staffAccounts.length;
+    const activeCount = staffAccounts.filter(s => s.status === 'Active').length;
+
+    const totalCountEl = document.getElementById('total-staff-count');
+    const activeCountEl = document.getElementById('active-staff-count');
+
+    if (totalCountEl) totalCountEl.textContent = totalCount;
+    if (activeCountEl) activeCountEl.textContent = activeCount;
 }
 
 async function addStaff() {
     const roleInput = document.getElementById('staffRole');
     const nameInput = document.getElementById('staffName');
-    const usernameInput = document.getElementById('staffUsername');
-    const passwordInput = document.getElementById('staffPassword');
-    const passwordConfirmInput = document.getElementById('staffPasswordConfirm');
+    const employeeNumberInput = document.getElementById('staffEmployeeNumber');
 
     const role = roleInput ? roleInput.value.trim() : '';
     const name = nameInput ? nameInput.value.trim() : '';
-    const username = usernameInput ? usernameInput.value.trim() : '';
-    const password = passwordInput ? passwordInput.value : '';
-    const passwordConfirm = passwordConfirmInput ? passwordConfirmInput.value : '';
+    const employeeNumber = employeeNumberInput ? employeeNumberInput.value.trim().toUpperCase() : '';
 
     // Validation
-    if (!role || !name) {
-        alert('Please fill in role and name.');
+    if (!role || !name || !employeeNumber) {
+        alert('Please fill in all required fields (Role, Name, and Employee Number).');
         return;
     }
 
-    if (!username) {
-        alert('Please provide a username for login.');
+    // Validate employee number format (alphanumeric only)
+    const employeeNumberPattern = /^[A-Z0-9]+$/;
+    if (!employeeNumberPattern.test(employeeNumber)) {
+        alert('Employee Number must contain only letters and numbers (e.g., EMP001).');
         return;
     }
 
-    if (!password) {
-        alert('Please provide a password.');
-        return;
-    }
-
-    if (password.length < 4) {
-        alert('Password must be at least 4 characters long.');
-        return;
-    }
-
-    if (password !== passwordConfirm) {
-        alert('Passwords do not match.');
+    if (employeeNumber.length < 3) {
+        alert('Employee Number must be at least 3 characters long.');
         return;
     }
 
     try {
+        // Add staff member to the database
         await apiRequest('staff-accounts', 'create', {
             role,
             name,
-            username,
-            password
+            employee_number: employeeNumber
         });
+
+        // Also create employee record in time keeping system
+        try {
+            const response = await fetch('php/create-employee.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_number: employeeNumber,
+                    full_name: name,
+                    position: role,
+                    department: 'Café Staff',
+                    status: 'active'
+                })
+            });
+            const data = await response.json();
+            console.log('Employee created in timekeeping system:', data);
+        } catch (timeError) {
+            console.warn('Note: Could not create employee in timekeeping system:', timeError);
+        }
 
         // Clear form
         if (roleInput) roleInput.value = '';
         if (nameInput) nameInput.value = '';
-        if (usernameInput) usernameInput.value = '';
-        if (passwordInput) passwordInput.value = '';
-        if (passwordConfirmInput) passwordConfirmInput.value = '';
+        if (employeeNumberInput) employeeNumberInput.value = '';
 
         // Hide form
         toggleForm('staffFormContainer');
 
-        alert('Staff member and login credentials created successfully!');
+        alert(`Staff member added successfully!\n\nEmployee Number: ${employeeNumber}\n\nThe employee can now use this number to clock in/out at the Time Keeping terminal.`);
+
+        // Refresh staff list
+        await fetchAndDisplayData();
     } catch (error) {
-        alert(error.message || 'Unable to add the staff member.');
+        alert(error.message || 'Unable to add the staff member. Please check if the Employee Number is already in use.');
     }
 }
 
-async function timeIn(index) {
-    const staff = staffAccounts[index];
-    if (!staff || !staff.id) {
-        alert('Unable to locate the selected staff member.');
-        return;
-    }
-
-    try {
-        await apiRequest('staff-accounts', 'time-in', { id: staff.id });
-        // Success - UI will auto-refresh via applyServerData
-        console.log(`${staff.name} has timed in.`);
-    } catch (error) {
-        alert(error.message || 'Unable to time in the staff member.');
-    }
-}
-
-async function timeOut(index) {
-    const staff = staffAccounts[index];
-    if (!staff || !staff.id) {
-        alert('Unable to locate the selected staff member.');
-        return;
-    }
-
-    try {
-        await apiRequest('staff-accounts', 'time-out', { id: staff.id });
-        // Success - UI will auto-refresh via applyServerData
-        console.log(`${staff.name} has timed out.`);
-    } catch (error) {
-        alert(error.message || 'Unable to time out the staff member.');
-    }
-}
+// Time In/Out functions removed - Use Time Keeping System instead
+// Staff management now focuses only on employee data management
+// Employees should use the Time Keeping terminal to clock in/out using their employee number
 
 function displayTimekeepingRecords() {
     const tbody = document.querySelector('#timekeepingRecordsTable tbody');
@@ -993,8 +1091,19 @@ function showManagerContent(id) {
         navLink.classList.add('active');
     }
 
+    if (id === 'home') {
+        // Initialize Home Dashboard
+        if (typeof initializeHomeDashboard === 'function') {
+            initializeHomeDashboard();
+        }
+    }
     if (id === 'menu') displayMenuItems();
-    if (id === 'inventory') displayInventory();
+    if (id === 'inventory') {
+        // Initialize Inventify Inventory System
+        if (typeof initializeInventify === 'function') {
+            initializeInventify();
+        }
+    }
     if (id === 'staff') {
         displayStaff();
         displayTimekeepingRecords();
@@ -1003,6 +1112,12 @@ function showManagerContent(id) {
         // Load overall sales chart and sales table
         generateOverallSalesChart();
         loadSalesByDate();
+    }
+    if (id === 'recipe-management') {
+        // Initialize recipe management
+        if (typeof showRecipeManagement === 'function') {
+            showRecipeManagement();
+        }
     }
 }
 
@@ -1334,10 +1449,17 @@ function renderOrderList() {
         return;
     }
     orderList.innerHTML = '';
+
+    // Calculate total
+    let total = 0;
+
     currentOrder.forEach((item, index) => {
+        const itemTotal = item.qty * item.price;
+        total += itemTotal;
+
         const li = document.createElement('li');
         li.innerHTML = `
-            <span>${item.qty}x ${item.name} - ₱${item.qty * item.price}</span>
+            <span>${item.qty}x ${item.name} - ₱${itemTotal.toFixed(2)}</span>
             <div>
                 <button onclick="editOrderItem(${index})">Edit</button>
                 <button onclick="removeOrderItem(${index})">Cancel</button>
@@ -1345,6 +1467,13 @@ function renderOrderList() {
         `;
         orderList.appendChild(li);
     });
+
+    // Update the total display
+    const orderTotalElement = document.getElementById('orderTotal');
+    if (orderTotalElement) {
+        orderTotalElement.textContent = total.toFixed(2);
+    }
+
     //updateReceipt();
 }
 
@@ -1769,12 +1898,1896 @@ async function cashierTimeOut() {
     }
 }
 
+// ========== ENHANCED POS FEATURES ==========
+
+// Product Search with Barcode Support
+function searchProduct(event) {
+    const searchInput = document.getElementById('product-search');
+    if (!searchInput) return;
+
+    const query = searchInput.value.toLowerCase().trim();
+
+    // If Enter is pressed, try to find and add product
+    if (event.key === 'Enter' && query) {
+        const matchingProduct = products.find(p =>
+            p.name.toLowerCase().includes(query) ||
+            p.id.toLowerCase() === query ||
+            (p.barcode && p.barcode === query)
+        );
+
+        if (matchingProduct) {
+            selectDrink(matchingProduct);
+            document.getElementById('drinkQty').value = 1;
+            document.getElementById('drinkQty').focus();
+            searchInput.value = '';
+        } else {
+            alert('Product not found: ' + query);
+        }
+    }
+
+    // Filter menu gallery as user types
+    if (query.length >= 2) {
+        filterMenuGalleryBySearch(query);
+    } else {
+        displayMenuGallery(); // Show all if search is cleared
+    }
+}
+
+function filterMenuGalleryBySearch(query) {
+    const container = document.getElementById('menuItemsGallery');
+    if (!container) return;
+
+    const filtered = products.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.id.toLowerCase().includes(query)
+    );
+
+    container.innerHTML = '';
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="empty-state">No products found.</p>';
+        return;
+    }
+
+    filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'menu-item';
+        const imagePath = item.image ? `images/${item.image}` : 'images/jowens.png';
+        card.innerHTML = `
+            <img src="${imagePath}" alt="${item.name}">
+            <p>${item.name}</p>
+            <p>₱${item.price}</p>
+        `;
+        card.onclick = () => selectDrink(item);
+        container.appendChild(card);
+    });
+}
+
+// Enhanced Checkout with Payment Methods
+function checkOut() {
+    if (!currentOrder || currentOrder.length === 0) {
+        alert('No items in the order. Please add items before checkout.');
+        return;
+    }
+
+    // Calculate total
+    const total = currentOrder.reduce((sum, item) => sum + (item.qty * item.price), 0);
+
+    // Show payment method selection
+    showPaymentModal(total);
+}
+
+function showPaymentModal(total) {
+    const modal = document.createElement('div');
+    modal.id = 'payment-modal';
+    modal.className = 'payment-modal';
+    modal.innerHTML = `
+        <div class="payment-modal-content">
+            <h2>Select Payment Method</h2>
+            <p class="payment-total">Total Amount: ₱${total.toFixed(2)}</p>
+
+            <div class="payment-methods">
+                <button class="payment-btn cash-btn" onclick="processPayment('Cash', ${total})">
+                    💵 Cash
+                </button>
+                <button class="payment-btn card-btn" onclick="processPayment('Card', ${total})">
+                    💳 Card
+                </button>
+                <button class="payment-btn gcash-btn" onclick="processPayment('GCash', ${total})">
+                    📱 GCash
+                </button>
+            </div>
+
+            <button class="cancel-payment-btn" onclick="closePaymentModal()">Cancel</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closePaymentModal() {
+    const modal = document.getElementById('payment-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function processPayment(paymentMethod, total) {
+    closePaymentModal();
+
+    // For cash payment, show change calculator
+    if (paymentMethod === 'Cash') {
+        const amountReceived = prompt(`Total: ₱${total.toFixed(2)}\n\nEnter amount received:`, total.toFixed(2));
+        if (amountReceived === null) return; // Cancelled
+
+        const received = parseFloat(amountReceived);
+        if (isNaN(received) || received < total) {
+            alert('Invalid amount or insufficient payment.');
+            return;
+        }
+
+        const change = received - total;
+        alert(`Payment Method: ${paymentMethod}\nAmount Received: ₱${received.toFixed(2)}\nChange: ₱${change.toFixed(2)}`);
+    } else {
+        alert(`Processing ${paymentMethod} payment of ₱${total.toFixed(2)}...\nPayment confirmed!`);
+    }
+
+    // Process the receipt and finalize sale
+    await updateReceipt();
+
+    // Print receipt option
+    if (confirm('Payment successful! Would you like to print the receipt?')) {
+        printReceipt();
+    }
+}
+
+// Print Receipt Functionality
+function printReceipt() {
+    const receiptContent = document.getElementById('receipt');
+    if (!receiptContent) {
+        alert('No receipt to print.');
+        return;
+    }
+
+    const printWindow = window.open('', '', 'width=300,height=600');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Receipt - Jowen's Kitchen & Cafe</title>
+            <style>
+                body {
+                    font-family: 'Courier New', monospace;
+                    padding: 20px;
+                    width: 280px;
+                }
+                h4 {
+                    text-align: center;
+                    margin: 10px 0;
+                }
+                p {
+                    margin: 5px 0;
+                }
+                .receipt-total {
+                    border-top: 1px dashed #000;
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    font-weight: bold;
+                    text-align: right;
+                }
+                @media print {
+                    body { margin: 0; padding: 10px; }
+                }
+            </style>
+        </head>
+        <body>
+            ${receiptContent.innerHTML}
+            <p style="text-align: center; margin-top: 20px;">Thank you for your purchase!</p>
+            <p style="text-align: center; font-size: 0.9em;">Powered by Jowen's POS</p>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Return/Refund Process
+function showReturnRefundDialog() {
+    const orderNo = prompt('Enter Order Number for return/refund:');
+    if (!orderNo) return;
+
+    // Search for the transaction
+    const transaction = salesTransactions.find(t => t.reference === orderNo);
+    if (!transaction) {
+        alert('Order not found. Please check the order number.');
+        return;
+    }
+
+    const confirmRefund = confirm(
+        `Order #${orderNo}\nTotal: ₱${transaction.total.toFixed(2)}\n\nProceed with refund?`
+    );
+
+    if (confirmRefund) {
+        processRefund(transaction);
+    }
+}
+
+async function processRefund(transaction) {
+    const reason = prompt('Reason for refund:', 'Customer request');
+    if (!reason) return;
+
+    try {
+        // Record the refund (you can add this to backend later)
+        alert(`Refund processed for Order #${transaction.reference}\nAmount: ₱${transaction.total.toFixed(2)}\nReason: ${reason}`);
+
+        // Optionally delete the transaction or mark it as refunded
+        // await apiRequest('sales-transactions', 'refund', { id: transaction.id, reason });
+
+        console.log('Refund processed:', transaction.reference);
+    } catch (error) {
+        alert('Failed to process refund: ' + error.message);
+    }
+}
+
+// X-Read Report (Current shift/session sales without clearing)
+async function generateXRead() {
+    try {
+        const response = await apiRequest('sales-transactions', 'get-daily', null, {
+            method: 'GET',
+            skipAutoApply: true
+        });
+
+        const transactions = response.data || [];
+
+        if (transactions.length === 0) {
+            alert('No transactions for today.');
+            return;
+        }
+
+        const totalSales = transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
+        const transactionCount = transactions.length;
+
+        // Create X-Read report window
+        const reportWindow = window.open('', '', 'width=400,height=600');
+        reportWindow.document.write(`
+            <html>
+            <head>
+                <title>X-Read Report</title>
+                <style>
+                    body {
+                        font-family: 'Courier New', monospace;
+                        padding: 20px;
+                        max-width: 400px;
+                    }
+                    h2 {
+                        text-align: center;
+                        border-bottom: 2px solid #000;
+                        padding-bottom: 10px;
+                    }
+                    .report-header {
+                        text-align: center;
+                        margin-bottom: 20px;
+                    }
+                    .report-line {
+                        display: flex;
+                        justify-content: space-between;
+                        margin: 5px 0;
+                    }
+                    .report-total {
+                        border-top: 2px solid #000;
+                        margin-top: 15px;
+                        padding-top: 10px;
+                        font-weight: bold;
+                        font-size: 1.2em;
+                    }
+                    @media print {
+                        body { margin: 0; padding: 10px; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="report-header">
+                    <h2>X-READ REPORT</h2>
+                    <p><strong>Jowen's Kitchen & Cafe</strong></p>
+                    <p>Date: ${new Date().toLocaleDateString()}</p>
+                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                    <p>Cashier: ${currentUsername || 'N/A'}</p>
+                </div>
+
+                <div class="report-line">
+                    <span>Transaction Count:</span>
+                    <span>${transactionCount}</span>
+                </div>
+
+                <div class="report-line report-total">
+                    <span>TOTAL SALES:</span>
+                    <span>₱${totalSales.toFixed(2)}</span>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <p>*** X-READ (Non-Reset Report) ***</p>
+                    <p style="font-size: 0.9em;">This is an interim report.</p>
+                    <p style="font-size: 0.9em;">Sales data is not cleared.</p>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="window.print()" style="padding: 10px 20px; font-size: 1em;">Print Report</button>
+                </div>
+            </body>
+            </html>
+        `);
+        reportWindow.document.close();
+    } catch (error) {
+        alert('Failed to generate X-Read report: ' + error.message);
+    }
+}
+
+// Z-Read Report (End of day sales - typically would clear/reset counters)
+async function generateZRead() {
+    const confirmZRead = confirm(
+        'Z-READ REPORT\n\n' +
+        'This will generate an end-of-day report.\n' +
+        'In a production system, this would typically reset daily counters.\n\n' +
+        'Continue?'
+    );
+
+    if (!confirmZRead) return;
+
+    try {
+        const response = await apiRequest('sales-transactions', 'get-daily', null, {
+            method: 'GET',
+            skipAutoApply: true
+        });
+
+        const transactions = response.data || [];
+
+        if (transactions.length === 0) {
+            alert('No transactions for today.');
+            return;
+        }
+
+        const totalSales = transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
+        const transactionCount = transactions.length;
+
+        // Calculate payment method breakdown (if available)
+        const cashSales = totalSales; // Placeholder - would need payment method tracking
+        const cardSales = 0;
+        const gcashSales = 0;
+
+        // Create Z-Read report window
+        const reportWindow = window.open('', '', 'width=400,height=700');
+        reportWindow.document.write(`
+            <html>
+            <head>
+                <title>Z-Read Report</title>
+                <style>
+                    body {
+                        font-family: 'Courier New', monospace;
+                        padding: 20px;
+                        max-width: 400px;
+                    }
+                    h2 {
+                        text-align: center;
+                        border-bottom: 2px solid #000;
+                        padding-bottom: 10px;
+                    }
+                    .report-header {
+                        text-align: center;
+                        margin-bottom: 20px;
+                    }
+                    .report-section {
+                        margin: 20px 0;
+                        padding: 10px 0;
+                        border-top: 1px dashed #000;
+                    }
+                    .report-line {
+                        display: flex;
+                        justify-content: space-between;
+                        margin: 5px 0;
+                    }
+                    .report-total {
+                        border-top: 2px solid #000;
+                        margin-top: 15px;
+                        padding-top: 10px;
+                        font-weight: bold;
+                        font-size: 1.3em;
+                    }
+                    @media print {
+                        body { margin: 0; padding: 10px; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="report-header">
+                    <h2>Z-READ REPORT</h2>
+                    <p><strong>Jowen's Kitchen & Cafe</strong></p>
+                    <p>Date: ${new Date().toLocaleDateString()}</p>
+                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                    <p>Cashier: ${currentUsername || 'N/A'}</p>
+                </div>
+
+                <div class="report-section">
+                    <h3 style="margin: 10px 0;">TRANSACTION SUMMARY</h3>
+                    <div class="report-line">
+                        <span>Transaction Count:</span>
+                        <span>${transactionCount}</span>
+                    </div>
+                    <div class="report-line">
+                        <span>First Transaction:</span>
+                        <span>${transactions[0].reference}</span>
+                    </div>
+                    <div class="report-line">
+                        <span>Last Transaction:</span>
+                        <span>${transactions[transactions.length - 1].reference}</span>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <h3 style="margin: 10px 0;">PAYMENT BREAKDOWN</h3>
+                    <div class="report-line">
+                        <span>Cash Sales:</span>
+                        <span>₱${cashSales.toFixed(2)}</span>
+                    </div>
+                    <div class="report-line">
+                        <span>Card Sales:</span>
+                        <span>₱${cardSales.toFixed(2)}</span>
+                    </div>
+                    <div class="report-line">
+                        <span>GCash Sales:</span>
+                        <span>₱${gcashSales.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <div class="report-line report-total">
+                    <span>GROSS SALES:</span>
+                    <span>₱${totalSales.toFixed(2)}</span>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <p>*** Z-READ (End of Day Report) ***</p>
+                    <p style="font-size: 0.9em;">This is an official end-of-day report.</p>
+                    <p style="font-size: 0.9em; color: #c00;">Keep this report for accounting purposes.</p>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="window.print()" style="padding: 10px 20px; font-size: 1em;">Print Report</button>
+                </div>
+            </body>
+            </html>
+        `);
+        reportWindow.document.close();
+
+        alert('Z-Read report generated successfully!\n\nNote: In a production system, daily counters would be reset after this report.');
+    } catch (error) {
+        alert('Failed to generate Z-Read report: ' + error.message);
+    }
+}
+
+// Add to cashier navigation
+function addReturnRefundButton() {
+    const orderContent = document.getElementById('order-content');
+    if (orderContent && !document.getElementById('refund-btn')) {
+        const buttonDiv = document.createElement('div');
+        buttonDiv.style.marginTop = '20px';
+        buttonDiv.innerHTML = '<button id="refund-btn" onclick="showReturnRefundDialog()" style="background: #d94841;">🔄 Return/Refund</button>';
+        orderContent.appendChild(buttonDiv);
+    }
+}
+
+// ============================================================================
+// REPORTING FUNCTIONS
+// ============================================================================
+
+function showReportTab(tabName, evt) {
+    // Hide all report tabs
+    document.querySelectorAll('.report-tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.report-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected tab
+    const targetTab = document.getElementById(tabName + '-tab');
+    if (targetTab) {
+        targetTab.classList.remove('hidden');
+    }
+
+    // Activate the clicked button
+    if (evt && evt.target) {
+        evt.target.classList.add('active');
+    }
+
+    // Auto-generate report on tab open
+    switch(tabName) {
+        case 'sales-report':
+            generateSalesReport();
+            break;
+        case 'inventory-summary':
+            generateInventorySummary();
+            break;
+        case 'item-velocity':
+            generateItemVelocity();
+            break;
+        case 'stock-aging':
+            generateStockAging();
+            break;
+        case 'purchase-history':
+            generatePurchaseHistory();
+            break;
+        case 'profit-loss':
+            generateProfitLoss();
+            break;
+        case 'shrinkage':
+            generateShrinkageReport();
+            break;
+    }
+}
+
+async function generateSalesReport() {
+    const period = document.getElementById('salesReportPeriod').value;
+    const startDate = document.getElementById('salesStartDate').value;
+    const endDate = document.getElementById('salesEndDate').value;
+
+    try {
+        const response = await fetch('php/reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'sales_report',
+                period: period,
+                start_date: startDate,
+                end_date: endDate
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update summary cards
+            document.getElementById('totalRevenue').textContent = `₱${parseFloat(data.summary.total_revenue).toFixed(2)}`;
+            document.getElementById('totalTransactions').textContent = data.summary.total_transactions;
+            document.getElementById('avgTransaction').textContent = `₱${parseFloat(data.summary.avg_transaction).toFixed(2)}`;
+            document.getElementById('totalDiscounts').textContent = `₱${parseFloat(data.summary.total_discounts).toFixed(2)}`;
+
+            // Populate table
+            const tbody = document.querySelector('#salesReportTable tbody');
+            tbody.innerHTML = '';
+
+            data.records.forEach(record => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${record.date}</td>
+                    <td>${record.transactions}</td>
+                    <td>₱${parseFloat(record.revenue).toFixed(2)}</td>
+                    <td>₱${parseFloat(record.discounts).toFixed(2)}</td>
+                    <td>₱${parseFloat(record.tax).toFixed(2)}</td>
+                    <td>₱${parseFloat(record.net_revenue).toFixed(2)}</td>
+                `;
+            });
+
+            // Draw chart if Chart.js is available
+            if (typeof Chart !== 'undefined' && data.records.length > 0) {
+                drawSalesChart(data.records);
+            }
+        }
+    } catch (error) {
+        console.error('Error generating sales report:', error);
+        alert('Failed to generate sales report');
+    }
+}
+
+function drawSalesChart(records) {
+    const ctx = document.getElementById('salesReportChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if exists
+    if (window.salesChart) {
+        window.salesChart.destroy();
+    }
+
+    window.salesChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: records.map(r => r.date),
+            datasets: [{
+                label: 'Revenue',
+                data: records.map(r => parseFloat(r.revenue)),
+                borderColor: 'rgb(194, 112, 61)',
+                backgroundColor: 'rgba(194, 112, 61, 0.1)',
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₱' + value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function generateInventorySummary() {
+    try {
+        const response = await fetch('php/reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'inventory_summary' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update summary cards
+            document.getElementById('totalItems').textContent = data.summary.total_items;
+            document.getElementById('lowStockItems').textContent = data.summary.low_stock_items;
+            document.getElementById('outOfStockItems').textContent = data.summary.out_of_stock_items;
+            document.getElementById('totalInventoryValue').textContent = `₱${parseFloat(data.summary.total_value).toFixed(2)}`;
+
+            // Populate table
+            const tbody = document.querySelector('#inventorySummaryTable tbody');
+            tbody.innerHTML = '';
+
+            data.items.forEach(item => {
+                const row = tbody.insertRow();
+                const statusClass = item.quantity <= 0 ? 'out-of-stock' :
+                                   item.quantity <= item.min_stock ? 'low-stock' : 'in-stock';
+                const statusText = item.quantity <= 0 ? 'Out of Stock' :
+                                  item.quantity <= item.min_stock ? 'Low Stock' : 'In Stock';
+
+                row.innerHTML = `
+                    <td>${item.item}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.unit}</td>
+                    <td>${item.min_stock}/${item.max_stock}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>₱${parseFloat(item.value || 0).toFixed(2)}</td>
+                `;
+            });
+        }
+    } catch (error) {
+        console.error('Error generating inventory summary:', error);
+        alert('Failed to generate inventory summary');
+    }
+}
+
+async function generateItemVelocity() {
+    const period = document.getElementById('velocityPeriod').value;
+
+    try {
+        const response = await fetch('php/reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'item_velocity',
+                period: period
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Populate fast-moving table
+            const fastTbody = document.querySelector('#fastMovingTable tbody');
+            fastTbody.innerHTML = '';
+
+            data.fast_moving.forEach(item => {
+                const row = fastTbody.insertRow();
+                row.innerHTML = `
+                    <td>${item.product_name}</td>
+                    <td>${item.total_sold}</td>
+                    <td>₱${parseFloat(item.revenue).toFixed(2)}</td>
+                    <td>${parseFloat(item.avg_daily_sales).toFixed(2)}</td>
+                `;
+            });
+
+            // Populate slow-moving table
+            const slowTbody = document.querySelector('#slowMovingTable tbody');
+            slowTbody.innerHTML = '';
+
+            data.slow_moving.forEach(item => {
+                const row = slowTbody.insertRow();
+                row.innerHTML = `
+                    <td>${item.product_name}</td>
+                    <td>${item.total_sold}</td>
+                    <td>₱${parseFloat(item.revenue).toFixed(2)}</td>
+                    <td>${parseFloat(item.avg_daily_sales).toFixed(2)}</td>
+                `;
+            });
+        }
+    } catch (error) {
+        console.error('Error generating item velocity:', error);
+        alert('Failed to generate item velocity report');
+    }
+}
+
+async function generateStockAging() {
+    try {
+        const response = await fetch('php/reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'stock_aging' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update aging summary cards
+            document.getElementById('fresh30').textContent = data.summary.fresh_0_30;
+            document.getElementById('medium60').textContent = data.summary.medium_31_60;
+            document.getElementById('old90').textContent = data.summary.old_61_90;
+            document.getElementById('veryOld90').textContent = data.summary.very_old_90_plus;
+
+            // Populate table
+            const tbody = document.querySelector('#stockAgingTable tbody');
+            tbody.innerHTML = '';
+
+            data.batches.forEach(batch => {
+                const row = tbody.insertRow();
+                const ageClass = batch.age_days <= 30 ? 'fresh' :
+                                batch.age_days <= 60 ? 'medium' :
+                                batch.age_days <= 90 ? 'old' : 'very-old';
+
+                row.innerHTML = `
+                    <td>${batch.batch_number}</td>
+                    <td>${batch.item_name}</td>
+                    <td>${batch.quantity}</td>
+                    <td>${batch.received_date}</td>
+                    <td><span class="age-badge ${ageClass}">${batch.age_days} days</span></td>
+                    <td>${batch.status}</td>
+                    <td>${batch.expiry_date || 'N/A'}</td>
+                `;
+            });
+        }
+    } catch (error) {
+        console.error('Error generating stock aging report:', error);
+        alert('Failed to generate stock aging report');
+    }
+}
+
+async function generatePurchaseHistory() {
+    const period = document.getElementById('purchasePeriod').value;
+
+    try {
+        const response = await fetch('php/reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'purchase_history',
+                period: period
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update summary cards
+            document.getElementById('totalPOs').textContent = data.summary.total_orders;
+            document.getElementById('totalSpent').textContent = `₱${parseFloat(data.summary.total_spent).toFixed(2)}`;
+            document.getElementById('pendingPOs').textContent = data.summary.pending_orders;
+
+            // Populate table
+            const tbody = document.querySelector('#purchaseHistoryTable tbody');
+            tbody.innerHTML = '';
+
+            data.orders.forEach(order => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${order.po_number}</td>
+                    <td>${order.supplier_name}</td>
+                    <td>${order.order_date}</td>
+                    <td>${order.expected_delivery || 'N/A'}</td>
+                    <td><span class="status-badge ${order.status}">${order.status}</span></td>
+                    <td>₱${parseFloat(order.total_amount).toFixed(2)}</td>
+                    <td>${order.item_count}</td>
+                `;
+            });
+        }
+    } catch (error) {
+        console.error('Error generating purchase history:', error);
+        alert('Failed to generate purchase history');
+    }
+}
+
+async function generateProfitLoss() {
+    const period = document.getElementById('plPeriod').value;
+    const startDate = document.getElementById('plStartDate').value;
+    const endDate = document.getElementById('plEndDate').value;
+
+    try {
+        const response = await fetch('php/reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'profit_loss',
+                period: period,
+                start_date: startDate,
+                end_date: endDate
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update summary cards
+            document.getElementById('plRevenue').textContent = `₱${parseFloat(data.summary.revenue).toFixed(2)}`;
+            document.getElementById('plCogs').textContent = `₱${parseFloat(data.summary.cogs).toFixed(2)}`;
+            document.getElementById('plGrossProfit').textContent = `₱${parseFloat(data.summary.gross_profit).toFixed(2)}`;
+            document.getElementById('plMargin').textContent = `${parseFloat(data.summary.margin).toFixed(2)}%`;
+
+            // Populate table
+            const tbody = document.querySelector('#profitLossTable tbody');
+            tbody.innerHTML = '';
+
+            data.records.forEach(record => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${record.period}</td>
+                    <td>₱${parseFloat(record.revenue).toFixed(2)}</td>
+                    <td>₱${parseFloat(record.cogs).toFixed(2)}</td>
+                    <td>₱${parseFloat(record.gross_profit).toFixed(2)}</td>
+                    <td>${parseFloat(record.margin).toFixed(2)}%</td>
+                `;
+            });
+
+            // Draw chart
+            if (typeof Chart !== 'undefined' && data.records.length > 0) {
+                drawProfitLossChart(data.records);
+            }
+        }
+    } catch (error) {
+        console.error('Error generating profit & loss report:', error);
+        alert('Failed to generate profit & loss report');
+    }
+}
+
+function drawProfitLossChart(records) {
+    const ctx = document.getElementById('profitLossChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if exists
+    if (window.plChart) {
+        window.plChart.destroy();
+    }
+
+    window.plChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: records.map(r => r.period),
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: records.map(r => parseFloat(r.revenue)),
+                    backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                    borderColor: 'rgb(76, 175, 80)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'COGS',
+                    data: records.map(r => parseFloat(r.cogs)),
+                    backgroundColor: 'rgba(244, 67, 54, 0.6)',
+                    borderColor: 'rgb(244, 67, 54)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'Gross Profit',
+                    data: records.map(r => parseFloat(r.gross_profit)),
+                    backgroundColor: 'rgba(194, 112, 61, 0.6)',
+                    borderColor: 'rgb(194, 112, 61)',
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₱' + value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function generateShrinkageReport() {
+    const period = document.getElementById('shrinkagePeriod').value;
+
+    try {
+        const response = await fetch('php/reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'shrinkage',
+                period: period
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update summary cards
+            document.getElementById('shrinkageValue').textContent = `₱${parseFloat(data.summary.total_value).toFixed(2)}`;
+            document.getElementById('shrinkageItems').textContent = data.summary.items_affected;
+            document.getElementById('shrinkageRate').textContent = `${parseFloat(data.summary.shrinkage_rate).toFixed(2)}%`;
+
+            // Populate table
+            const tbody = document.querySelector('#shrinkageTable tbody');
+            tbody.innerHTML = '';
+
+            data.items.forEach(item => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${item.item_name}</td>
+                    <td>${item.expected_stock}</td>
+                    <td>${item.actual_stock}</td>
+                    <td class="shrinkage-diff">${item.difference}</td>
+                    <td class="shrinkage-value">₱${parseFloat(item.value_loss).toFixed(2)}</td>
+                    <td>${item.last_audit}</td>
+                `;
+            });
+        }
+    } catch (error) {
+        console.error('Error generating shrinkage report:', error);
+        alert('Failed to generate shrinkage report');
+    }
+}
+
+function exportReport(reportType) {
+    alert(`Exporting ${reportType} report to CSV... (Feature coming soon)`);
+    // TODO: Implement CSV export functionality
+}
+
+// ============================================================================
+// END REPORTING FUNCTIONS
+// ============================================================================
+
+// ============================================================================
+// AUTOMATION & SMART FEATURES
+// ============================================================================
+
+let notificationCheckInterval = null;
+
+/**
+ * Initialize automation features
+ */
+function initAutomation() {
+    // Check for low stock and notifications every 5 minutes
+    checkLowStockAuto();
+    notificationCheckInterval = setInterval(checkLowStockAuto, 5 * 60 * 1000);
+
+    // Check for expiring items daily
+    checkExpiringItems();
+    setInterval(checkExpiringItems, 24 * 60 * 60 * 1000);
+
+    // Load notifications immediately
+    loadNotifications();
+}
+
+/**
+ * Automatically check for low stock items
+ */
+async function checkLowStockAuto() {
+    try {
+        const response = await fetch('php/automation.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'check_low_stock' })
+        });
+
+        const data = await response.json();
+
+        if (data.success && (data.low_stock_count > 0 || data.out_of_stock_count > 0)) {
+            // Refresh notifications
+            loadNotifications();
+
+            // Show notification badge
+            updateNotificationBadge(data.low_stock_count + data.out_of_stock_count);
+        }
+    } catch (error) {
+        console.error('Error checking low stock:', error);
+    }
+}
+
+/**
+ * Check for expiring items
+ */
+async function checkExpiringItems() {
+    try {
+        const response = await fetch('php/automation.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_expiring_items', days: 30 })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.count > 0) {
+            console.log(`Found ${data.count} items expiring in the next 30 days`);
+            loadNotifications();
+        }
+    } catch (error) {
+        console.error('Error checking expiring items:', error);
+    }
+}
+
+/**
+ * Load and display notifications
+ */
+async function loadNotifications() {
+    try {
+        const response = await fetch('php/automation.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_notifications' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            displayNotifications(data.notifications);
+            updateNotificationBadge(data.count);
+        }
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+/**
+ * Display notifications in UI
+ */
+function displayNotifications(notifications) {
+    const banner = document.getElementById('inventory-alerts-banner');
+    if (!banner) return;
+
+    if (notifications.length === 0) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    banner.classList.remove('hidden');
+    banner.innerHTML = '<h4>⚠️ Active Alerts</h4>';
+
+    notifications.slice(0, 5).forEach(notif => {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert-item';
+
+        const icon = notif.alert_type === 'out_of_stock' ? '🔴' :
+                    notif.alert_type === 'low_stock' ? '🟡' :
+                    notif.alert_type === 'expiring_soon' ? '⏰' : '⚠️';
+
+        alertDiv.innerHTML = `
+            <span class="alert-icon">${icon}</span>
+            <span>${notif.alert_message}</span>
+            <button onclick="dismissNotification(${notif.id})" style="margin-left: auto; padding: 4px 8px;">Dismiss</button>
+        `;
+
+        banner.appendChild(alertDiv);
+    });
+
+    if (notifications.length > 5) {
+        const moreDiv = document.createElement('div');
+        moreDiv.className = 'alert-item';
+        moreDiv.innerHTML = `<span>... and ${notifications.length - 5} more alerts</span>`;
+        banner.appendChild(moreDiv);
+    }
+}
+
+/**
+ * Update notification badge count
+ */
+function updateNotificationBadge(count) {
+    let badge = document.getElementById('notification-badge');
+
+    if (count > 0) {
+        if (!badge) {
+            // Create badge if it doesn't exist
+            const inventoryLink = document.querySelector('a[onclick*="inventory"]');
+            if (inventoryLink) {
+                badge = document.createElement('span');
+                badge.id = 'notification-badge';
+                badge.className = 'notification-badge';
+                inventoryLink.appendChild(badge);
+            }
+        }
+
+        if (badge) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'inline-block';
+        }
+    } else if (badge) {
+        badge.style.display = 'none';
+    }
+}
+
+/**
+ * Dismiss a notification
+ */
+async function dismissNotification(alertId) {
+    try {
+        const response = await fetch('php/automation.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'dismiss_notification',
+                alert_id: alertId
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            loadNotifications();
+        }
+    } catch (error) {
+        console.error('Error dismissing notification:', error);
+    }
+}
+
+/**
+ * Show reorder suggestions
+ */
+async function showReorderSuggestions() {
+    try {
+        const response = await fetch('php/automation.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_reorder_suggestions' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            displayReorderSuggestions(data.suggestions);
+        }
+    } catch (error) {
+        console.error('Error getting reorder suggestions:', error);
+        alert('Failed to load reorder suggestions');
+    }
+}
+
+/**
+ * Display reorder suggestions in a modal
+ */
+function displayReorderSuggestions(suggestions) {
+    if (suggestions.length === 0) {
+        alert('No reorder suggestions at this time. All items are adequately stocked.');
+        return;
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'reorder-modal';
+    modal.innerHTML = `
+        <div class="reorder-modal-content">
+            <h2>🔄 Auto-Reorder Suggestions</h2>
+            <p>Based on sales velocity and current stock levels</p>
+            <div class="reorder-list">
+                ${suggestions.map(item => `
+                    <div class="reorder-item urgency-${item.urgency}">
+                        <div class="reorder-header">
+                            <span class="urgency-badge ${item.urgency_label.toLowerCase()}">${item.urgency_label}</span>
+                            <strong>${item.item_name}</strong>
+                        </div>
+                        <div class="reorder-details">
+                            <div>Current: ${item.current_stock} ${item.unit}</div>
+                            <div>Suggested Order: <strong>${item.suggested_order_qty} ${item.unit}</strong></div>
+                            <div>Daily Usage: ${item.avg_daily_usage} ${item.unit}/day</div>
+                            <div>Days Until Stockout: ${item.days_until_stockout}</div>
+                            <div>Supplier: ${item.supplier_name}</div>
+                            <div class="reason">${item.reason}</div>
+                        </div>
+                        <input type="checkbox" class="reorder-checkbox" data-item-id="${item.item_id}"
+                               data-qty="${item.suggested_order_qty}" data-supplier="${item.supplier_id}"
+                               ${item.urgency >= 4 ? 'checked' : ''}>
+                        <label>Include in auto-PO</label>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="reorder-actions">
+                <button onclick="createAutoReorderPO()" class="primary-btn">Create Purchase Order</button>
+                <button onclick="closeReorderModal()" class="secondary-btn">Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+/**
+ * Create automatic purchase order from selected items
+ */
+async function createAutoReorderPO() {
+    const checkboxes = document.querySelectorAll('.reorder-checkbox:checked');
+
+    if (checkboxes.length === 0) {
+        alert('Please select at least one item to reorder');
+        return;
+    }
+
+    // Group items by supplier
+    const supplierGroups = {};
+
+    checkboxes.forEach(cb => {
+        const supplierId = cb.dataset.supplier;
+        if (!supplierGroups[supplierId]) {
+            supplierGroups[supplierId] = [];
+        }
+
+        supplierGroups[supplierId].push({
+            item_id: cb.dataset.itemId,
+            quantity: parseFloat(cb.dataset.qty),
+            unit_cost: 0 // Would need to fetch from supplier data
+        });
+    });
+
+    // Create PO for each supplier
+    for (const [supplierId, items] of Object.entries(supplierGroups)) {
+        if (supplierId === 'null' || !supplierId) {
+            alert('Some items do not have a supplier assigned. Please assign suppliers first.');
+            continue;
+        }
+
+        try {
+            const response = await fetch('php/automation.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'create_auto_po',
+                    supplier_id: supplierId,
+                    items: items
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert(`Purchase Order ${data.po_number} created successfully!`);
+            }
+        } catch (error) {
+            console.error('Error creating auto PO:', error);
+            alert('Failed to create purchase order');
+        }
+    }
+
+    closeReorderModal();
+    loadNotifications();
+}
+
+function closeReorderModal() {
+    const modal = document.querySelector('.reorder-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+/**
+ * Backup database
+ */
+async function backupDatabase() {
+    if (!confirm('Create a backup of the database? This may take a few moments.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('php/automation.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'backup_database' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`Backup created successfully!\nFile: ${data.filename}\nSize: ${(data.size / 1024).toFixed(2)} KB`);
+        } else {
+            alert('Backup failed: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        alert('Failed to create backup');
+    }
+}
+
+// ============================================================================
+// END AUTOMATION & SMART FEATURES
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
     applyServerData(initialData);
 
     if (currentUserRole === 'manager') {
         showManagerContent('home');
+        // Initialize automation features for manager
+        initAutomation();
     } else if (currentUserRole === 'cashier') {
         showCashierContent('order');
+        addReturnRefundButton();
     }
 });
+
+/* ========================================
+   Enhanced Inventory Management
+   ======================================== */
+
+let inventoryViewMode = 'grid'; // 'grid' or 'table'
+let currentInventoryData = [];
+let currentQuickAdjustItem = null;
+
+/**
+ * Toggle between card grid and table view
+ */
+function toggleInventoryView() {
+    const grid = document.getElementById('inventory-grid');
+    const table = document.getElementById('inventory');
+    const icon = document.getElementById('view-toggle-icon');
+    const text = document.getElementById('view-toggle-text');
+
+    if (inventoryViewMode === 'grid') {
+        // Switch to table view
+        inventoryViewMode = 'table';
+        grid.classList.add('hidden');
+        table.classList.remove('hidden');
+        icon.textContent = '📊';
+        text.textContent = 'Card View';
+    } else {
+        // Switch to grid view
+        inventoryViewMode = 'grid';
+        grid.classList.remove('hidden');
+        table.classList.add('hidden');
+        icon.textContent = '📋';
+        text.textContent = 'Table View';
+    }
+}
+
+/**
+ * Render inventory in card grid format
+ */
+function renderInventoryGrid(items) {
+    const grid = document.getElementById('inventory-grid');
+    if (!grid) return;
+
+    if (items.length === 0) {
+        grid.innerHTML = '<p style="text-align: center; color: var(--text-secondary); grid-column: 1/-1;">No inventory items found.</p>';
+        return;
+    }
+
+    grid.innerHTML = items.map(item => {
+        const qty = parseFloat(item.quantity);
+        const minStock = parseFloat(item.min_stock || 0);
+        const maxStock = parseFloat(item.max_stock || 100);
+
+        // Determine status
+        let status, statusClass, stockPercentage;
+        if (qty <= 0) {
+            status = 'OUT';
+            statusClass = 'critical';
+            stockPercentage = 0;
+        } else if (qty <= minStock) {
+            status = 'LOW';
+            statusClass = 'low';
+            stockPercentage = (qty / maxStock) * 100;
+        } else {
+            status = 'GOOD';
+            statusClass = 'good';
+            stockPercentage = (qty / maxStock) * 100;
+        }
+
+        return `
+            <div class="inventory-card">
+                <div class="inventory-card-image">
+                    ${item.image ? `<img src="${item.image}" alt="${item.item}">` : `<div class="placeholder-icon">📦</div>`}
+                    <div class="inventory-card-status-badge status-badge ${statusClass}">${status}</div>
+                </div>
+
+                <div class="inventory-card-header">
+                    <div class="inventory-card-title">${item.item}</div>
+                    ${item.barcode ? `<span class="inventory-card-barcode">🔖 ${item.barcode}</span>` : ''}
+                </div>
+
+                <div class="inventory-card-quantity">
+                    <div class="quantity-display">
+                        <span class="quantity-value">${qty}</span>
+                        <span class="quantity-unit">${item.unit}</span>
+                    </div>
+
+                    <div class="stock-level-bar">
+                        <div class="stock-level-fill ${statusClass}" style="width: ${Math.min(stockPercentage, 100)}%"></div>
+                    </div>
+                    <div class="stock-level-text">
+                        <span>Min: ${minStock}</span>
+                        <span>Max: ${maxStock}</span>
+                    </div>
+                </div>
+
+                <div class="inventory-card-actions">
+                    <button class="quick-action-btn primary" onclick="openQuickAdjustModal(${item.id})">
+                        ⚡ Quick Adjust
+                    </button>
+                    <button class="quick-action-btn" onclick="viewItemDetails(${item.id})">
+                        📊 Details
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Filter and sort inventory
+ */
+function filterInventory() {
+    const searchTerm = document.getElementById('inventory-search')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('inventory-status-filter')?.value || '';
+
+    let filtered = currentInventoryData.filter(item => {
+        const matchesSearch = item.item.toLowerCase().includes(searchTerm) ||
+                            (item.barcode && item.barcode.toLowerCase().includes(searchTerm));
+
+        if (!matchesSearch) return false;
+
+        if (!statusFilter) return true;
+
+        const qty = parseFloat(item.quantity);
+        const minStock = parseFloat(item.min_stock || 0);
+
+        if (statusFilter === 'critical' && qty <= 0) return true;
+        if (statusFilter === 'low' && qty > 0 && qty <= minStock) return true;
+        if (statusFilter === 'good' && qty > minStock) return true;
+
+        return false;
+    });
+
+    if (inventoryViewMode === 'grid') {
+        renderInventoryGrid(filtered);
+    } else {
+        // Update table (existing function should handle this)
+        const tbody = document.querySelector('#inventory tbody');
+        if (tbody) {
+            renderInventoryTableRows(filtered);
+        }
+    }
+}
+
+/**
+ * Sort inventory
+ */
+function sortInventory() {
+    const sortBy = document.getElementById('inventory-sort')?.value || 'name';
+
+    let sorted = [...currentInventoryData];
+
+    switch (sortBy) {
+        case 'name':
+            sorted.sort((a, b) => a.item.localeCompare(b.item));
+            break;
+        case 'quantity-low':
+            sorted.sort((a, b) => parseFloat(a.quantity) - parseFloat(b.quantity));
+            break;
+        case 'quantity-high':
+            sorted.sort((a, b) => parseFloat(b.quantity) - parseFloat(a.quantity));
+            break;
+        case 'status':
+            sorted.sort((a, b) => {
+                const getStatusPriority = (item) => {
+                    const qty = parseFloat(item.quantity);
+                    const minStock = parseFloat(item.min_stock || 0);
+                    if (qty <= 0) return 3; // Critical first
+                    if (qty <= minStock) return 2; // Low second
+                    return 1; // Good last
+                };
+                return getStatusPriority(b) - getStatusPriority(a);
+            });
+            break;
+    }
+
+    currentInventoryData = sorted;
+    filterInventory();
+}
+
+/**
+ * Render inventory table rows (helper function)
+ */
+function renderInventoryTableRows(items) {
+    const tbody = document.querySelector('#inventory tbody');
+    if (!tbody) return;
+
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No inventory items found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+        const qty = parseFloat(item.quantity);
+        const minStock = parseFloat(item.min_stock || 0);
+
+        let statusText, statusColor;
+        if (qty <= 0) {
+            statusText = '🔴 OUT';
+            statusColor = '#d32f2f';
+        } else if (qty <= minStock) {
+            statusText = '🟡 LOW';
+            statusColor = '#f57c00';
+        } else {
+            statusText = '🟢 GOOD';
+            statusColor = '#388e3c';
+        }
+
+        return `
+            <tr>
+                <td>${item.item}${item.barcode ? ` <span style="color: #999; font-size: 0.85em;">(${item.barcode})</span>` : ''}</td>
+                <td>${qty}</td>
+                <td>${item.unit}</td>
+                <td>${minStock} / ${item.max_stock || 'N/A'}</td>
+                <td style="color: ${statusColor}; font-weight: 600;">${statusText}</td>
+                <td>
+                    <button onclick="openQuickAdjustModal(${item.id})">Quick Adjust</button>
+                    <button onclick="viewItemDetails(${item.id})">Details</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/**
+ * Export inventory to CSV
+ */
+function exportInventoryCSV() {
+    if (currentInventoryData.length === 0) {
+        alert('No inventory data to export.');
+        return;
+    }
+
+    const headers = ['Item', 'Quantity', 'Unit', 'Min Stock', 'Max Stock', 'Reorder Level', 'Barcode', 'Status'];
+    const rows = currentInventoryData.map(item => {
+        const qty = parseFloat(item.quantity);
+        const minStock = parseFloat(item.min_stock || 0);
+        let status = qty <= 0 ? 'OUT OF STOCK' : (qty <= minStock ? 'LOW STOCK' : 'GOOD');
+
+        return [
+            item.item,
+            item.quantity,
+            item.unit,
+            item.min_stock || '',
+            item.max_stock || '',
+            item.reorder_level || '',
+            item.barcode || '',
+            status
+        ].map(field => `"${field}"`).join(',');
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventory_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+/* ========================================
+   Barcode Scanner Functions
+   ======================================== */
+
+let barcodeStream = null;
+
+/**
+ * Show barcode scanner modal
+ */
+function showBarcodeScanModal() {
+    const modal = document.getElementById('barcode-scan-modal');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+
+    // Try to start camera
+    startBarcodeCamera();
+}
+
+/**
+ * Close barcode scanner modal
+ */
+function closeBarcodeScanModal() {
+    const modal = document.getElementById('barcode-scan-modal');
+    if (!modal) return;
+
+    modal.classList.add('hidden');
+
+    // Stop camera
+    stopBarcodeCamera();
+
+    // Clear manual input
+    const input = document.getElementById('manual-barcode-input');
+    if (input) input.value = '';
+
+    // Clear result
+    const result = document.getElementById('barcode-result');
+    if (result) {
+        result.innerHTML = '';
+        result.classList.add('hidden');
+    }
+}
+
+/**
+ * Start camera for barcode scanning
+ */
+async function startBarcodeCamera() {
+    const video = document.getElementById('barcode-video');
+    if (!video) return;
+
+    try {
+        barcodeStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+        });
+        video.srcObject = barcodeStream;
+
+        // Note: Actual barcode decoding would require a library like ZXing or QuaggaJS
+        // For now, we'll just show the camera and rely on manual entry
+        console.log('Camera started. For full barcode scanning, integrate a library like QuaggaJS or ZXing.');
+    } catch (error) {
+        console.error('Camera access denied:', error);
+        alert('Camera access denied. Please use manual barcode entry or check your browser permissions.');
+    }
+}
+
+/**
+ * Stop camera
+ */
+function stopBarcodeCamera() {
+    if (barcodeStream) {
+        barcodeStream.getTracks().forEach(track => track.stop());
+        barcodeStream = null;
+    }
+
+    const video = document.getElementById('barcode-video');
+    if (video) video.srcObject = null;
+}
+
+/**
+ * Search inventory by barcode
+ */
+async function searchByBarcode() {
+    const input = document.getElementById('manual-barcode-input');
+    const result = document.getElementById('barcode-result');
+
+    if (!input || !result) return;
+
+    const barcode = input.value.trim();
+    if (!barcode) {
+        alert('Please enter a barcode.');
+        return;
+    }
+
+    // Search in current inventory data
+    const item = currentInventoryData.find(i => i.barcode && i.barcode === barcode);
+
+    if (item) {
+        result.innerHTML = `
+            <h4>✅ Item Found</h4>
+            <p><strong>${item.item}</strong></p>
+            <p>Current Stock: <strong>${item.quantity} ${item.unit}</strong></p>
+            <p>Barcode: ${item.barcode}</p>
+            <button class="btn-primary" onclick="openQuickAdjustModal(${item.id}); closeBarcodeScanModal();">
+                Adjust Stock
+            </button>
+        `;
+        result.classList.remove('hidden');
+    } else {
+        result.innerHTML = `
+            <h4>❌ Not Found</h4>
+            <p>No item found with barcode: <strong>${barcode}</strong></p>
+            <p>Please check the barcode or add this item to inventory.</p>
+        `;
+        result.classList.remove('hidden');
+    }
+}
+
+/* ========================================
+   Quick Stock Adjustment Modal
+   ======================================== */
+
+/**
+ * Open quick adjustment modal
+ */
+function openQuickAdjustModal(itemId) {
+    const item = currentInventoryData.find(i => i.id === itemId);
+    if (!item) {
+        alert('Item not found.');
+        return;
+    }
+
+    currentQuickAdjustItem = item;
+
+    const modal = document.getElementById('quick-adjust-modal');
+    const itemInfo = document.getElementById('quick-adjust-item-info');
+    const qtyInput = document.getElementById('quick-adjust-qty');
+
+    if (!modal || !itemInfo || !qtyInput) return;
+
+    itemInfo.innerHTML = `
+        <h4>${item.item}</h4>
+        <div class="current-stock">Current: ${item.quantity} ${item.unit}</div>
+    `;
+
+    qtyInput.value = 0;
+    document.getElementById('quick-adjust-reason').value = 'stock-in';
+    document.getElementById('quick-adjust-notes').value = '';
+
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Close quick adjustment modal
+ */
+function closeQuickAdjustModal() {
+    const modal = document.getElementById('quick-adjust-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    currentQuickAdjustItem = null;
+}
+
+/**
+ * Quick adjust by amount
+ */
+function quickAdjust(amount) {
+    const input = document.getElementById('quick-adjust-qty');
+    if (!input) return;
+
+    const currentValue = parseFloat(input.value) || 0;
+    input.value = currentValue + amount;
+}
+
+/**
+ * Save quick adjustment
+ */
+async function saveQuickAdjustment() {
+    if (!currentQuickAdjustItem) return;
+
+    const qtyInput = document.getElementById('quick-adjust-qty');
+    const reasonSelect = document.getElementById('quick-adjust-reason');
+    const notesInput = document.getElementById('quick-adjust-notes');
+
+    if (!qtyInput || !reasonSelect || !notesInput) return;
+
+    const adjustment = parseFloat(qtyInput.value);
+    if (adjustment === 0) {
+        alert('Please enter an adjustment amount.');
+        return;
+    }
+
+    const reason = reasonSelect.value;
+    const notes = notesInput.value.trim();
+
+    // Determine movement type based on reason
+    let movementType = reason;
+    let finalQty = adjustment;
+
+    if (reason === 'stock-out' || reason === 'damaged') {
+        finalQty = -Math.abs(adjustment);
+    } else {
+        finalQty = Math.abs(adjustment);
+    }
+
+    try {
+        const response = await fetch('php/inventory.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'record_stock_movement',
+                item_id: currentQuickAdjustItem.id,
+                movement_type: movementType,
+                quantity: finalQty,
+                notes: notes || `Quick adjustment via ${reason}`
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Stock adjusted successfully!');
+            closeQuickAdjustModal();
+            loadInventory(); // Reload inventory
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error saving adjustment:', error);
+        alert('Failed to save adjustment. Please try again.');
+    }
+}
+
+/**
+ * View item details (placeholder)
+ */
+function viewItemDetails(itemId) {
+    const item = currentInventoryData.find(i => i.id === itemId);
+    if (!item) return;
+
+    alert(`Item Details:\n\nName: ${item.item}\nQuantity: ${item.quantity} ${item.unit}\nMin Stock: ${item.min_stock}\nMax Stock: ${item.max_stock}\nBarcode: ${item.barcode || 'N/A'}`);
+    // In a real app, this would open a detailed modal with history, batches, etc.
+}
+
+/* ========================================
+   Override loadInventory to support grid view
+   ======================================== */
+
+// Store original loadInventory function
+const originalLoadInventory = loadInventory;
+
+// Override loadInventory
+window.loadInventory = async function() {
+    try {
+        const response = await fetch('php/inventory.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'fetch_inventory' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            currentInventoryData = data.items || [];
+
+            // Render based on current view mode
+            if (inventoryViewMode === 'grid') {
+                renderInventoryGrid(currentInventoryData);
+            }
+
+            // Also populate table for when user switches views
+            const tbody = document.querySelector('#inventory tbody');
+            if (tbody) {
+                renderInventoryTableRows(currentInventoryData);
+            }
+
+            // Populate dropdowns
+            populateInventoryDropdowns(currentInventoryData);
+        }
+    } catch (error) {
+        console.error('Error loading inventory:', error);
+    }
+};
+
+/**
+ * Populate inventory dropdowns
+ */
+function populateInventoryDropdowns(items) {
+    const selects = [
+        document.getElementById('stockMovementItem'),
+        document.getElementById('movementFilterItem')
+    ];
+
+    selects.forEach(select => {
+        if (!select) return;
+
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Select Item</option>' +
+            items.map(item => `<option value="${item.id}">${item.item}</option>`).join('');
+        select.value = currentValue;
+    });
+}

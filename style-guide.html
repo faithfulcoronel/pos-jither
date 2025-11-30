@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jowen's Kitchen & Cafe - Style Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --coffee-espresso: #3E2723;
+            --coffee-dark-roast: #4E342E;
+            --coffee-medium-roast: #5D4037;
+            --coffee-caramel: #A1887F;
+            --coffee-latte: #BCAAA4;
+            --coffee-cream: #EFEBE9;
+            --coffee-foam: #FAFAFA;
+            --coffee-gold: #D4A574;
+            --coffee-copper: #B87333;
+            --coffee-amber: #FFB74D;
+            --success: #66BB6A;
+            --danger: #EF5350;
+            --warning: #FFA726;
+            --info: #42A5F5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: #F5F5F5;
+            padding: 40px 20px;
+            color: var(--coffee-espresso);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, var(--coffee-espresso), var(--coffee-dark-roast));
+            border-radius: 20px;
+            color: var(--coffee-cream);
+        }
+
+        .header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 48px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            background: white;
+            padding: 40px;
+            margin-bottom: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(62, 39, 35, 0.12);
+            border-left: 4px solid var(--coffee-gold);
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: var(--coffee-espresso);
+        }
+
+        .subsection-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 30px 0 20px;
+            color: var(--coffee-dark-roast);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Color Swatches */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .color-swatch {
+            text-align: center;
+        }
+
+        .color-box {
+            height: 100px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(62, 39, 35, 0.08);
+        }
+
+        .color-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .color-code {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--coffee-caramel);
+        }
+
+        /* Typography */
+        .type-sample {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: var(--coffee-cream);
+            border-radius: 12px;
+        }
+
+        .h1-sample {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 36px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .h2-sample {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .h3-sample {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .body-sample {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .label-sample {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+
+        /* Buttons */
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(62, 39, 35, 0.12);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(62, 39, 35, 0.16);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--success) 0%, #4CAF50 100%);
+            color: white;
+            border-bottom: 3px solid #388E3C;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger) 0%, #E53935 100%);
+            color: white;
+            border-bottom: 3px solid #C62828;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--coffee-dark-roast);
+            border: 2px solid var(--coffee-latte);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, white, var(--coffee-cream));
+            color: var(--coffee-espresso);
+            border: 2px solid var(--coffee-gold);
+        }
+
+        /* Form Elements */
+        .input {
+            width: 100%;
+            padding: 18px 24px;
+            font-size: 26px;
+            font-weight: 500;
+            font-family: 'Cormorant Garamond', serif;
+            text-align: center;
+            border: 2px solid var(--coffee-latte);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 2px 4px rgba(62, 39, 35, 0.06);
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--coffee-gold);
+            box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.15);
+        }
+
+        /* Badges */
+        .badge-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(62, 39, 35, 0.08);
+        }
+
+        .badge-success {
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            color: #2E7D32;
+            border: 1px solid #81C784;
+        }
+
+        .badge-danger {
+            background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+            color: #C62828;
+            border: 1px solid #E57373;
+        }
+
+        .badge-warning {
+            background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+            color: #E65100;
+            border: 1px solid #FFB74D;
+        }
+
+        .badge-info {
+            background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+            color: #1565C0;
+            border: 1px solid #64B5F6;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 18px 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            box-shadow: 0 4px 8px rgba(62, 39, 35, 0.12);
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            color: #1B5E20;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+            color: #B71C1C;
+            border-left: 4px solid #F44336;
+        }
+
+        .alert-icon {
+            font-size: 24px;
+            margin-right: 14px;
+        }
+
+        /* Shadows */
+        .shadow-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .shadow-box {
+            height: 120px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--coffee-dark-roast);
+        }
+
+        .shadow-sm {
+            box-shadow: 0 2px 4px rgba(62, 39, 35, 0.08);
+        }
+
+        .shadow-md {
+            box-shadow: 0 4px 8px rgba(62, 39, 35, 0.12);
+        }
+
+        .shadow-lg {
+            box-shadow: 0 8px 24px rgba(62, 39, 35, 0.16);
+        }
+
+        .shadow-xl {
+            box-shadow: 0 16px 48px rgba(62, 39, 35, 0.20);
+        }
+
+        /* Card Example */
+        .card-example {
+            background: linear-gradient(135deg, white 0%, var(--coffee-cream) 100%);
+            border-radius: 20px;
+            padding: 40px;
+            border-left: 4px solid var(--coffee-gold);
+            box-shadow: 0 16px 48px rgba(62, 39, 35, 0.20);
+        }
+
+        /* Spacing */
+        .spacing-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .spacing-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .spacing-box {
+            background: var(--coffee-gold);
+            border-radius: 4px;
+        }
+
+        .spacing-label {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Table */
+        .table-example {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-example thead {
+            background: linear-gradient(135deg, var(--coffee-espresso), var(--coffee-dark-roast));
+        }
+
+        .table-example th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--coffee-cream);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            border-bottom: 2px solid var(--coffee-gold);
+        }
+
+        .table-example td {
+            padding: 16px;
+            font-size: 14px;
+            background: white;
+            border-bottom: 1px solid var(--coffee-cream);
+        }
+
+        .table-example tbody tr:hover {
+            background: var(--coffee-cream);
+        }
+
+        @media (max-width: 768px) {
+            .color-grid,
+            .button-grid,
+            .shadow-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>☕ Jowen's Kitchen & Cafe</h1>
+            <p>Living Style Guide & Design System</p>
+        </div>
+
+        <!-- Colors Section -->
+        <div class="section">
+            <h2 class="section-title">Color Palette</h2>
+
+            <h3 class="subsection-title">Coffee Tones</h3>
+            <div class="color-grid">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-espresso);"></div>
+                    <div class="color-name">Coffee Espresso</div>
+                    <div class="color-code">#3E2723</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-dark-roast);"></div>
+                    <div class="color-name">Coffee Dark Roast</div>
+                    <div class="color-code">#4E342E</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-medium-roast);"></div>
+                    <div class="color-name">Coffee Medium Roast</div>
+                    <div class="color-code">#5D4037</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-caramel);"></div>
+                    <div class="color-name">Coffee Caramel</div>
+                    <div class="color-code">#A1887F</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-latte);"></div>
+                    <div class="color-name">Coffee Latte</div>
+                    <div class="color-code">#BCAAA4</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-cream); border: 1px solid #ddd;"></div>
+                    <div class="color-name">Coffee Cream</div>
+                    <div class="color-code">#EFEBE9</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-gold);"></div>
+                    <div class="color-name">Coffee Gold</div>
+                    <div class="color-code">#D4A574</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--coffee-copper);"></div>
+                    <div class="color-name">Coffee Copper</div>
+                    <div class="color-code">#B87333</div>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Functional Colors</h3>
+            <div class="color-grid">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--success);"></div>
+                    <div class="color-name">Success</div>
+                    <div class="color-code">#66BB6A</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--danger);"></div>
+                    <div class="color-name">Danger</div>
+                    <div class="color-code">#EF5350</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--warning);"></div>
+                    <div class="color-name">Warning</div>
+                    <div class="color-code">#FFA726</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: var(--info);"></div>
+                    <div class="color-name">Info</div>
+                    <div class="color-code">#42A5F5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typography -->
+        <div class="section">
+            <h2 class="section-title">Typography</h2>
+
+            <div class="type-sample">
+                <div class="h1-sample">H1 Heading - Cormorant Garamond (36px / 600)</div>
+            </div>
+
+            <div class="type-sample">
+                <div class="h2-sample">H2 Heading - Cormorant Garamond (28px / 600)</div>
+            </div>
+
+            <div class="type-sample">
+                <div class="h3-sample">H3 Heading - Montserrat (24px / 600)</div>
+            </div>
+
+            <div class="type-sample">
+                <div class="body-sample">Body Text - Montserrat (14px / 400) - The quick brown fox jumps over the lazy dog. This is an example of body text used throughout the application for readable content.</div>
+            </div>
+
+            <div class="type-sample">
+                <div class="label-sample">Label Text - Montserrat (12px / 600 / Uppercase)</div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="section">
+            <h2 class="section-title">Buttons</h2>
+
+            <div class="button-grid">
+                <button class="btn btn-primary">Time In</button>
+                <button class="btn btn-danger">Time Out</button>
+                <button class="btn btn-secondary">Filter</button>
+                <button class="btn btn-gold">Manager Login</button>
+            </div>
+        </div>
+
+        <!-- Form Elements -->
+        <div class="section">
+            <h2 class="section-title">Form Elements</h2>
+
+            <label class="label-sample" style="display: block; margin-bottom: 10px;">Employee Number</label>
+            <input type="text" class="input" placeholder="Enter your ID" value="EMP001">
+        </div>
+
+        <!-- Badges -->
+        <div class="section">
+            <h2 class="section-title">Status Badges</h2>
+
+            <div class="badge-grid">
+                <span class="badge badge-success">✓ Present</span>
+                <span class="badge badge-danger">✕ Absent</span>
+                <span class="badge badge-warning">⏰ Late</span>
+                <span class="badge badge-info">◐ Half Day</span>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="section">
+            <h2 class="section-title">Alert Messages</h2>
+
+            <div class="alert alert-success">
+                <span class="alert-icon">✓</span>
+                <span>Time in successful! Welcome, John Smith!</span>
+            </div>
+
+            <div class="alert alert-danger">
+                <span class="alert-icon">✕</span>
+                <span>Error: Employee not found or inactive.</span>
+            </div>
+        </div>
+
+        <!-- Shadows -->
+        <div class="section">
+            <h2 class="section-title">Shadow Levels</h2>
+
+            <div class="shadow-grid">
+                <div class="shadow-box shadow-sm">Small</div>
+                <div class="shadow-box shadow-md">Medium</div>
+                <div class="shadow-box shadow-lg">Large</div>
+                <div class="shadow-box shadow-xl">Extra Large</div>
+            </div>
+        </div>
+
+        <!-- Card Example -->
+        <div class="section">
+            <h2 class="section-title">Card Component</h2>
+
+            <div class="card-example">
+                <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 24px; margin-bottom: 15px;">Example Card</h3>
+                <p style="line-height: 1.6;">This is an example of a card component with the premium coffee shop styling. It features a gradient background, rounded corners, and a gold left border accent.</p>
+            </div>
+        </div>
+
+        <!-- Spacing Scale -->
+        <div class="section">
+            <h2 class="section-title">Spacing Scale (8px base)</h2>
+
+            <div class="spacing-grid">
+                <div class="spacing-item">
+                    <div class="spacing-box" style="width: 4px; height: 20px;"></div>
+                    <span class="spacing-label">4px - XS</span>
+                </div>
+                <div class="spacing-item">
+                    <div class="spacing-box" style="width: 8px; height: 20px;"></div>
+                    <span class="spacing-label">8px - SM</span>
+                </div>
+                <div class="spacing-item">
+                    <div class="spacing-box" style="width: 16px; height: 20px;"></div>
+                    <span class="spacing-label">16px - MD (Default)</span>
+                </div>
+                <div class="spacing-item">
+                    <div class="spacing-box" style="width: 24px; height: 20px;"></div>
+                    <span class="spacing-label">24px - LG</span>
+                </div>
+                <div class="spacing-item">
+                    <div class="spacing-box" style="width: 32px; height: 20px;"></div>
+                    <span class="spacing-label">32px - XL</span>
+                </div>
+                <div class="spacing-item">
+                    <div class="spacing-box" style="width: 40px; height: 20px;"></div>
+                    <span class="spacing-label">40px - 2XL</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Example -->
+        <div class="section">
+            <h2 class="section-title">Table Component</h2>
+
+            <table class="table-example">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Hours</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Jan 20, 2025</td>
+                        <td>08:00 AM</td>
+                        <td>05:00 PM</td>
+                        <td>9.0 hrs</td>
+                        <td><span class="badge badge-success">✓ Present</span></td>
+                    </tr>
+                    <tr>
+                        <td>Jan 19, 2025</td>
+                        <td>08:15 AM</td>
+                        <td>05:30 PM</td>
+                        <td>9.25 hrs</td>
+                        <td><span class="badge badge-warning">⏰ Late</span></td>
+                    </tr>
+                    <tr>
+                        <td>Jan 18, 2025</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td><span class="badge badge-danger">✕ Absent</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding: 40px 0; color: var(--coffee-caramel);">
+            <p style="margin-bottom: 10px;">Jowen's Kitchen & Cafe Design System</p>
+            <p style="font-size: 14px;">Version 1.0 | 2025</p>
+        </div>
+    </div>
+</body>
+</html>

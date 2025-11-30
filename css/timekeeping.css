@@ -1,0 +1,1229 @@
+/**
+ * Modern POS-Style Time Keeping System CSS
+ * Professional, Touch-Friendly, Coffee Shop Interface
+ * Optimized for Tablets and Touchscreens
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* Modern POS Color Palette - Coffee Shop Theme */
+    --pos-espresso: #2C1810;
+    --pos-dark-brown: #3E2723;
+    --pos-brown: #5D4037;
+    --pos-caramel: #A67C52;
+    --pos-latte: #C8B5A0;
+    --pos-cream: #F5F1ED;
+    --pos-white: #FFFFFF;
+    --pos-black: #1A1A1A;
+
+    /* Accent Colors */
+    --pos-gold: #D4A574;
+    --pos-copper: #B87333;
+    --pos-amber: #FFB74D;
+
+    /* Functional Colors - Modern & Vibrant */
+    --pos-success: #10B981;
+    --pos-success-light: #D1FAE5;
+    --pos-success-dark: #059669;
+    --pos-danger: #EF4444;
+    --pos-danger-light: #FEE2E2;
+    --pos-danger-dark: #DC2626;
+    --pos-warning: #F59E0B;
+    --pos-warning-light: #FEF3C7;
+    --pos-info: #3B82F6;
+    --pos-info-light: #DBEAFE;
+
+    /* Neutral Grays */
+    --pos-gray-50: #F9FAFB;
+    --pos-gray-100: #F3F4F6;
+    --pos-gray-200: #E5E7EB;
+    --pos-gray-300: #D1D5DB;
+    --pos-gray-400: #9CA3AF;
+    --pos-gray-500: #6B7280;
+    --pos-gray-600: #4B5563;
+    --pos-gray-700: #374151;
+    --pos-gray-800: #1F2937;
+    --pos-gray-900: #111827;
+
+    /* POS-Specific Shadows - Crisp & Modern */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+    /* Touch-Friendly Spacing */
+    --space-xs: 8px;
+    --space-sm: 12px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+    --space-3xl: 64px;
+
+    /* Transitions - Snappy & Responsive */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Border Radius - Modern POS Style */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+    --radius-full: 9999px;
+}
+
+/* Global Styles */
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+   MAIN POS CONTAINER
+   ======================================== */
+
+.timekeeping-page {
+    min-height: 100vh;
+    background: linear-gradient(to bottom, #F9FAFB 0%, #F3F4F6 100%);
+    padding: 0;
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Modern POS Header Bar */
+.pos-header {
+    background: linear-gradient(135deg, var(--pos-espresso) 0%, var(--pos-dark-brown) 100%);
+    padding: var(--space-lg) var(--space-xl);
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.pos-header-content {
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pos-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.pos-logo {
+    width: 48px;
+    height: 48px;
+    background: var(--pos-white);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: var(--shadow-md);
+}
+
+.pos-brand-text h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--pos-white);
+    margin: 0 0 2px 0;
+    letter-spacing: -0.3px;
+}
+
+.pos-brand-text p {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--pos-latte);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.pos-header-time {
+    text-align: right;
+}
+
+.pos-time-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--pos-latte);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 4px;
+}
+
+.pos-current-time {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--pos-white);
+    letter-spacing: 2px;
+    line-height: 1;
+}
+
+/* ========================================
+   MAIN POS CONTENT AREA
+   ======================================== */
+
+.tk-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: var(--space-2xl) var(--space-xl);
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: var(--space-2xl);
+    align-items: start;
+}
+
+/* ========================================
+   LEFT PANEL - TIME IN/OUT TERMINAL
+   ======================================== */
+
+.tk-panel-left {
+    background: var(--pos-white);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-2xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--pos-gray-200);
+}
+
+.tk-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 2px solid var(--pos-gray-100);
+}
+
+.tk-logo {
+    font-size: 64px;
+    margin-bottom: var(--space-md);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+.tk-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--pos-espresso);
+    margin: 0 0 var(--space-xs) 0;
+    letter-spacing: -0.5px;
+}
+
+.tk-subtitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--pos-gray-500);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* Employee Input Section */
+.tk-form-group {
+    margin-bottom: var(--space-xl);
+}
+
+.tk-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pos-gray-700);
+    margin-bottom: var(--space-sm);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tk-input {
+    width: 100%;
+    padding: var(--space-lg) var(--space-xl);
+    font-size: 24px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+    letter-spacing: 4px;
+    border: 2px solid var(--pos-gray-300);
+    border-radius: var(--radius-lg);
+    background: var(--pos-gray-50);
+    color: var(--pos-espresso);
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-inner);
+}
+
+.tk-input:focus {
+    outline: none;
+    border-color: var(--pos-gold);
+    background: var(--pos-white);
+    box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.1), var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.tk-input::placeholder {
+    color: var(--pos-gray-400);
+    letter-spacing: 2px;
+}
+
+.tk-input-hint {
+    font-size: 12px;
+    color: var(--pos-gray-500);
+    text-align: center;
+    margin-top: var(--space-sm);
+    font-style: italic;
+}
+
+/* POS Action Buttons - Large & Touch-Friendly */
+.tk-btn {
+    width: 100%;
+    padding: var(--space-xl);
+    border: none;
+    border-radius: var(--radius-lg);
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+    min-height: 72px;
+}
+
+.tk-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+}
+
+.tk-btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.tk-btn-icon {
+    font-size: 32px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.tk-btn-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+}
+
+.tk-btn-text strong {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+.tk-btn-text small {
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+    text-transform: capitalize;
+}
+
+/* Time In Button - Success Green */
+.tk-btn-time-in {
+    background: linear-gradient(135deg, var(--pos-success) 0%, var(--pos-success-dark) 100%);
+    color: var(--pos-white);
+    margin-bottom: var(--space-lg);
+}
+
+.tk-btn-time-in:hover {
+    background: linear-gradient(135deg, var(--pos-success-dark) 0%, var(--pos-success) 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.tk-btn-time-in:active {
+    transform: translateY(0);
+}
+
+/* Time Out Button - Danger Red */
+.tk-btn-time-out {
+    background: linear-gradient(135deg, var(--pos-danger) 0%, var(--pos-danger-dark) 100%);
+    color: var(--pos-white);
+    margin-bottom: var(--space-lg);
+}
+
+.tk-btn-time-out:hover {
+    background: linear-gradient(135deg, var(--pos-danger-dark) 0%, var(--pos-danger) 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.tk-btn-time-out:active {
+    transform: translateY(0);
+}
+
+/* Disabled State */
+.tk-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Status Display */
+.tk-status {
+    background: linear-gradient(to bottom right, var(--pos-gray-50), var(--pos-white));
+    border: 2px solid var(--pos-gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+}
+
+.tk-status-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 2px solid var(--pos-gray-200);
+}
+
+.tk-status-icon {
+    font-size: 32px;
+}
+
+.tk-status-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--pos-espresso);
+    margin: 0;
+}
+
+.tk-status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+}
+
+.tk-status-item {
+    background: var(--pos-white);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--pos-gray-200);
+}
+
+.tk-status-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--pos-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.tk-status-value {
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--pos-espresso);
+}
+
+.tk-time-in {
+    color: var(--pos-success);
+}
+
+.tk-time-out {
+    color: var(--pos-danger);
+}
+
+.tk-hours {
+    color: var(--pos-gold);
+}
+
+/* Quick Tips */
+.tk-tips {
+    background: linear-gradient(135deg, var(--pos-info-light), var(--pos-white));
+    border: 2px solid var(--pos-info);
+    border-left: 6px solid var(--pos-info);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-top: var(--space-xl);
+}
+
+.tk-tips-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pos-info);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 var(--space-md) 0;
+}
+
+.tk-tip-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) 0;
+}
+
+.tk-tip-item:not(:last-child) {
+    border-bottom: 1px solid var(--pos-gray-200);
+}
+
+.tk-tip-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.tk-tip-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pos-gray-700);
+    line-height: 1.5;
+}
+
+/* ========================================
+   RIGHT PANEL - ATTENDANCE HISTORY
+   ======================================== */
+
+.tk-panel-right {
+    background: var(--pos-white);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-2xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--pos-gray-200);
+    max-height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+}
+
+.tk-history-header {
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 2px solid var(--pos-gray-100);
+}
+
+.tk-history-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-sm);
+}
+
+.tk-history-icon {
+    font-size: 32px;
+}
+
+.tk-history-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--pos-espresso);
+    margin: 0;
+}
+
+.tk-history-subtitle {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pos-gray-500);
+    margin: var(--space-xs) 0 0 0;
+}
+
+/* Filter Buttons */
+.tk-filters {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xl);
+}
+
+.tk-filter-btn {
+    padding: var(--space-md) var(--space-sm);
+    background: var(--pos-gray-100);
+    border: 2px solid var(--pos-gray-200);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pos-gray-700);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.tk-filter-btn:hover {
+    background: var(--pos-gray-200);
+    border-color: var(--pos-gray-300);
+    transform: translateY(-1px);
+}
+
+.tk-filter-btn.active {
+    background: linear-gradient(135deg, var(--pos-espresso), var(--pos-dark-brown));
+    color: var(--pos-white);
+    border-color: var(--pos-espresso);
+    box-shadow: var(--shadow-md);
+}
+
+.tk-filter-icon {
+    font-size: 14px;
+}
+
+/* Attendance Table */
+.tk-history {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 0 calc(-1 * var(--space-lg));
+    padding: 0 var(--space-lg);
+}
+
+.tk-history::-webkit-scrollbar {
+    width: 8px;
+}
+
+.tk-history::-webkit-scrollbar-track {
+    background: var(--pos-gray-100);
+    border-radius: var(--radius-full);
+}
+
+.tk-history::-webkit-scrollbar-thumb {
+    background: var(--pos-gray-400);
+    border-radius: var(--radius-full);
+}
+
+.tk-history::-webkit-scrollbar-thumb:hover {
+    background: var(--pos-gray-500);
+}
+
+.tk-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tk-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--pos-white);
+}
+
+.tk-table th {
+    padding: var(--space-md) var(--space-sm);
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--pos-gray-600);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    background: var(--pos-gray-100);
+    border-bottom: 2px solid var(--pos-gray-300);
+}
+
+.tk-table th:first-child {
+    border-radius: var(--radius-md) 0 0 0;
+    padding-left: var(--space-md);
+}
+
+.tk-table th:last-child {
+    border-radius: 0 var(--radius-md) 0 0;
+    padding-right: var(--space-md);
+}
+
+.tk-table tbody tr {
+    transition: all var(--transition-fast);
+}
+
+.tk-table tbody tr:hover {
+    background: var(--pos-gray-50);
+}
+
+.tk-table td {
+    padding: var(--space-md) var(--space-sm);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pos-gray-800);
+    border-bottom: 1px solid var(--pos-gray-200);
+}
+
+.tk-table td:first-child {
+    padding-left: var(--space-md);
+    font-weight: 600;
+}
+
+.tk-table td:last-child {
+    padding-right: var(--space-md);
+}
+
+/* Status Badges */
+.tk-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tk-badge-present {
+    background: var(--pos-success-light);
+    color: var(--pos-success-dark);
+    border: 1px solid var(--pos-success);
+}
+
+.tk-badge-absent {
+    background: var(--pos-danger-light);
+    color: var(--pos-danger-dark);
+    border: 1px solid var(--pos-danger);
+}
+
+.tk-badge-late {
+    background: var(--pos-warning-light);
+    color: #92400E;
+    border: 1px solid var(--pos-warning);
+}
+
+/* Summary Stats */
+.tk-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-md);
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 2px solid var(--pos-gray-100);
+}
+
+.tk-summary-item {
+    background: linear-gradient(to bottom right, var(--pos-gray-50), var(--pos-white));
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--pos-gray-200);
+    text-align: center;
+    transition: all var(--transition-base);
+}
+
+.tk-summary-item:hover {
+    border-color: var(--pos-gold);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.tk-summary-icon {
+    font-size: 32px;
+    margin-bottom: var(--space-sm);
+}
+
+.tk-summary-value {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--pos-espresso);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.tk-summary-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--pos-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Empty State */
+.tk-empty {
+    text-align: center;
+    padding: var(--space-3xl) var(--space-xl);
+}
+
+.tk-empty-icon {
+    font-size: 64px;
+    margin-bottom: var(--space-lg);
+    opacity: 0.3;
+}
+
+.tk-empty-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--pos-gray-700);
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.tk-empty-text {
+    font-size: 14px;
+    color: var(--pos-gray-500);
+    margin: 0;
+}
+
+/* ========================================
+   LOADING & NOTIFICATIONS
+   ======================================== */
+
+.tk-loading {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--pos-white);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Toast Notifications */
+.tk-toast {
+    position: fixed;
+    top: var(--space-xl);
+    right: var(--space-xl);
+    background: var(--pos-white);
+    padding: var(--space-lg) var(--space-xl);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2xl);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    max-width: 400px;
+    z-index: 1000;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.tk-toast-success {
+    border-left: 6px solid var(--pos-success);
+}
+
+.tk-toast-error {
+    border-left: 6px solid var(--pos-danger);
+}
+
+/* ========================================
+   MANAGER LOGIN BUTTON (FLOATING)
+   ======================================== */
+
+.tk-bottom-button {
+    position: fixed;
+    bottom: var(--space-2xl);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+.tk-manager-login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    padding: var(--space-lg) var(--space-2xl);
+    background: linear-gradient(135deg, var(--pos-espresso) 0%, var(--pos-dark-brown) 100%);
+    color: var(--pos-white);
+    text-decoration: none;
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-2xl);
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    transition: all var(--transition-base);
+    border: 2px solid var(--pos-gold);
+}
+
+.tk-manager-login-btn:hover {
+    background: linear-gradient(135deg, var(--pos-dark-brown) 0%, var(--pos-espresso) 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4);
+}
+
+.tk-manager-login-btn:active {
+    transform: translateY(-1px);
+}
+
+.tk-manager-text strong {
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.tk-manager-text small {
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+/* ========================================
+   PREMIUM LOGIN PAGE (POS STYLE)
+   ======================================== */
+
+.coffee-login-page {
+    min-height: 100vh;
+    background: linear-gradient(to bottom, #F9FAFB 0%, #F3F4F6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2xl);
+}
+
+.coffee-login-container {
+    width: 100%;
+    max-width: 500px;
+    background: var(--pos-white);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-2xl);
+    border: 1px solid var(--pos-gray-200);
+    overflow: hidden;
+}
+
+/* Login Header */
+.coffee-login-header {
+    background: linear-gradient(135deg, var(--pos-espresso) 0%, var(--pos-dark-brown) 100%);
+    padding: var(--space-2xl);
+    text-align: center;
+}
+
+.coffee-login-logo {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto var(--space-lg);
+    background: var(--pos-white);
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-xl);
+}
+
+.coffee-login-logo img {
+    width: 70%;
+    height: 70%;
+    object-fit: contain;
+}
+
+.coffee-login-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--pos-white);
+    margin: 0 0 var(--space-xs) 0;
+}
+
+.coffee-login-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pos-latte);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.coffee-login-divider {
+    width: 60px;
+    height: 3px;
+    background: var(--pos-gold);
+    margin: var(--space-md) auto 0;
+    border-radius: var(--radius-full);
+}
+
+/* Login Form */
+.coffee-login-form {
+    padding: var(--space-2xl);
+}
+
+.coffee-form-group {
+    margin-bottom: var(--space-xl);
+}
+
+.coffee-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pos-gray-700);
+    margin-bottom: var(--space-sm);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.coffee-label-icon {
+    font-size: 16px;
+}
+
+.coffee-input {
+    width: 100%;
+    padding: var(--space-lg);
+    font-size: 15px;
+    font-weight: 500;
+    border: 2px solid var(--pos-gray-300);
+    border-radius: var(--radius-md);
+    background: var(--pos-gray-50);
+    color: var(--pos-espresso);
+    transition: all var(--transition-base);
+}
+
+.coffee-input:focus {
+    outline: none;
+    border-color: var(--pos-gold);
+    background: var(--pos-white);
+    box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.1);
+}
+
+.coffee-login-btn {
+    width: 100%;
+    padding: var(--space-xl);
+    background: linear-gradient(135deg, var(--pos-espresso) 0%, var(--pos-dark-brown) 100%);
+    color: var(--pos-white);
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    margin-top: var(--space-xl);
+}
+
+.coffee-login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.coffee-login-btn:active {
+    transform: translateY(0);
+}
+
+.coffee-btn-icon {
+    font-size: 24px;
+}
+
+.coffee-login-footer {
+    padding: var(--space-xl) var(--space-2xl);
+    border-top: 2px solid var(--pos-gray-100);
+    text-align: center;
+}
+
+.coffee-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--pos-gray-700);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-base);
+}
+
+.coffee-back-link:hover {
+    background: var(--pos-gray-100);
+    color: var(--pos-espresso);
+}
+
+.coffee-back-icon {
+    font-size: 18px;
+}
+
+/* Error Alert */
+.coffee-login-alert {
+    margin: 0 var(--space-2xl) var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--pos-danger-light);
+    border-left: 4px solid var(--pos-danger);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.coffee-alert-icon {
+    font-size: 20px;
+}
+
+.coffee-alert-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pos-danger-dark);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 1400px) {
+    .tk-container {
+        grid-template-columns: 1fr;
+        gap: var(--space-xl);
+    }
+
+    .tk-panel-right {
+        max-height: 600px;
+    }
+}
+
+@media (max-width: 768px) {
+    .pos-header {
+        padding: var(--space-md) var(--space-lg);
+    }
+
+    .pos-brand-text h1 {
+        font-size: 16px;
+    }
+
+    .pos-current-time {
+        font-size: 24px;
+    }
+
+    .tk-container {
+        padding: var(--space-lg);
+    }
+
+    .tk-panel-left,
+    .tk-panel-right {
+        padding: var(--space-xl);
+    }
+
+    .tk-filters {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .tk-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .tk-status-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .pos-header-content {
+        flex-direction: column;
+        gap: var(--space-md);
+        text-align: center;
+    }
+
+    .tk-title {
+        font-size: 22px;
+    }
+
+    .tk-input {
+        font-size: 20px;
+        padding: var(--space-md) var(--space-lg);
+    }
+
+    .tk-btn {
+        padding: var(--space-lg);
+        min-height: 64px;
+    }
+
+    .tk-btn-text strong {
+        font-size: 16px;
+    }
+
+    .tk-btn-text small {
+        font-size: 11px;
+    }
+
+    .tk-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .tk-filter-icon {
+        display: none;
+    }
+
+    .tk-bottom-button {
+        bottom: var(--space-lg);
+        left: var(--space-md);
+        right: var(--space-md);
+        transform: none;
+    }
+
+    .tk-manager-login-btn {
+        width: 100%;
+        padding: var(--space-md) var(--space-lg);
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY & FOCUS STATES
+   ======================================== */
+
+.tk-input:focus-visible,
+.tk-btn:focus-visible,
+.tk-filter-btn:focus-visible,
+.tk-manager-login-btn:focus-visible,
+.coffee-input:focus-visible,
+.coffee-login-btn:focus-visible {
+    outline: 3px solid var(--pos-gold);
+    outline-offset: 3px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Dark Mode Support (Optional - for future) */
+@media (prefers-color-scheme: dark) {
+    /* Keep light theme for consistent POS experience */
+    /* Can be enabled if needed */
+}

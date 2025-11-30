@@ -1,0 +1,721 @@
+<!-- Recipe & Profitability Management Component -->
+<style>
+.recipe-section {
+    background: white;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.profitability-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.profit-metric {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.profit-metric.positive {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.profit-metric.negative {
+    background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+}
+
+.profit-metric h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.profit-metric .value {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 5px 0;
+}
+
+.recipe-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.recipe-table th,
+.recipe-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.recipe-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+}
+
+.recipe-table tr:hover {
+    background: #f9f9f9;
+}
+
+.recipe-form {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.recipe-form .form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 2fr auto;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.recipe-form input,
+.recipe-form select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.recipe-form button {
+    padding: 10px 20px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.recipe-form button:hover {
+    background: #45a049;
+}
+
+.btn-action {
+    padding: 6px 12px;
+    margin: 0 3px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-edit {
+    background: #2196F3;
+    color: white;
+}
+
+.btn-delete {
+    background: #f44336;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #0b7dda;
+}
+
+.btn-delete:hover {
+    background: #da190b;
+}
+
+.product-selector {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.product-selector select {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+}
+
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.tab {
+    padding: 12px 24px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 16px;
+    font-weight: 500;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+}
+
+.tab.active {
+    color: #4CAF50;
+    border-bottom-color: #4CAF50;
+}
+
+.tab:hover {
+    color: #4CAF50;
+}
+
+.no-data-message {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    font-size: 16px;
+}
+
+.inventory-cost-section {
+    margin-top: 30px;
+}
+
+.cost-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.cost-item {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.cost-item h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.cost-item .cost-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.cost-item input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.cost-item button {
+    padding: 8px 16px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.cost-item button:hover {
+    background: #0b7dda;
+}
+</style>
+
+<div id="recipe-management-content" class="content-section hidden">
+    <div class="dashboard-header"><h1>Recipe & Profitability Management</h1></div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchRecipeTab('product-recipes')">Product Recipes</button>
+        <button class="tab" onclick="switchRecipeTab('profitability')">Profitability Analysis</button>
+        <button class="tab" onclick="switchRecipeTab('inventory-cost')">Inventory Costs</button>
+    </div>
+
+    <!-- Product Recipes Tab -->
+    <div id="product-recipes-tab" class="tab-content">
+        <div class="product-selector">
+            <label for="recipeProductSelect"><strong>Select Product:</strong></label>
+            <select id="recipeProductSelect" onchange="loadProductRecipe()">
+                <option value="">-- Choose a product --</option>
+            </select>
+        </div>
+
+        <div id="recipeDetails" class="hidden">
+            <!-- Profitability Overview -->
+            <div class="recipe-section">
+                <h3>💰 Profitability Overview</h3>
+                <div class="profitability-card" id="profitabilityCard">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Recipe/Ingredients -->
+            <div class="recipe-section">
+                <h3>📝 Recipe / Ingredients</h3>
+
+                <!-- Add Ingredient Form -->
+                <div class="recipe-form">
+                    <h4>Add Ingredient</h4>
+                    <div class="form-row">
+                        <select id="recipeIngredientSelect">
+                            <option value="">-- Select Ingredient --</option>
+                        </select>
+                        <input type="number" id="recipeQuantity" placeholder="Quantity" step="0.01" min="0">
+                        <input type="text" id="recipeUnit" placeholder="Unit (g, ml, pcs)">
+                        <input type="text" id="recipeNotes" placeholder="Notes (optional)">
+                        <button onclick="addRecipeIngredient()">Add</button>
+                    </div>
+                </div>
+
+                <!-- Recipe Table -->
+                <table class="recipe-table" id="recipeTable">
+                    <thead>
+                        <tr>
+                            <th>Ingredient</th>
+                            <th>Quantity</th>
+                            <th>Unit</th>
+                            <th>Cost/Unit</th>
+                            <th>Total Cost</th>
+                            <th>Available Stock</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recipeTableBody">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="noProductSelected" class="no-data-message">
+            <p>👆 Select a product above to view and manage its recipe</p>
+        </div>
+    </div>
+
+    <!-- Profitability Analysis Tab -->
+    <div id="profitability-tab" class="tab-content hidden">
+        <div class="recipe-section">
+            <h3>📊 All Products Profitability</h3>
+            <table class="recipe-table" id="profitabilityTable">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Selling Price</th>
+                        <th>Cost Price</th>
+                        <th>Gross Profit</th>
+                        <th>Profit Margin %</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="profitabilityTableBody">
+                    <!-- Dynamically populated -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Inventory Costs Tab -->
+    <div id="inventory-cost-tab" class="tab-content hidden">
+        <div class="recipe-section">
+            <h3>💵 Inventory Item Costs</h3>
+            <p>Set the cost per unit for each inventory item. This will automatically update product costs.</p>
+
+            <div class="cost-grid" id="inventoryCostGrid">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables for recipe management
+let currentRecipeProductId = null;
+let currentRecipes = [];
+let currentProfitability = null;
+let allInventoryItems = [];
+
+// Switch between tabs
+function switchRecipeTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tabs .tab').forEach(tab => tab.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Update tab content
+    document.getElementById('product-recipes-tab').classList.add('hidden');
+    document.getElementById('profitability-tab').classList.add('hidden');
+    document.getElementById('inventory-cost-tab').classList.add('hidden');
+
+    document.getElementById(tabName + '-tab').classList.remove('hidden');
+
+    // Load data for the tab
+    if (tabName === 'profitability') {
+        loadAllProfitability();
+    } else if (tabName === 'inventory-cost') {
+        loadInventoryCosts();
+    }
+}
+
+// Initialize recipe management
+function initializeRecipeManagement() {
+    populateProductSelect();
+    populateIngredientSelect();
+    loadAllProfitability();
+}
+
+// Populate product dropdown
+function populateProductSelect() {
+    const select = document.getElementById('recipeProductSelect');
+    select.innerHTML = '<option value="">-- Choose a product --</option>';
+
+    products.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product.id;
+        option.textContent = `${product.name} (₱${product.price.toFixed(2)})`;
+        select.appendChild(option);
+    });
+}
+
+// Populate ingredient dropdown
+function populateIngredientSelect() {
+    const select = document.getElementById('recipeIngredientSelect');
+    select.innerHTML = '<option value="">-- Select Ingredient --</option>';
+
+    inventory.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.item} (${item.qty} ${item.unit} available)`;
+        select.appendChild(option);
+    });
+
+    allInventoryItems = inventory;
+}
+
+// Load recipe for selected product
+async function loadProductRecipe() {
+    const productId = document.getElementById('recipeProductSelect').value;
+
+    if (!productId) {
+        document.getElementById('recipeDetails').classList.add('hidden');
+        document.getElementById('noProductSelected').classList.remove('hidden');
+        return;
+    }
+
+    currentRecipeProductId = productId;
+
+    try {
+        // Fetch recipes
+        const recipeResponse = await fetch(`php/api.php?resource=recipes&action=get-by-product&product_id=${productId}`);
+        const recipeData = await recipeResponse.json();
+
+        // Fetch profitability
+        const profitResponse = await fetch(`php/api.php?resource=profitability&action=get-by-product&product_id=${productId}`);
+        const profitData = await profitResponse.json();
+
+        if (recipeData.success && profitData.success) {
+            currentRecipes = recipeData.data.recipes || [];
+            currentProfitability = profitData.data;
+
+            document.getElementById('recipeDetails').classList.remove('hidden');
+            document.getElementById('noProductSelected').classList.add('hidden');
+
+            displayProfitabilityCard();
+            displayRecipeTable();
+        }
+    } catch (error) {
+        console.error('Error loading recipe:', error);
+        alert('Failed to load recipe data');
+    }
+}
+
+// Display profitability card
+function displayProfitabilityCard() {
+    if (!currentProfitability) return;
+
+    const card = document.getElementById('profitabilityCard');
+    const profit = currentProfitability;
+    const profitClass = profit.grossProfit >= 0 ? 'positive' : 'negative';
+
+    card.innerHTML = `
+        <div class="profit-metric">
+            <h4>Selling Price</h4>
+            <div class="value">₱${profit.sellingPrice.toFixed(2)}</div>
+        </div>
+        <div class="profit-metric">
+            <h4>Cost Price</h4>
+            <div class="value">₱${profit.costPrice.toFixed(2)}</div>
+        </div>
+        <div class="profit-metric ${profitClass}">
+            <h4>Gross Profit</h4>
+            <div class="value">₱${profit.grossProfit.toFixed(2)}</div>
+        </div>
+        <div class="profit-metric ${profitClass}">
+            <h4>Profit Margin</h4>
+            <div class="value">${profit.profitMarginPercentage.toFixed(2)}%</div>
+        </div>
+    `;
+}
+
+// Display recipe table
+function displayRecipeTable() {
+    const tbody = document.getElementById('recipeTableBody');
+
+    if (currentRecipes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #999;">No ingredients added yet. Add ingredients using the form above.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = currentRecipes.map(recipe => `
+        <tr>
+            <td><strong>${recipe.ingredientName}</strong></td>
+            <td>${recipe.quantity}</td>
+            <td>${recipe.unit}</td>
+            <td>₱${recipe.costPerUnit.toFixed(4)}</td>
+            <td><strong>₱${recipe.ingredientCost.toFixed(2)}</strong></td>
+            <td>${recipe.availableQuantity} ${recipe.inventoryUnit}</td>
+            <td>${recipe.notes || '-'}</td>
+            <td>
+                <button class="btn-action btn-edit" onclick="editRecipeIngredient(${recipe.id})">Edit</button>
+                <button class="btn-action btn-delete" onclick="deleteRecipeIngredient(${recipe.id})">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Add recipe ingredient
+async function addRecipeIngredient() {
+    const inventoryItemId = parseInt(document.getElementById('recipeIngredientSelect').value);
+    const quantity = parseFloat(document.getElementById('recipeQuantity').value);
+    const unit = document.getElementById('recipeUnit').value.trim();
+    const notes = document.getElementById('recipeNotes').value.trim();
+
+    if (!currentRecipeProductId) {
+        alert('Please select a product first');
+        return;
+    }
+
+    if (!inventoryItemId || !quantity || !unit) {
+        alert('Please fill in all required fields (ingredient, quantity, unit)');
+        return;
+    }
+
+    try {
+        const response = await fetch('php/api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                resource: 'recipes',
+                action: 'add-ingredient',
+                data: {
+                    product_id: currentRecipeProductId,
+                    inventory_item_id: inventoryItemId,
+                    quantity: quantity,
+                    unit: unit,
+                    notes: notes || null
+                }
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentRecipes = result.data.recipes || [];
+            currentProfitability = result.data.profitability;
+
+            displayProfitabilityCard();
+            displayRecipeTable();
+
+            // Clear form
+            document.getElementById('recipeIngredientSelect').value = '';
+            document.getElementById('recipeQuantity').value = '';
+            document.getElementById('recipeUnit').value = '';
+            document.getElementById('recipeNotes').value = '';
+
+            alert('Ingredient added successfully!');
+        } else {
+            alert('Failed to add ingredient: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error adding ingredient:', error);
+        alert('Failed to add ingredient');
+    }
+}
+
+// Delete recipe ingredient
+async function deleteRecipeIngredient(recipeId) {
+    if (!confirm('Are you sure you want to remove this ingredient?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('php/api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                resource: 'recipes',
+                action: 'delete-ingredient',
+                data: { recipe_id: recipeId }
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentRecipes = result.data.recipes || [];
+            currentProfitability = result.data.profitability;
+
+            displayProfitabilityCard();
+            displayRecipeTable();
+
+            alert('Ingredient removed successfully!');
+        } else {
+            alert('Failed to remove ingredient: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error deleting ingredient:', error);
+        alert('Failed to remove ingredient');
+    }
+}
+
+// Load all products profitability
+async function loadAllProfitability() {
+    try {
+        const response = await fetch('php/api.php?resource=profitability&action=get-all');
+        const result = await response.json();
+
+        if (result.success) {
+            displayProfitabilityTable(result.data.products);
+        }
+    } catch (error) {
+        console.error('Error loading profitability:', error);
+    }
+}
+
+// Display profitability table
+function displayProfitabilityTable(products) {
+    const tbody = document.getElementById('profitabilityTableBody');
+
+    if (!products || products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px;">No data available</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = products.map(product => {
+        const profitClass = product.grossProfit >= 0 ? 'positive' : 'negative';
+        const statusText = product.profitMarginPercentage > 50 ? '🟢 Excellent' :
+                          product.profitMarginPercentage > 30 ? '🟡 Good' :
+                          product.profitMarginPercentage > 0 ? '🟠 Low' : '🔴 Loss';
+
+        return `
+            <tr>
+                <td><strong>${product.name}</strong></td>
+                <td>${product.category || '-'}</td>
+                <td>₱${product.sellingPrice.toFixed(2)}</td>
+                <td>₱${product.costPrice.toFixed(2)}</td>
+                <td style="color: ${product.grossProfit >= 0 ? 'green' : 'red'}">
+                    <strong>₱${product.grossProfit.toFixed(2)}</strong>
+                </td>
+                <td style="color: ${product.profitMarginPercentage >= 0 ? 'green' : 'red'}">
+                    <strong>${product.profitMarginPercentage.toFixed(2)}%</strong>
+                </td>
+                <td>${statusText}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Load inventory costs
+async function loadInventoryCosts() {
+    try {
+        const response = await fetch('php/api.php?resource=inventory-with-cost');
+        const result = await response.json();
+
+        if (result.success) {
+            displayInventoryCosts(result.data.inventory);
+        }
+    } catch (error) {
+        console.error('Error loading inventory costs:', error);
+    }
+}
+
+// Display inventory costs
+function displayInventoryCosts(inventoryItems) {
+    const grid = document.getElementById('inventoryCostGrid');
+
+    if (!inventoryItems || inventoryItems.length === 0) {
+        grid.innerHTML = '<p>No inventory items available</p>';
+        return;
+    }
+
+    grid.innerHTML = inventoryItems.map(item => `
+        <div class="cost-item">
+            <h4>${item.item}</h4>
+            <p style="color: #666; font-size: 13px; margin: 5px 0;">
+                Stock: ${item.qty} ${item.unit} | Total Value: ₱${item.totalValue.toFixed(2)}
+            </p>
+            <div class="cost-input-group">
+                <input
+                    type="number"
+                    id="cost-${item.id}"
+                    value="${item.costPerUnit}"
+                    step="0.0001"
+                    min="0"
+                    placeholder="Cost per ${item.unit}"
+                >
+                <button onclick="updateInventoryCost(${item.id})">Update</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Update inventory cost
+async function updateInventoryCost(inventoryItemId) {
+    const costInput = document.getElementById(`cost-${inventoryItemId}`);
+    const costPerUnit = parseFloat(costInput.value);
+
+    if (isNaN(costPerUnit) || costPerUnit < 0) {
+        alert('Please enter a valid cost');
+        return;
+    }
+
+    try {
+        const response = await fetch('php/api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                resource: 'inventory-cost',
+                action: 'update',
+                data: {
+                    inventory_item_id: inventoryItemId,
+                    cost_per_unit: costPerUnit
+                }
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Cost updated successfully! Product costs have been recalculated.');
+            loadInventoryCosts();
+        } else {
+            alert('Failed to update cost: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error updating cost:', error);
+        alert('Failed to update cost');
+    }
+}
+
+// Initialize when switching to recipe management
+function showRecipeManagement() {
+    initializeRecipeManagement();
+}
+</script>

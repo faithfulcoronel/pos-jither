@@ -12,7 +12,7 @@ function loadDataFromDatabase(PDO $pdo): array
         'products' => fetchProducts($pdo),
         'inventory' => fetchInventoryItems($pdo),
         'staffAccounts' => fetchStaffAccounts($pdo),
-        'timekeepingRecords' => fetchTimekeepingRecords($pdo),
+        'timekeepingRecords' => [], // Old table removed - now using attendance_records
         'completedTransactions' => fetchCompletedTransactions($pdo)
     ];
 }
@@ -103,23 +103,13 @@ function fetchStaffAccounts(PDO $pdo): array
 
 /**
  * @return array<int, array<string, mixed>>
+ * @deprecated Old table removed - now using attendance_records in timekeeping system
  */
 function fetchTimekeepingRecords(PDO $pdo): array
 {
-    $statement = $pdo->query('SELECT id, staff_name, role, time_in, time_out FROM timekeeping_records ORDER BY time_in DESC');
-
-    $records = [];
-    foreach ($statement as $row) {
-        $records[] = [
-            'id' => isset($row['id']) ? (int)$row['id'] : null,
-            'name' => (string)($row['staff_name'] ?? ''),
-            'role' => (string)($row['role'] ?? ''),
-            'timeIn' => formatDateTime($row['time_in'] ?? null),
-            'timeOut' => formatDateTime($row['time_out'] ?? null),
-        ];
-    }
-
-    return $records;
+    // Old timekeeping_records table has been removed
+    // Time tracking now uses attendance_records table via timekeeping-api.php
+    return [];
 }
 
 /**
@@ -274,7 +264,7 @@ function deleteProductCategory(PDO $pdo, array $payload): void
 
     // Prevent deletion of the uncategorized fallback category
     if ($id === 'uncategorized') {
-        throw new RuntimeException('Cannot delete the Uncategorized category.');
+        throw new RuntimeException('Cannot delete the Others category.');
     }
 
     // Check if the category exists
@@ -606,6 +596,9 @@ function deleteStaffAccount(PDO $pdo, array $payload): void
     }
 }
 
+/**
+ * @deprecated Use timekeeping-api.php for clock in/out operations
+ */
 function clockInStaffAccount(PDO $pdo, array $payload): void
 {
     $id = (int)($payload['id'] ?? 0);
@@ -631,12 +624,7 @@ function clockInStaffAccount(PDO $pdo, array $payload): void
             'timeIn' => $now,
         ]);
 
-        $insert = $pdo->prepare('INSERT INTO timekeeping_records (staff_name, role, time_in, time_out) VALUES (:name, :role, :timeIn, NULL)');
-        $insert->execute([
-            'name' => (string)$staff['name'],
-            'role' => (string)$staff['role'],
-            'timeIn' => $now,
-        ]);
+        // Old timekeeping_records table removed - now using attendance_records via timekeeping-api.php
 
         $pdo->commit();
     } catch (Throwable $exception) {
@@ -645,6 +633,9 @@ function clockInStaffAccount(PDO $pdo, array $payload): void
     }
 }
 
+/**
+ * @deprecated Use timekeeping-api.php for clock in/out operations
+ */
 function clockOutStaffAccount(PDO $pdo, array $payload): void
 {
     $id = (int)($payload['id'] ?? 0);
@@ -670,12 +661,7 @@ function clockOutStaffAccount(PDO $pdo, array $payload): void
             'timeOut' => $now,
         ]);
 
-        $recordUpdate = $pdo->prepare('UPDATE timekeeping_records SET time_out = :timeOut WHERE staff_name = :name AND role = :role AND time_out IS NULL ORDER BY time_in DESC LIMIT 1');
-        $recordUpdate->execute([
-            'timeOut' => $now,
-            'name' => (string)$staff['name'],
-            'role' => (string)$staff['role'],
-        ]);
+        // Old timekeeping_records table removed - now using attendance_records via timekeeping-api.php
 
         $pdo->commit();
     } catch (Throwable $exception) {
