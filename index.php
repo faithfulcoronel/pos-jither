@@ -550,72 +550,12 @@ $currentRole = $_SESSION['role'] ?? null;
                             <div class="dashboard-header"><h1>Menu Items</h1></div>
                             <h3>Menu Management</h3>
                             <div class="menu-actions">
-                                <button onclick="toggleForm('menuFormContainer')">Add New Product</button>
+                                <button onclick="openProductModal('add')">Add New Product</button>
                                 <button onclick="toggleForm('categoryFormContainer')">Add New Category</button>
                             </div>
                             <div class="menu-filter">
                                 <label for="menuCategoryFilter">Filter by Category:</label>
                                 <select id="menuCategoryFilter" onchange="displayMenuItems()"></select>
-                            </div>
-                            <div id="menuFormContainer" class="menu-form hidden">
-                                <div class="menu-form-layout">
-                                    <!-- Left Column: Product Info & Recipe -->
-                                    <div class="menu-form-left">
-                                        <h4>📝 Product Information</h4>
-                                        <div class="form-grid">
-                                            <input type="text" id="newItemName" placeholder="Product Name *" required>
-                                            <select id="newItemCategory" required>
-                                                <option value="">Select Category *</option>
-                                            </select>
-                                            <input type="number" id="newItemPrice" placeholder="Selling Price *" step="0.01" min="0" required>
-                                            <input type="file" id="newItemImage" accept="image/*">
-                                        </div>
-
-                                        <h4>🧾 Recipe / Ingredients</h4>
-                                        <div id="recipeIngredientsContainer" class="recipe-ingredients-section">
-                                            <div class="ingredients-list" id="ingredientsList">
-                                                <p class="ingredients-empty">No ingredients added yet. Add ingredients using the form below.</p>
-                                            </div>
-                                            <div class="add-ingredient-form">
-                                                <select id="ingredientSelect">
-                                                    <option value="">-- Select Ingredient --</option>
-                                                </select>
-                                                <input type="number" id="ingredientQuantity" placeholder="Qty" step="0.01" min="0">
-                                                <input type="text" id="ingredientUnit" placeholder="Unit (g, ml, pcs)">
-                                                <input type="number" id="ingredientCost" placeholder="Cost/Unit" step="0.0001" min="0">
-                                                <button type="button" onclick="addIngredientToProduct()" class="btn-add-ingredient">+ Add Ingredient</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Right Column: Cost & Profitability -->
-                                    <div class="menu-form-right">
-                                        <h4>💰 Cost & Profitability (Auto-calculated)</h4>
-                                        <div class="profitability-preview">
-                                            <div class="profit-row">
-                                                <label>Total Cost:</label>
-                                                <span id="previewCost" class="profit-value">₱0.00</span>
-                                            </div>
-                                            <div class="profit-row">
-                                                <label>Selling Price:</label>
-                                                <span id="previewPrice" class="profit-value">₱0.00</span>
-                                            </div>
-                                            <div class="profit-row">
-                                                <label>Gross Profit:</label>
-                                                <span id="previewProfit" class="profit-value">₱0.00</span>
-                                            </div>
-                                            <div class="profit-row">
-                                                <label>Profit Margin:</label>
-                                                <span id="previewMargin" class="profit-value">0%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-actions">
-                                    <button onclick="addMenuItem()" class="btn-primary">Add Product</button>
-                                    <button onclick="toggleForm('menuFormContainer')" class="btn-secondary">Cancel</button>
-                                </div>
                             </div>
                             <div id="categoryFormContainer" class="menu-form hidden">
                                 <input type="text" id="newCategoryName" placeholder="Category Name">
@@ -1591,6 +1531,78 @@ $currentRole = $_SESSION['role'] ?? null;
                             </table>
                         </div>
                     </main>
+
+                    <!-- Product Form Modal -->
+                    <div id="productModalOverlay" class="product-modal-overlay" onclick="closeProductModalOnOverlay(event)">
+                        <div class="product-modal" onclick="event.stopPropagation()">
+                            <div class="product-modal-header">
+                                <h2 id="productModalTitle">Add New Product</h2>
+                                <button class="product-modal-close" onclick="closeProductModal()">&times;</button>
+                            </div>
+                            <div class="product-modal-body">
+                                <div id="menuFormContainer" class="menu-form">
+                                    <div class="menu-form-layout">
+                                        <!-- Left Column: Product Info & Recipe -->
+                                        <div class="menu-form-left">
+                                            <h4>📝 Product Information</h4>
+                                            <div class="form-grid">
+                                                <input type="text" id="newItemName" placeholder="Product Name *" required>
+                                                <select id="newItemCategory" required>
+                                                    <option value="">Select Category *</option>
+                                                </select>
+                                                <input type="number" id="newItemPrice" placeholder="Selling Price *" step="0.01" min="0" required>
+                                                <input type="file" id="newItemImage" accept="image/*">
+                                            </div>
+
+                                            <h4>🧾 Recipe / Ingredients</h4>
+                                            <div id="recipeIngredientsContainer" class="recipe-ingredients-section">
+                                                <div class="ingredients-list" id="ingredientsList">
+                                                    <p class="ingredients-empty">No ingredients added yet. Add ingredients using the form below.</p>
+                                                </div>
+                                                <div class="add-ingredient-form">
+                                                    <select id="ingredientSelect">
+                                                        <option value="">-- Select Ingredient --</option>
+                                                    </select>
+                                                    <input type="number" id="ingredientQuantity" placeholder="Qty" step="0.01" min="0">
+                                                    <input type="text" id="ingredientUnit" placeholder="Unit (g, ml, pcs)">
+                                                    <input type="number" id="ingredientCost" placeholder="Cost/Unit" step="0.0001" min="0">
+                                                    <button type="button" onclick="addIngredientToProduct()" class="btn-add-ingredient">+ Add Ingredient</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Right Column: Cost & Profitability -->
+                                        <div class="menu-form-right">
+                                            <h4>💰 Cost & Profitability (Auto-calculated)</h4>
+                                            <div class="profitability-preview">
+                                                <div class="profit-row">
+                                                    <label>Total Cost:</label>
+                                                    <span id="previewCost" class="profit-value">₱0.00</span>
+                                                </div>
+                                                <div class="profit-row">
+                                                    <label>Selling Price:</label>
+                                                    <span id="previewPrice" class="profit-value">₱0.00</span>
+                                                </div>
+                                                <div class="profit-row">
+                                                    <label>Gross Profit:</label>
+                                                    <span id="previewProfit" class="profit-value">₱0.00</span>
+                                                </div>
+                                                <div class="profit-row">
+                                                    <label>Profit Margin:</label>
+                                                    <span id="previewMargin" class="profit-value">0%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-actions">
+                                        <button onclick="saveProduct()" class="btn-primary" id="saveProductBtn">Add Product</button>
+                                        <button onclick="closeProductModal()" class="btn-secondary">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         <?php endif; ?>

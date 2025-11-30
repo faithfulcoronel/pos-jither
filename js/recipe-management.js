@@ -4,7 +4,12 @@
  */
 
 // Global array to store ingredients being added to the current product
-let productIngredients = [];
+// Use window object to ensure it's truly global
+if (typeof window.productIngredients === 'undefined') {
+    window.productIngredients = [];
+}
+// Create a local reference for convenience
+var productIngredients = window.productIngredients;
 
 /**
  * Initialize the ingredient select dropdown when menu form is opened
@@ -175,7 +180,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Override the original toggleForm to initialize ingredients dropdown
+ * Note: Modal handling is now done in openProductModal function in script.js
+ * This override is kept for backward compatibility but may not be needed
  */
 const originalToggleForm = window.toggleForm;
 window.toggleForm = function(formId) {
@@ -187,7 +193,8 @@ window.toggleForm = function(formId) {
         const form = document.getElementById(formId);
         if (form && !form.classList.contains('hidden')) {
             initializeIngredientSelect();
-            productIngredients = [];
+            window.productIngredients = [];
+            productIngredients = window.productIngredients;
             displayIngredientsList();
             updateProfitabilityPreview();
         }
@@ -253,12 +260,35 @@ window.addMenuItem = async function() {
         }
 
         // Get the product ID from the created product
-        const newProduct = productResult.data.products.find(p => p.name === name);
-        if (!newProduct) {
-            throw new Error('Product created but could not find ID');
-        }
+        // Match by both name AND category to avoid confusion with duplicate names
+        let productId = null;
 
-        const productId = newProduct.id;
+        const newProduct = productResult.data.products.find(p =>
+            p.name === name && p.categoryId === categoryId
+        );
+
+        if (newProduct) {
+            productId = newProduct.id;
+            console.log('Found product by name and category:', productId);
+        } else {
+            // Fallback: try to find by ID if the API returns it directly
+            productId = productResult.data.product_id || productResult.data.id;
+
+            if (!productId) {
+                // Last resort: find the most recently created product with this name
+                const matchingProducts = productResult.data.products.filter(p => p.name === name);
+                if (matchingProducts.length > 0) {
+                    // Get the one with the highest ID (most recent)
+                    const lastProduct = matchingProducts.reduce((prev, current) =>
+                        (current.id > prev.id) ? current : prev
+                    );
+                    productId = lastProduct.id;
+                    console.log('Found product by highest ID:', productId);
+                } else {
+                    throw new Error('Product created but could not find ID');
+                }
+            }
+        }
 
         // Now add all recipe ingredients
         if (productIngredients.length > 0) {
@@ -298,22 +328,29 @@ window.addMenuItem = async function() {
         }
 
         // Reload data
-        await loadData();
+        if (typeof reloadData === 'function') {
+            await reloadData();
+        }
 
         // Clear form
         document.getElementById('newItemName').value = '';
         document.getElementById('newItemPrice').value = '';
         document.getElementById('newItemImage').value = '';
         document.getElementById('newItemCategory').value = '';
-        productIngredients = [];
+        window.productIngredients = [];
+        productIngredients = window.productIngredients;
         displayIngredientsList();
         updateProfitabilityPreview();
 
-        // Hide form
-        toggleForm('menuFormContainer');
+        // Close modal (handled in script.js)
+        if (typeof closeProductModal === 'function') {
+            closeProductModal();
+        }
 
         // Refresh display
-        displayMenuItems();
+        if (typeof displayMenuItems === 'function') {
+            displayMenuItems();
+        }
 
         alert('Product and recipe added successfully!');
     } catch (error) {

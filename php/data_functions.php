@@ -84,7 +84,7 @@ function fetchInventoryItems(PDO $pdo): array
  */
 function fetchStaffAccounts(PDO $pdo): array
 {
-    $statement = $pdo->query('SELECT id, role, name, status, time_in, time_out FROM staff_accounts ORDER BY id');
+    $statement = $pdo->query('SELECT id, role, name, employee_number, status, time_in, time_out FROM staff_accounts ORDER BY id');
 
     $staff = [];
     foreach ($statement as $row) {
@@ -92,6 +92,7 @@ function fetchStaffAccounts(PDO $pdo): array
             'id' => isset($row['id']) ? (int)$row['id'] : null,
             'role' => (string)($row['role'] ?? ''),
             'name' => (string)($row['name'] ?? ''),
+            'employee_number' => isset($row['employee_number']) ? (string)$row['employee_number'] : null,
             'status' => (string)($row['status'] ?? 'Inactive'),
             'timeIn' => formatDateTime($row['time_in'] ?? null),
             'timeOut' => formatDateTime($row['time_out'] ?? null),
@@ -540,11 +541,13 @@ function createStaffAccount(PDO $pdo, array $payload): void
 
     // Create staff account
     $status = normalizeStaffStatus((string)($payload['status'] ?? 'Inactive'));
+    $employeeNumber = trim((string)($payload['employee_number'] ?? ''));
 
-    $statement = $pdo->prepare('INSERT INTO staff_accounts (role, name, status, time_in, time_out) VALUES (:role, :name, :status, NULL, NULL)');
+    $statement = $pdo->prepare('INSERT INTO staff_accounts (role, name, employee_number, status, time_in, time_out) VALUES (:role, :name, :employee_number, :status, NULL, NULL)');
     $statement->execute([
         'role' => $role,
         'name' => $name,
+        'employee_number' => $employeeNumber !== '' ? $employeeNumber : null,
         'status' => $status,
     ]);
 }
@@ -563,12 +566,14 @@ function updateStaffAccount(PDO $pdo, array $payload): void
     }
 
     $status = normalizeStaffStatus((string)($payload['status'] ?? 'Inactive'));
+    $employeeNumber = trim((string)($payload['employee_number'] ?? ''));
 
-    $statement = $pdo->prepare('UPDATE staff_accounts SET role = :role, name = :name, status = :status WHERE id = :id');
+    $statement = $pdo->prepare('UPDATE staff_accounts SET role = :role, name = :name, employee_number = :employee_number, status = :status WHERE id = :id');
     $statement->execute([
         'id' => $id,
         'role' => $role,
         'name' => $name,
+        'employee_number' => $employeeNumber !== '' ? $employeeNumber : null,
         'status' => $status,
     ]);
 

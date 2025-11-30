@@ -121,17 +121,24 @@ function addButtonRipple(button, event) {
  */
 async function checkEmployeeStatus(employeeNumber) {
     try {
+        console.log('Checking employee status for:', employeeNumber);
         const response = await fetch(`php/timekeeping-api.php?action=check_status&employee_number=${encodeURIComponent(employeeNumber)}`);
+        console.log('Response status:', response.status);
+
         const data = await response.json();
+        console.log('Response data:', data);
 
         if (data.success) {
             currentEmployee = data.employee;
+            console.log('Current employee set to:', currentEmployee);
+            console.log('Employee status from DB:', currentEmployee.status);
             updateEmployeeStatus(data.status);
             loadAttendanceHistory(employeeNumber);
 
             // Save to localStorage
             localStorage.setItem('tk_employee_number', employeeNumber);
         } else {
+            console.log('Employee lookup failed:', data.message);
             showError(data.message || 'Employee not found');
             resetEmployeeStatus();
             currentEmployee = null;
@@ -151,7 +158,7 @@ function updateEmployeeStatus(status) {
     const timeOutBtn = document.getElementById('time-out-btn');
 
     // Update status display
-    document.getElementById('status-employee').textContent = currentEmployee.full_name;
+    document.getElementById('status-employee').textContent = currentEmployee.name || currentEmployee.full_name;
     document.getElementById('status-time-in').textContent = status.time_in || '-';
     document.getElementById('status-time-out').textContent = status.time_out || '-';
     document.getElementById('status-hours').textContent = status.hours_worked || '-';
@@ -240,7 +247,7 @@ async function handleTimeIn() {
         const data = await response.json();
 
         if (data.success) {
-            showSuccess(`Time In Successful! Welcome, ${currentEmployee.full_name}!`);
+            showSuccess(`Time In Successful! Welcome, ${currentEmployee.name || currentEmployee.full_name}!`);
             checkEmployeeStatus(employeeNumber);
         } else {
             showError(data.message || 'Failed to time in');
@@ -289,7 +296,7 @@ async function handleTimeOut() {
         const data = await response.json();
 
         if (data.success) {
-            showSuccess(`Time Out Successful! Thank you, ${currentEmployee.full_name}! Hours worked: ${data.hours_worked}`);
+            showSuccess(`Time Out Successful! Thank you, ${currentEmployee.name || currentEmployee.full_name}! Hours worked: ${data.hours_worked}`);
             checkEmployeeStatus(employeeNumber);
         } else {
             showError(data.message || 'Failed to time out');

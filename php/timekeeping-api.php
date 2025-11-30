@@ -4,10 +4,24 @@
  * Handles employee clock in/out and attendance tracking
  */
 
+// Prevent any output before JSON response
+error_reporting(0);
+ini_set('display_errors', '0');
+
 header('Content-Type: application/json');
 
 // Database connection
-require_once __DIR__ . '/db.php';
+try {
+    require_once __DIR__ . '/database.php';
+    $pdo = getDatabaseConnection();
+    if (!$pdo) {
+        echo json_encode(['success' => false, 'message' => 'Database connection not available']);
+        exit;
+    }
+} catch (Throwable $e) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $e->getMessage()]);
+    exit;
+}
 
 // Get request method
 $method = $_SERVER['REQUEST_METHOD'];
@@ -67,9 +81,9 @@ function checkEmployeeStatus($pdo) {
     }
 
     try {
-        // Get employee details
-        $stmt = $pdo->prepare('SELECT * FROM employees WHERE employee_number = ? AND status = ?');
-        $stmt->execute([$employeeNumber, 'active']);
+        // Get employee details from staff_accounts
+        $stmt = $pdo->prepare('SELECT * FROM staff_accounts WHERE employee_number = ? AND status = ?');
+        $stmt->execute([$employeeNumber, 'Active']);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$employee) {
@@ -79,13 +93,6 @@ function checkEmployeeStatus($pdo) {
 
         // Get today's attendance record
         $today = date('Y-m-d');
-        $stmt = $pdo->prepare('
-            SELECT *
-            FROM attendance_records
-            WHERE employee_id = ? AND date = ?
-        ');
-        $stmt->execute([$employee['id'], $today]);
-        $attendance = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $status = [
             'time_in' => null,
@@ -94,11 +101,25 @@ function checkEmployeeStatus($pdo) {
             'is_locked' => false
         ];
 
-        if ($attendance) {
-            $status['time_in'] = $attendance['time_in'] ? date('h:i A', strtotime($attendance['time_in'])) : null;
-            $status['time_out'] = $attendance['time_out'] ? date('h:i A', strtotime($attendance['time_out'])) : null;
-            $status['hours_worked'] = $attendance['hours_worked'] ? number_format($attendance['hours_worked'], 2) . ' hrs' : null;
-            $status['is_locked'] = (bool)$attendance['is_locked'];
+        // Try to get attendance record, but don't fail if table doesn't exist
+        try {
+            $stmt = $pdo->prepare('
+                SELECT *
+                FROM attendance_records
+                WHERE employee_id = ? AND date = ?
+            ');
+            $stmt->execute([$employee['id'], $today]);
+            $attendance = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($attendance) {
+                $status['time_in'] = $attendance['time_in'] ? date('h:i A', strtotime($attendance['time_in'])) : null;
+                $status['time_out'] = $attendance['time_out'] ? date('h:i A', strtotime($attendance['time_out'])) : null;
+                $status['hours_worked'] = $attendance['hours_worked'] ? number_format($attendance['hours_worked'], 2) . ' hrs' : null;
+                $status['is_locked'] = (bool)($attendance['is_locked'] ?? 0);
+            }
+        } catch (PDOException $attendanceError) {
+            // Attendance records table might not exist yet - that's okay
+            // Status will just show default null values
         }
 
         echo json_encode([
@@ -126,9 +147,9 @@ function handleTimeIn($pdo, $data) {
     try {
         $pdo->beginTransaction();
 
-        // Get employee
-        $stmt = $pdo->prepare('SELECT * FROM employees WHERE employee_number = ? AND status = ?');
-        $stmt->execute([$employeeNumber, 'active']);
+        // Get employee from staff_accounts
+        $stmt = $pdo->prepare('SELECT * FROM staff_accounts WHERE employee_number = ? AND status = ?');
+        $stmt->execute([$employeeNumber, 'Active']);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$employee) {
@@ -189,7 +210,7 @@ function handleTimeIn($pdo, $data) {
         echo json_encode([
             'success' => true,
             'message' => 'Time in successful',
-            'employee_name' => $employee['full_name'],
+            'employee_name' => $employee['name'],
             'time_in' => date('h:i A', strtotime($now))
         ]);
 
@@ -213,9 +234,9 @@ function handleTimeOut($pdo, $data) {
     try {
         $pdo->beginTransaction();
 
-        // Get employee
-        $stmt = $pdo->prepare('SELECT * FROM employees WHERE employee_number = ? AND status = ?');
-        $stmt->execute([$employeeNumber, 'active']);
+        // Get employee from staff_accounts
+        $stmt = $pdo->prepare('SELECT * FROM staff_accounts WHERE employee_number = ? AND status = ?');
+        $stmt->execute([$employeeNumber, 'Active']);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$employee) {
@@ -288,7 +309,7 @@ function handleTimeOut($pdo, $data) {
         echo json_encode([
             'success' => true,
             'message' => 'Time out successful',
-            'employee_name' => $employee['full_name'],
+            'employee_name' => $employee['name'],
             'time_out' => date('h:i A', strtotime($now)),
             'hours_worked' => number_format($updated['hours_worked'], 2) . ' hours'
         ]);
@@ -312,8 +333,8 @@ function getAttendanceHistory($pdo) {
     }
 
     try {
-        // Get employee
-        $stmt = $pdo->prepare('SELECT id FROM employees WHERE employee_number = ?');
+        // Get employee from staff_accounts
+        $stmt = $pdo->prepare('SELECT id FROM staff_accounts WHERE employee_number = ?');
         $stmt->execute([$employeeNumber]);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 

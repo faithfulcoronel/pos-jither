@@ -98,6 +98,7 @@ function hydrateState(data) {
         id: account.id ?? index + 1,
         role: account.role || '',
         name: account.name || '',
+        employee_number: account.employee_number || null,
         status: account.status || 'Inactive',
         timeIn: account.timeIn || null,
         timeOut: account.timeOut || null
@@ -256,12 +257,13 @@ function displayMenuItems() {
         grouped[categoryId].forEach(({ item, index }) => {
             const card = document.createElement('div');
             card.className = 'menu-item';
+            card.dataset.productId = item.id;
             const imagePath = item.image ? `images/${item.image}` : 'images/jowens.png';
             card.innerHTML = `
                 <img src="${imagePath}" alt="${item.name}">
                 <p>${item.name} - ₱${item.price}</p>
                 <p class="menu-item-category">${getCategoryName(item.categoryId)}</p>
-                <button onclick="editMenuItem(${index})">Edit</button>
+                <button onclick="openProductModal('edit', ${index})">Edit</button>
                 <button onclick="deleteMenuItem(${index})">Delete</button>
             `;
             grid.appendChild(card);
@@ -387,6 +389,9 @@ async function addMenuItem() {
         if (priceInput) priceInput.value = '';
         if (imageInput) imageInput.value = '';
         if (categorySelect) categorySelect.value = selectedCategory;
+
+        // Close modal if it exists
+        closeProductModal();
 
         displayMenuItems();
         displayMenuGallery();
@@ -714,11 +719,14 @@ async function addStaff() {
 
     try {
         // Add staff member to the database
-        await apiRequest('staff-accounts', 'create', {
+        console.log('Adding staff with data:', { role, name, employee_number: employeeNumber });
+        const result = await apiRequest('staff-accounts', 'create', {
             role,
             name,
-            employee_number: employeeNumber
+            employee_number: employeeNumber,
+            status: 'Active'
         });
+        console.log('Staff creation result:', result);
 
         // Also create employee record in time keeping system
         try {
@@ -750,7 +758,19 @@ async function addStaff() {
         alert(`Staff member added successfully!\n\nEmployee Number: ${employeeNumber}\n\nThe employee can now use this number to clock in/out at the Time Keeping terminal.`);
 
         // Refresh staff list
-        await fetchAndDisplayData();
+        if (typeof reloadData === 'function') {
+            await reloadData();
+        }
+        console.log('Staff accounts after reload:', staffAccounts);
+        if (staffAccounts.length > 0) {
+            console.log('Sample staff member:', JSON.stringify(staffAccounts[staffAccounts.length - 1], null, 2));
+        }
+        if (typeof displayStaff === 'function') {
+            displayStaff();
+        }
+        if (typeof displayTimekeepingRecords === 'function') {
+            displayTimekeepingRecords();
+        }
     } catch (error) {
         alert(error.message || 'Unable to add the staff member. Please check if the Employee Number is already in use.');
     }
@@ -3790,4 +3810,349 @@ function populateInventoryDropdowns(items) {
             items.map(item => `<option value="${item.id}">${item.item}</option>`).join('');
         select.value = currentValue;
     });
+}
+
+// ============================================
+// Product Modal Functions
+// ============================================
+
+var currentEditingProductIndex = null;
+
+/**
+ * Open product modal for add or edit mode
+ * @param {string} mode - 'add' or 'edit'
+ * @param {number} productIndex - Product index for edit mode
+ */
+function openProductModal(mode = 'add', productIndex = null) {
+    console.log('openProductModal called with mode:', mode, 'productIndex:', productIndex);
+
+    const modal = document.getElementById('productModalOverlay');
+    const modalTitle = document.getElementById('productModalTitle');
+    const saveBtn = document.getElementById('saveProductBtn');
+
+    if (!modal) {
+        console.error('Product modal overlay not found!');
+        alert('Error: Modal not found. Please refresh the page.');
+        return;
+    }
+
+    console.log('Modal found:', modal);
+
+    // Reset current editing index
+    if (typeof currentEditingProductIndex === 'undefined') {
+        window.currentEditingProductIndex = null;
+    } else {
+        currentEditingProductIndex = null;
+    }
+
+    if (mode === 'edit' && productIndex !== null) {
+        // Edit mode
+        currentEditingProductIndex = productIndex;
+        const product = products[productIndex];
+
+        if (!product) {
+            alert('Product not found');
+            return;
+        }
+
+        // Update modal title and button
+        modalTitle.textContent = 'Edit Product';
+        saveBtn.textContent = 'Update Product';
+
+        // Populate form with product data
+        document.getElementById('newItemName').value = product.name || '';
+        document.getElementById('newItemPrice').value = product.price || '';
+        document.getElementById('newItemCategory').value = product.categoryId || '';
+
+        // Load existing recipe ingredients for this product
+        loadProductRecipeForEdit(product.id);
+
+    } else {
+        // Add mode
+        modalTitle.textContent = 'Add New Product';
+        saveBtn.textContent = 'Add Product';
+
+        // Clear form
+        clearProductForm();
+    }
+
+    // Initialize ingredient select and show modal
+    if (typeof initializeIngredientSelect === 'function') {
+        initializeIngredientSelect();
+    }
+
+    // Show modal with animation
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+/**
+ * Close product modal
+ */
+function closeProductModal() {
+    const modal = document.getElementById('productModalOverlay');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    document.body.style.overflow = ''; // Restore scrolling
+
+    // Clear form and reset
+    clearProductForm();
+    currentEditingProductIndex = null;
+}
+
+/**
+ * Close modal when clicking on overlay (not the modal itself)
+ */
+function closeProductModalOnOverlay(event) {
+    if (event.target.id === 'productModalOverlay') {
+        closeProductModal();
+    }
+}
+
+// Add ESC key support to close modal
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('productModalOverlay');
+        if (modal && modal.classList.contains('active')) {
+            closeProductModal();
+        }
+    }
+});
+
+/**
+ * Clear product form fields
+ */
+function clearProductForm() {
+    document.getElementById('newItemName').value = '';
+    document.getElementById('newItemPrice').value = '';
+    document.getElementById('newItemCategory').value = '';
+    document.getElementById('newItemImage').value = '';
+
+    // Clear ingredients - always use window object
+    window.productIngredients = [];
+
+    if (typeof displayIngredientsList === 'function') {
+        displayIngredientsList();
+    }
+
+    if (typeof updateProfitabilityPreview === 'function') {
+        updateProfitabilityPreview();
+    }
+}
+
+/**
+ * Load product recipe for editing
+ */
+async function loadProductRecipeForEdit(productId) {
+    console.log('Loading recipe for product ID:', productId);
+
+    try {
+        // Fetch recipes for this product
+        const recipeResponse = await fetch(`php/api.php?resource=recipes&action=get-by-product&product_id=${productId}`);
+        const recipeData = await recipeResponse.json();
+
+        console.log('Recipe data received:', recipeData);
+
+        if (recipeData.success && recipeData.data && recipeData.data.recipes) {
+            console.log('Recipes found:', recipeData.data.recipes.length);
+
+            // Initialize productIngredients if it doesn't exist
+            if (typeof window.productIngredients === 'undefined') {
+                window.productIngredients = [];
+            }
+
+            // Clear existing ingredients
+            window.productIngredients = [];
+
+            // Convert recipe data to productIngredients format
+            recipeData.data.recipes.forEach(recipe => {
+                console.log('Adding recipe ingredient:', recipe);
+                window.productIngredients.push({
+                    inventoryItemId: recipe.inventoryItemId,
+                    ingredientName: recipe.ingredientName,
+                    quantity: parseFloat(recipe.quantity),
+                    unit: recipe.unit,
+                    costPerUnit: parseFloat(recipe.costPerUnit),
+                    totalCost: parseFloat(recipe.ingredientCost)
+                });
+            });
+
+            console.log('Total ingredients loaded:', window.productIngredients.length);
+
+            // Update display
+            if (typeof displayIngredientsList === 'function') {
+                displayIngredientsList();
+            }
+            if (typeof updateProfitabilityPreview === 'function') {
+                updateProfitabilityPreview();
+            }
+        } else {
+            console.log('No recipes found or invalid response');
+            // Still clear ingredients even if no recipes
+            if (typeof window.productIngredients !== 'undefined') {
+                window.productIngredients = [];
+            }
+            if (typeof displayIngredientsList === 'function') {
+                displayIngredientsList();
+            }
+        }
+    } catch (error) {
+        console.error('Error loading product recipe:', error);
+    }
+}
+
+/**
+ * Save product (add or update)
+ */
+async function saveProduct() {
+    if (currentEditingProductIndex !== null) {
+        // Update existing product
+        await updateProduct();
+    } else {
+        // Add new product
+        await addMenuItem();
+    }
+}
+
+/**
+ * Update existing product
+ */
+async function updateProduct() {
+    const product = products[currentEditingProductIndex];
+    if (!product || !product.id) {
+        alert('Unable to locate the selected product.');
+        return;
+    }
+
+    const nameInput = document.getElementById('newItemName');
+    const priceInput = document.getElementById('newItemPrice');
+    const categorySelect = document.getElementById('newItemCategory');
+    const imageInput = document.getElementById('newItemImage');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const price = priceInput ? parseFloat(priceInput.value) : NaN;
+    const categoryId = categorySelect && categorySelect.value ? categorySelect.value : FALLBACK_CATEGORY_ID;
+
+    if (!name || isNaN(price) || price < 0) {
+        alert('Please fill all fields correctly.');
+        return;
+    }
+
+    try {
+        let imageFilename = product.image;
+
+        // Check if new image is selected
+        const file = imageInput && imageInput.files && imageInput.files.length > 0 ? imageInput.files[0] : null;
+
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+
+            // Upload the image
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const uploadResponse = await fetch('php/upload_image.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error('Image upload failed.');
+            }
+
+            const uploadResult = await uploadResponse.json();
+            if (!uploadResult.success) {
+                throw new Error(uploadResult.message || 'Image upload failed.');
+            }
+
+            imageFilename = uploadResult.filename;
+        }
+
+        // Update product
+        await apiRequest('products', 'update', {
+            id: product.id,
+            name,
+            price,
+            image: imageFilename,
+            categoryId
+        });
+
+        // Delete all existing recipe ingredients for this product
+        const recipeResponse = await fetch(`php/api.php?resource=recipes&action=get-by-product&product_id=${product.id}`);
+        const recipeData = await recipeResponse.json();
+
+        if (recipeData.success && recipeData.data.recipes) {
+            for (const recipe of recipeData.data.recipes) {
+                await fetch('php/api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        resource: 'recipes',
+                        action: 'delete-ingredient',
+                        data: { recipe_id: recipe.id }
+                    })
+                });
+            }
+        }
+
+        // Add new recipe ingredients
+        if (typeof productIngredients !== 'undefined' && productIngredients.length > 0) {
+            for (const ingredient of productIngredients) {
+                await fetch('php/api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        resource: 'recipes',
+                        action: 'add-ingredient',
+                        data: {
+                            product_id: product.id,
+                            inventory_item_id: ingredient.inventoryItemId,
+                            quantity: ingredient.quantity,
+                            unit: ingredient.unit,
+                            notes: null
+                        }
+                    })
+                });
+            }
+
+            // Update inventory item costs
+            for (const ingredient of productIngredients) {
+                await fetch('php/api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        resource: 'inventory-cost',
+                        action: 'update',
+                        data: {
+                            inventory_item_id: ingredient.inventoryItemId,
+                            cost_per_unit: ingredient.costPerUnit
+                        }
+                    })
+                });
+            }
+        }
+
+        // Close modal and refresh
+        closeProductModal();
+        if (typeof reloadData === 'function') {
+            await reloadData();
+        }
+        if (typeof displayMenuItems === 'function') {
+            displayMenuItems();
+        }
+        if (typeof displayMenuGallery === 'function') {
+            displayMenuGallery();
+        }
+
+        alert('Product updated successfully!');
+
+    } catch (error) {
+        console.error('Error updating product:', error);
+        alert('Failed to update product: ' + error.message);
+    }
 }
