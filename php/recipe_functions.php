@@ -356,7 +356,8 @@ function deductInventoryForSale(
     $errors = [];
 
     try {
-        $pdo->beginTransaction();
+        // Note: This function is called within an existing transaction from api.php
+        // Do NOT start a new transaction here to avoid nested transaction issues
 
         // Get all recipe ingredients for the product
         $statement = $pdo->prepare('
@@ -368,7 +369,12 @@ function deductInventoryForSale(
         $statement->execute([$productId]);
         $ingredients = $statement->fetchAll();
 
+        // Log for debugging
+        error_log("Deducting inventory for product: {$productId}, quantity: {$quantity}");
+        error_log("Found " . count($ingredients) . " ingredients in recipe");
+
         foreach ($ingredients as $ingredient) {
+            error_log("Processing ingredient: " . $ingredient['item'] . " - Required: " . ($ingredient['quantity'] * $quantity));
             $inventoryItemId = (int)$ingredient['inventory_item_id'];
             $requiredQty = (float)$ingredient['quantity'] * $quantity;
             $currentQty = (float)$ingredient['current_qty'];
@@ -376,22 +382,26 @@ function deductInventoryForSale(
 
             // Check if sufficient stock
             if ($newQty < 0) {
+                error_log("WARNING: Insufficient stock for {$ingredient['item']} - Required: {$requiredQty}, Available: {$currentQty}");
                 $errors[] = [
                     'item' => $ingredient['item'],
                     'required' => $requiredQty,
                     'available' => $currentQty,
-                    'shortage' => abs($newQty)
+                    'shortage' => abs($newQty),
+                    'unit' => $ingredient['unit']
                 ];
-                continue;
+                // Still deduct available quantity (allow negative inventory)
+                // This ensures the sale goes through but tracks the shortage
             }
 
-            // Update inventory quantity
+            // Update inventory quantity (even if it goes negative)
             $updateStmt = $pdo->prepare('
                 UPDATE inventory_items
                 SET quantity = ?
                 WHERE id = ?
             ');
             $updateStmt->execute([$newQty, $inventoryItemId]);
+            error_log("Updated {$ingredient['item']}: {$currentQty} -> {$newQty}");
 
             // Log stock movement
             $logStmt = $pdo->prepare('
@@ -428,7 +438,7 @@ function deductInventoryForSale(
         }
 
         if (!empty($errors)) {
-            $pdo->rollBack();
+            // Return errors without rolling back - let the caller handle the transaction
             return [
                 'success' => false,
                 'errors' => $errors,
@@ -436,14 +446,11 @@ function deductInventoryForSale(
             ];
         }
 
-        $pdo->commit();
-
         return [
             'success' => true,
             'deductions' => $deductions
         ];
     } catch (Exception $e) {
-        $pdo->rollBack();
         error_log("Error deducting inventory: " . $e->getMessage());
         return [
             'success' => false,

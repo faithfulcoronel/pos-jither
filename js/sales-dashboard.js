@@ -69,9 +69,35 @@ async function loadSalesData() {
     try {
         showSalesLoading();
 
-        // In production, this would be an API call
-        // For now, we'll use sample data
-        salesData = generateSampleSalesData();
+        // Fetch real data from API
+        const params = new URLSearchParams({
+            period: currentFilters.period,
+            year: currentFilters.year,
+            month: currentFilters.month,
+            quarter: currentFilters.quarter
+        });
+
+        // Fetch all data in parallel
+        const [kpis, trend, categories, quarterly, weekday, bestSellers, heatmap] = await Promise.all([
+            fetch(`php/sales-analytics-api.php?action=get_kpis&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_sales_trend&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_category_sales&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_quarterly_sales&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_weekday_sales&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_best_sellers&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_heatmap&${params}`).then(r => r.json())
+        ]);
+
+        // Store data
+        salesData = {
+            kpis: kpis.success ? kpis.kpis : {},
+            trend: trend.success ? trend.data : [],
+            categories: categories.success ? categories.data : [],
+            quarterly: quarterly.success ? quarterly.data : [],
+            weekday: weekday.success ? weekday.data : [],
+            bestSellers: bestSellers.success ? bestSellers.data : [],
+            heatmap: heatmap.success ? heatmap.data : []
+        };
 
         updateKPIs();
         renderAllCharts();
@@ -82,6 +108,7 @@ async function loadSalesData() {
     } catch (error) {
         console.error('Error loading sales data:', error);
         hideSalesLoading();
+        showError('Failed to load sales data. Please try again.');
     }
 }
 
@@ -205,22 +232,19 @@ function generateHeatmapData(days) {
  * Update KPI Cards
  */
 function updateKPIs() {
-    const data = salesData;
+    const kpis = salesData.kpis || {};
 
     // Total Sales
-    const salesChange = ((data.totalSales - data.previousPeriodSales) / data.previousPeriodSales * 100).toFixed(1);
-    updateKPI('total-sales', formatCurrency(data.totalSales), salesChange, salesChange > 0);
+    updateKPI('total-sales', formatCurrency(kpis.total_sales || 0), kpis.sales_change || 0, kpis.sales_change > 0);
 
     // Total Orders
-    const ordersChange = ((data.totalOrders - data.previousPeriodOrders) / data.previousPeriodOrders * 100).toFixed(1);
-    updateKPI('total-orders', formatNumber(data.totalOrders), ordersChange, ordersChange > 0);
+    updateKPI('total-orders', formatNumber(kpis.total_orders || 0), kpis.orders_change || 0, kpis.orders_change > 0);
 
     // Quantity Sold
-    const qtyChange = ((data.quantitySold - data.previousPeriodQuantity) / data.previousPeriodQuantity * 100).toFixed(1);
-    updateKPI('quantity-sold', formatNumber(data.quantitySold), qtyChange, qtyChange > 0);
+    updateKPI('quantity-sold', formatNumber(kpis.quantity_sold || 0), kpis.quantity_change || 0, kpis.quantity_change > 0);
 
     // Average Order Value
-    updateKPI('avg-order-value', formatCurrency(data.averageOrderValue), null, null);
+    updateKPI('avg-order-value', formatCurrency(kpis.avg_order_value || 0), null, null);
 }
 
 function updateKPI(id, value, change, isPositive) {
@@ -260,16 +284,31 @@ function renderSalesTrendChart() {
         salesCharts.trend.destroy();
     }
 
-    const data = salesData.monthlyTrend;
+    const data = salesData.trend || [];
+
+    // Format labels based on period type
+    const labels = data.map(d => {
+        if (d.period.includes(':')) {
+            // Hour format (2025-01-01 14:00:00)
+            return new Date(d.period).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+        } else if (d.period.length === 10) {
+            // Date format (2025-01-01)
+            return new Date(d.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } else {
+            // Month format (2025-01)
+            const [year, month] = d.period.split('-');
+            return new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short' });
+        }
+    });
 
     salesCharts.trend = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: data.map(d => d.month),
+            labels: labels,
             datasets: [
                 {
                     label: 'Actual Sales',
-                    data: data.map(d => d.actual),
+                    data: data.map(d => parseFloat(d.sales) || 0),
                     borderColor: '#FF8C42',
                     backgroundColor: 'rgba(255, 140, 66, 0.1)',
                     borderWidth: 2,
@@ -277,18 +316,6 @@ function renderSalesTrendChart() {
                     tension: 0.4,
                     pointRadius: 4,
                     pointBackgroundColor: '#FF8C42'
-                },
-                {
-                    label: 'Planned Sales',
-                    data: data.map(d => d.plan),
-                    borderColor: '#8B6F47',
-                    backgroundColor: 'rgba(139, 111, 71, 0.05)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.4,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#8B6F47'
                 }
             ]
         },
@@ -346,7 +373,7 @@ function renderCategoryChart() {
         salesCharts.category.destroy();
     }
 
-    const data = salesData.categoryBreakdown;
+    const data = salesData.categories || [];
 
     salesCharts.category = new Chart(ctx, {
         type: 'doughnut',
@@ -540,15 +567,15 @@ function renderQuarterlyChart() {
         salesCharts.quarterly.destroy();
     }
 
-    const data = salesData.quarterlyData;
+    const data = salesData.quarterly || [];
 
     salesCharts.quarterly = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.map(d => d.quarter),
+            labels: data.map(d => 'Q' + d.quarter),
             datasets: [{
                 label: 'Quarterly Sales',
-                data: data.map(d => d.sales),
+                data: data.map(d => parseFloat(d.sales) || 0),
                 backgroundColor: '#FF8C42',
                 borderRadius: 6,
                 barThickness: 50
@@ -594,21 +621,27 @@ function renderBestSellersTable() {
     const tbody = document.getElementById('best-sellers-tbody');
     if (!tbody) return;
 
-    const bestSellers = salesData.bestSellers.slice(0, 10);
-    const maxRevenue = Math.max(...bestSellers.map(item => item.revenue));
+    const bestSellers = (salesData.bestSellers || []).slice(0, 10);
 
-    tbody.innerHTML = bestSellers.map(item => `
+    if (bestSellers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">No sales data available</td></tr>';
+        return;
+    }
+
+    const maxRevenue = Math.max(...bestSellers.map(item => parseFloat(item.revenue) || 0));
+
+    tbody.innerHTML = bestSellers.map((item, index) => `
         <tr>
-            <td class="sales-table-rank">${item.rank}</td>
-            <td>${item.product}</td>
-            <td>${item.category}</td>
-            <td>${formatNumber(item.quantity)}</td>
+            <td class="sales-table-rank">${index + 1}</td>
+            <td>${item.product_name || 'Unknown'}</td>
+            <td>${item.category || 'Uncategorized'}</td>
+            <td>${formatNumber(item.quantity_sold || 0)}</td>
             <td>
                 <div class="sales-table-bar">
                     <div class="sales-table-bar-bg">
-                        <div class="sales-table-bar-fill" style="width: ${(item.revenue / maxRevenue * 100)}%"></div>
+                        <div class="sales-table-bar-fill" style="width: ${maxRevenue > 0 ? (parseFloat(item.revenue) / maxRevenue * 100) : 0}%"></div>
                     </div>
-                    <div class="sales-table-value">${formatCurrency(item.revenue)}</div>
+                    <div class="sales-table-value">${formatCurrency(parseFloat(item.revenue) || 0)}</div>
                 </div>
             </td>
         </tr>
@@ -622,14 +655,33 @@ function renderHeatmap() {
     const container = document.getElementById('heatmap-container');
     if (!container) return;
 
-    const data = salesData.heatmapData;
-    const days = Object.keys(data);
+    const rawData = salesData.heatmap || [];
+
+    // Convert API data to heatmap format
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const hours = Array.from({ length: 24 }, (_, i) => i);
+
+    // Initialize heatmap data structure
+    const heatmapData = {};
+    dayNames.forEach(day => {
+        heatmapData[day] = Array(24).fill(0);
+    });
+
+    // Fill with actual data
+    rawData.forEach(item => {
+        const dayIndex = parseInt(item.day_of_week) - 1; // MySQL DAYOFWEEK returns 1-7 (Sunday = 1)
+        const hourIndex = parseInt(item.hour);
+        const sales = parseFloat(item.sales) || 0;
+
+        if (dayIndex >= 0 && dayIndex < 7 && hourIndex >= 0 && hourIndex < 24) {
+            heatmapData[dayNames[dayIndex]][hourIndex] = sales;
+        }
+    });
 
     // Find max sales for normalization
     let maxSales = 0;
-    days.forEach(day => {
-        const dayMax = Math.max(...data[day]);
+    Object.values(heatmapData).forEach(dayData => {
+        const dayMax = Math.max(...dayData);
         if (dayMax > maxSales) maxSales = dayMax;
     });
 
@@ -643,9 +695,9 @@ function renderHeatmap() {
     });
 
     // Data rows
-    days.forEach(day => {
+    dayNames.forEach(day => {
         html += `<div class="sales-heatmap-label">${day.substring(0, 3)}</div>`;
-        data[day].forEach((sales, hourIndex) => {
+        heatmapData[day].forEach((sales, hourIndex) => {
             const level = sales === 0 ? 0 : Math.min(5, Math.ceil((sales / maxSales) * 5));
             const tooltip = `${day} ${hourIndex}:00 - ${formatCurrency(sales)}`;
             html += `<div class="sales-heatmap-cell level-${level}" title="${tooltip}"></div>`;

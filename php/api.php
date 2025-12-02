@@ -364,7 +364,9 @@ function handlePostRequest(PDO $pdo, string $resource, string $action, $data): v
                         'inventory_errors' => $inventoryErrors
                     ]);
                 } catch (Exception $e) {
-                    $pdo->rollBack();
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
                     sendError('Failed to save transaction: ' . $e->getMessage(), 500);
                 }
             } else {

@@ -205,7 +205,7 @@ function resetEmployeeStatus() {
     const tbody = document.getElementById('attendance-tbody');
     tbody.innerHTML = `
         <tr>
-            <td colspan="5" class="tk-empty">
+            <td colspan="6" class="tk-empty">
                 <div class="tk-empty-icon">📋</div>
                 <div class="tk-empty-text">Enter your employee number to view attendance</div>
             </td>
@@ -316,11 +316,15 @@ async function handleTimeOut() {
  */
 async function loadAttendanceHistory(employeeNumber) {
     try {
+        console.log('Loading attendance history for:', employeeNumber, 'Period:', currentPeriodFilter);
         const response = await fetch(`php/timekeeping-api.php?action=get_history&employee_number=${encodeURIComponent(employeeNumber)}&period=${currentPeriodFilter}`);
         const data = await response.json();
+        console.log('Attendance history response:', data);
 
         if (data.success) {
             attendanceHistory = data.records || [];
+            console.log('Attendance records loaded:', attendanceHistory.length, 'records');
+            console.log('Records:', attendanceHistory);
             renderAttendanceHistory();
         } else {
             console.error('Failed to load attendance history:', data.message);
@@ -339,7 +343,7 @@ function renderAttendanceHistory() {
     if (attendanceHistory.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="tk-empty">
+                <td colspan="6" class="tk-empty">
                     <div class="tk-empty-icon">📭</div>
                     <div class="tk-empty-text">No attendance records for this period</div>
                 </td>
@@ -351,6 +355,7 @@ function renderAttendanceHistory() {
     let html = '';
     attendanceHistory.forEach(record => {
         const statusBadge = getStatusBadge(record.status);
+        const employeeNum = record.employee_number || '-';
         const timeIn = record.time_in ? formatTime(record.time_in) : '-';
         const timeOut = record.time_out ? formatTime(record.time_out) : '-';
         const hours = record.hours_worked ? parseFloat(record.hours_worked).toFixed(2) + ' hrs' : '-';
@@ -358,6 +363,7 @@ function renderAttendanceHistory() {
         html += `
             <tr>
                 <td>${formatDate(record.date)}</td>
+                <td>${employeeNum}</td>
                 <td>${timeIn}</td>
                 <td>${timeOut}</td>
                 <td>${hours}</td>

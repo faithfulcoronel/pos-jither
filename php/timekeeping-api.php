@@ -192,18 +192,23 @@ function handleTimeIn($pdo, $data) {
             $recordId = $pdo->lastInsertId();
         }
 
-        // Log the time in
-        $stmt = $pdo->prepare('
-            INSERT INTO time_logs (attendance_record_id, employee_id, action, timestamp, ip_address)
-            VALUES (?, ?, ?, ?, ?)
-        ');
-        $stmt->execute([
-            $recordId,
-            $employee['id'],
-            'time_in',
-            $now,
-            $_SERVER['REMOTE_ADDR'] ?? null
-        ]);
+        // Log the time in (optional - ignore if table doesn't exist)
+        try {
+            $stmt = $pdo->prepare('
+                INSERT INTO time_logs (attendance_record_id, employee_id, action, timestamp, ip_address)
+                VALUES (?, ?, ?, ?, ?)
+            ');
+            $stmt->execute([
+                $recordId,
+                $employee['id'],
+                'time_in',
+                $now,
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+        } catch (PDOException $e) {
+            // time_logs table doesn't exist, continue without logging
+            error_log('time_logs table not found: ' . $e->getMessage());
+        }
 
         $pdo->commit();
 
@@ -215,7 +220,9 @@ function handleTimeIn($pdo, $data) {
         ]);
 
     } catch (PDOException $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
 }
@@ -291,18 +298,23 @@ function handleTimeOut($pdo, $data) {
         $stmt->execute([$attendance['id']]);
         $updated = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Log the time out
-        $stmt = $pdo->prepare('
-            INSERT INTO time_logs (attendance_record_id, employee_id, action, timestamp, ip_address)
-            VALUES (?, ?, ?, ?, ?)
-        ');
-        $stmt->execute([
-            $attendance['id'],
-            $employee['id'],
-            'time_out',
-            $now,
-            $_SERVER['REMOTE_ADDR'] ?? null
-        ]);
+        // Log the time out (optional - ignore if table doesn't exist)
+        try {
+            $stmt = $pdo->prepare('
+                INSERT INTO time_logs (attendance_record_id, employee_id, action, timestamp, ip_address)
+                VALUES (?, ?, ?, ?, ?)
+            ');
+            $stmt->execute([
+                $attendance['id'],
+                $employee['id'],
+                'time_out',
+                $now,
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+        } catch (PDOException $e) {
+            // time_logs table doesn't exist, continue without logging
+            error_log('time_logs table not found: ' . $e->getMessage());
+        }
 
         $pdo->commit();
 
@@ -315,7 +327,9 @@ function handleTimeOut($pdo, $data) {
         ]);
 
     } catch (PDOException $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
 }
@@ -360,22 +374,33 @@ function getAttendanceHistory($pdo) {
                 break;
         }
 
-        // Get attendance records
-        $stmt = $pdo->prepare("
-            SELECT date, time_in, time_out, hours_worked, status
-            FROM attendance_records
-            WHERE employee_id = ? $dateCondition
-            ORDER BY date DESC
-            LIMIT 100
-        ");
-        $stmt->execute([$employee['id']]);
-        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Get attendance records - wrap in try-catch for table existence
+        try {
+            $stmt = $pdo->prepare("
+                SELECT date, employee_number, time_in, time_out, hours_worked, status
+                FROM attendance_records
+                WHERE employee_id = ? $dateCondition
+                ORDER BY date DESC
+                LIMIT 100
+            ");
+            $stmt->execute([$employee['id']]);
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode([
-            'success' => true,
-            'records' => $records,
-            'period' => $period
-        ]);
+            echo json_encode([
+                'success' => true,
+                'records' => $records,
+                'period' => $period,
+                'employee_id' => $employee['id']
+            ]);
+        } catch (PDOException $tableError) {
+            // Table might not exist
+            echo json_encode([
+                'success' => true,
+                'records' => [],
+                'period' => $period,
+                'message' => 'No attendance table found'
+            ]);
+        }
 
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

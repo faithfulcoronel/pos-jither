@@ -293,7 +293,9 @@ function createAutoPurchaseOrder($input) {
             'message' => 'Purchase order created successfully'
         ];
     } catch (Exception $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }

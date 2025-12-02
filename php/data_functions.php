@@ -484,6 +484,40 @@ function deleteInventoryItem(PDO $pdo, array $payload): void
         throw new InvalidArgumentException('Inventory item ID is required.');
     }
 
+    // Check if this inventory item is used in any product recipes
+    $checkStmt = $pdo->prepare('
+        SELECT COUNT(*) as recipe_count,
+               GROUP_CONCAT(DISTINCT p.name SEPARATOR ", ") as product_names
+        FROM product_recipes pr
+        LEFT JOIN products p ON pr.product_id = p.id
+        WHERE pr.inventory_item_id = :id
+    ');
+    $checkStmt->execute(['id' => $id]);
+    $usage = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($usage && $usage['recipe_count'] > 0) {
+        $productNames = $usage['product_names'] ?: 'some products';
+        throw new RuntimeException(
+            "Cannot delete this inventory item because it is used in the recipe for: {$productNames}. " .
+            "Please remove it from all product recipes first, or edit the recipes to use a different ingredient."
+        );
+    }
+
+    // Check if there are any stock movements for this item
+    $movementStmt = $pdo->prepare('SELECT COUNT(*) as movement_count FROM stock_movements WHERE inventory_item_id = :id');
+    $movementStmt->execute(['id' => $id]);
+    $movements = $movementStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($movements && $movements['movement_count'] > 0) {
+        // Item has movement history - we should keep it but mark as inactive or archived
+        // For now, we'll prevent deletion to preserve audit trail
+        throw new RuntimeException(
+            "Cannot delete this inventory item because it has stock movement history. " .
+            "This ensures data integrity for your inventory records. " .
+            "Consider setting the quantity to 0 instead of deleting."
+        );
+    }
+
     $statement = $pdo->prepare('DELETE FROM inventory_items WHERE id = :id');
     $statement->execute(['id' => $id]);
 
@@ -633,7 +667,9 @@ function clockInStaffAccount(PDO $pdo, array $payload): void
 
         $pdo->commit();
     } catch (Throwable $exception) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $exception;
     }
 }
@@ -670,7 +706,9 @@ function clockOutStaffAccount(PDO $pdo, array $payload): void
 
         $pdo->commit();
     } catch (Throwable $exception) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $exception;
     }
 }

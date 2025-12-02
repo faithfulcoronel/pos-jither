@@ -1253,8 +1253,24 @@ function addOrder() {
     const price = priceField ? parseFloat(priceField.value) : NaN;
     const productId = productIdField ? productIdField.value : null;
 
-    if (!name || isNaN(qty) || qty < 1) {
-        alert('Select a drink and enter a valid quantity.');
+    // Validation
+    if (!name) {
+        alert('Please select a drink first.');
+        return;
+    }
+
+    if (isNaN(qty)) {
+        alert('Please enter a valid quantity.');
+        return;
+    }
+
+    if (qty <= 0) {
+        alert('Quantity must be a positive number (1 or greater).\nNegative quantities are not allowed.');
+        return;
+    }
+
+    if (qty > 1000) {
+        alert('Quantity is too large. Please enter a reasonable amount (maximum 1000).');
         return;
     }
 
@@ -1387,16 +1403,28 @@ async function displayTransactionList() {
 
         // Display transactions as clickable list
         transactionList.innerHTML = '';
-        reversedTransactions.forEach((transaction) => {
+        reversedTransactions.forEach((transaction, index) => {
             const li = document.createElement('li');
             li.className = 'transaction-item';
+            li.setAttribute('data-transaction-index', index);
             li.innerHTML = `
                 <div class="transaction-info">
                     <strong>${transaction.reference || transaction.id}</strong>
                     <span class="transaction-date">${new Date(transaction.created_at).toLocaleString()}</span>
                     <span class="transaction-total">₱${parseFloat(transaction.total).toFixed(2)}</span>
                 </div>
+                <button class="print-transaction-btn" title="Print Receipt">
+                    🖨️ Print
+                </button>
             `;
+
+            // Store transaction data for print function
+            const printBtn = li.querySelector('.print-transaction-btn');
+            printBtn.onclick = (e) => {
+                e.stopPropagation();
+                printTransactionReceipt(transaction);
+            };
+
             li.onclick = (e) => displayReceiptForTransaction(transaction, e.currentTarget);
             transactionList.appendChild(li);
         });
@@ -1562,19 +1590,46 @@ async function updateReceipt() {
     const receiptItems = document.getElementById('receipt-items');
     const receiptTotalEl = document.getElementById('receipt-total');
     const receiptDate = document.getElementById('receipt-date');
+    const receiptSubtotal = document.getElementById('receipt-subtotal');
+    const receiptVatable = document.getElementById('receipt-vatable');
+    const receiptVatExempt = document.getElementById('receipt-vat-exempt');
+    const receiptVat = document.getElementById('receipt-vat');
 
     if (!receiptItems || !receiptTotalEl) return;
 
     // Reset and build receipt items
     receiptItems.innerHTML = '';
-    let total = 0;
+    let subtotal = 0;
     currentOrder.forEach(item => {
         const itemTotal = item.qty * item.price;
-        total += itemTotal;
-        receiptItems.innerHTML += `<p>${item.qty}x ${item.name} - ₱${itemTotal.toFixed(2)}</p>`;
+        subtotal += itemTotal;
+        receiptItems.innerHTML += `
+            <div class="receipt-item">
+                <div class="receipt-item-name">${item.name}</div>
+                <div class="receipt-item-details">
+                    <span class="receipt-item-qty">${item.qty}x ₱${item.price.toFixed(2)}</span>
+                    <span class="receipt-item-price">₱${itemTotal.toFixed(2)}</span>
+                </div>
+            </div>
+        `;
     });
 
-    receiptTotalEl.textContent = total.toFixed(2);
+    // Calculate VAT (12% inclusive)
+    // Total = Subtotal (which already includes VAT)
+    // Vatable Sales = Subtotal / 1.12
+    // VAT = Subtotal - Vatable Sales
+    const vatRate = 0.12;
+    const vatableSales = subtotal / (1 + vatRate);
+    const vat = subtotal - vatableSales;
+    const vatExemptSales = 0; // For now, all sales are vatable
+
+    // Update receipt display
+    if (receiptSubtotal) receiptSubtotal.textContent = subtotal.toFixed(2);
+    if (receiptVatable) receiptVatable.textContent = vatableSales.toFixed(2);
+    if (receiptVatExempt) receiptVatExempt.textContent = vatExemptSales.toFixed(2);
+    if (receiptVat) receiptVat.textContent = vat.toFixed(2);
+    receiptTotalEl.textContent = subtotal.toFixed(2);
+
     if (receiptDate) receiptDate.textContent = new Date().toLocaleString();
 
     // ONLY update the order number
@@ -1630,7 +1685,7 @@ async function finalizeSale() {
 
     try {
         // Save transaction via API
-        await apiRequest('sales-transactions', 'create', transactionData);
+        const result = await apiRequest('sales-transactions', 'create', transactionData);
 
         // Clear the current order after successful save
         currentOrder = [];
@@ -1641,7 +1696,52 @@ async function finalizeSale() {
             console.error('Failed to refresh daily summary:', error);
         });
 
-        alert(`Sale successfully recorded!\nOrder Number: ${receiptOrderNumber}\nTotal: ₱${receiptTotal.toFixed(2)}`);
+        // Build success message
+        let message = `Sale successfully recorded!\nOrder Number: ${receiptOrderNumber}\nTotal: ₱${receiptTotal.toFixed(2)}`;
+
+        // Check for inventory warnings
+        if (result.inventory_errors && result.inventory_errors.length > 0) {
+            message += '\n\n⚠️ INVENTORY WARNINGS:';
+            result.inventory_errors.forEach(error => {
+                message += `\n• ${error.productName}:`;
+                if (error.errors && error.errors.length > 0) {
+                    error.errors.forEach(err => {
+                        if (err.shortage !== undefined) {
+                            message += `\n  - ${err.item}: Insufficient stock! (Short by ${err.shortage.toFixed(2)} ${err.unit || 'units'})`;
+                        } else if (typeof err === 'string') {
+                            message += `\n  - ${err}`;
+                        }
+                    });
+                }
+            });
+        }
+
+        // Check for low inventory after deductions
+        if (result.inventory_deductions && result.inventory_deductions.length > 0) {
+            const lowStockItems = [];
+            result.inventory_deductions.forEach(deduction => {
+                if (deduction.deductions && deduction.deductions.length > 0) {
+                    deduction.deductions.forEach(item => {
+                        // Alert if remaining quantity is less than 20% of what was deducted (arbitrary threshold)
+                        const threshold = item.deducted * 5; // If less than 5x the deducted amount remains
+                        if (item.newQty < threshold && item.newQty > 0) {
+                            lowStockItems.push(`${item.item}: ${item.newQty.toFixed(2)} ${item.unit} remaining`);
+                        } else if (item.newQty <= 0) {
+                            lowStockItems.push(`${item.item}: DEPLETED!`);
+                        }
+                    });
+                }
+            });
+
+            if (lowStockItems.length > 0) {
+                message += '\n\n📦 LOW STOCK ALERT:';
+                lowStockItems.forEach(item => {
+                    message += `\n• ${item}`;
+                });
+            }
+        }
+
+        alert(message);
 
         // Reset receipt display
         document.getElementById('receipt-items').innerHTML = '';
@@ -2054,58 +2154,135 @@ async function processPayment(paymentMethod, total) {
     await updateReceipt();
 
     // Print receipt option
-    if (confirm('Payment successful! Would you like to print the receipt?')) {
+    if (confirm('Payment successful!')) {
         printReceipt();
     }
 }
 
-// Print Receipt Functionality
-function printReceipt() {
-    const receiptContent = document.getElementById('receipt');
-    if (!receiptContent) {
-        alert('No receipt to print.');
-        return;
-    }
 
-    const printWindow = window.open('', '', 'width=300,height=600');
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>Receipt - Jowen's Kitchen & Cafe</title>
-            <style>
-                body {
-                    font-family: 'Courier New', monospace;
-                    padding: 20px;
-                    width: 280px;
-                }
-                h4 {
-                    text-align: center;
-                    margin: 10px 0;
-                }
-                p {
-                    margin: 5px 0;
-                }
-                .receipt-total {
-                    border-top: 1px dashed #000;
-                    margin-top: 10px;
-                    padding-top: 10px;
-                    font-weight: bold;
-                    text-align: right;
-                }
-                @media print {
-                    body { margin: 0; padding: 10px; }
-                }
-            </style>
-        </head>
-        <body>
-            ${receiptContent.innerHTML}
-            <p style="text-align: center; margin-top: 20px;">Thank you for your purchase!</p>
-            <p style="text-align: center; font-size: 0.9em;">Powered by Jowen's POS</p>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+// Print Transaction Receipt from List
+function printTransactionReceipt(transaction) {
+    try {
+        if (!transaction) {
+            alert('Transaction data not available.');
+            return;
+        }
+
+        const items = transaction.items || [];
+
+        // Calculate totals
+        let subtotal = parseFloat(transaction.total) || 0;
+        const vatRate = 0.12;
+        const vatableSales = subtotal / (1 + vatRate);
+        const vat = subtotal - vatableSales;
+
+        // Create PDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [80, 200]
+        });
+
+        doc.setFont('courier', 'normal');
+        let y = 10;
+        const lineHeight = 5;
+        const pageWidth = 80;
+
+        // Header
+        doc.setFontSize(12);
+        doc.setFont('courier', 'bold');
+        doc.text("Jowen's Kitchen & Cafe", pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+
+        doc.setFontSize(8);
+        doc.setFont('courier', 'normal');
+        doc.text('Tax Invoice / Official Receipt', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight + 2;
+
+        doc.text('================================', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+
+        // Receipt info
+        doc.text(`Date: ${new Date(transaction.created_at).toLocaleString()}`, 5, y);
+        y += lineHeight;
+        doc.text(`Receipt #: ${transaction.reference}`, 5, y);
+        y += lineHeight;
+        doc.text(`Cashier: ${window.currentUsername || 'cashier'}`, 5, y);
+        y += lineHeight;
+
+        doc.text('================================', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+
+        // Items
+        items.forEach(item => {
+            // Handle both API formats (name/qty/price from get-daily, product_name/quantity/unit_price from create)
+            const itemName = item.name || item.product_name || 'Item';
+            const itemQty = item.qty || item.quantity || 0;
+            const itemPrice = item.price || item.unit_price || 0;
+            const itemTotal = itemQty * itemPrice;
+
+            doc.text(itemName, 5, y);
+            y += lineHeight;
+
+            const qtyText = `  ${itemQty} x ${parseFloat(itemPrice).toFixed(2)}`;
+            const totalText = `= ${itemTotal.toFixed(2)}`;
+            doc.text(qtyText, 5, y);
+            doc.text(totalText, 75, y, { align: 'right' });
+            y += lineHeight;
+        });
+
+        doc.text('--------------------------------', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+
+        // Summary
+        doc.text('Subtotal:', 5, y);
+        doc.text(`${subtotal.toFixed(2)}`, 75, y, { align: 'right' });
+        y += lineHeight;
+
+        doc.text('================================', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+        doc.text('VAT Breakdown:', 5, y);
+        y += lineHeight;
+
+        doc.text('  Vatable Sales:', 5, y);
+        doc.text(`${vatableSales.toFixed(2)}`, 75, y, { align: 'right' });
+        y += lineHeight;
+
+        doc.text('  VAT-Exempt Sales:', 5, y);
+        doc.text('0.00', 75, y, { align: 'right' });
+        y += lineHeight;
+
+        doc.text('  VAT (12%):', 5, y);
+        doc.text(`${vat.toFixed(2)}`, 75, y, { align: 'right' });
+        y += lineHeight;
+
+        doc.text('================================', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(10);
+        doc.text('TOTAL:', 5, y);
+        doc.text(`${subtotal.toFixed(2)}`, 75, y, { align: 'right' });
+        y += lineHeight + 2;
+
+        // Footer
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(8);
+        doc.text('================================', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+        doc.text('Thank you for your purchase!', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+        doc.text('VAT Reg TIN: 123-456-789-000', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+        doc.text('Powered by Jowen\'s POS', pageWidth / 2, y, { align: 'center' });
+
+        // Save PDF
+        doc.save(`Receipt_${transaction.reference}_Reprint.pdf`);
+
+    } catch (error) {
+        console.error('Error printing transaction receipt:', error);
+        alert('Failed to print receipt. Error: ' + error.message);
+    }
 }
 
 // Return/Refund Process

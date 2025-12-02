@@ -57,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $currentRole = $_SESSION['role'] ?? null;
+$currentUsername = $_SESSION['username'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,6 +75,7 @@ $currentRole = $_SESSION['role'] ?? null;
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body class="<?= $currentRole ? htmlspecialchars($currentRole) . '-mode' : '' ?>">
     <div class="app" id="app-root">
@@ -246,6 +248,7 @@ $currentRole = $_SESSION['role'] ?? null;
                                 <thead>
                                     <tr>
                                         <th>Date</th>
+                                        <th>👤 Employee #</th>
                                         <th>⏰ Time In</th>
                                         <th>🏁 Time Out</th>
                                         <th>⏱️ Hours</th>
@@ -254,7 +257,7 @@ $currentRole = $_SESSION['role'] ?? null;
                                 </thead>
                                 <tbody id="attendance-tbody">
                                     <tr>
-                                        <td colspan="5" class="tk-empty">
+                                        <td colspan="6" class="tk-empty">
                                             <div class="tk-empty-icon">☕</div>
                                             <div class="tk-empty-title">No Records Yet</div>
                                             <div class="tk-empty-text">Enter your employee number to view your attendance history</div>
@@ -301,6 +304,11 @@ $currentRole = $_SESSION['role'] ?? null;
         <?php if (!$currentRole && $showLogin): ?>
             <section id="login-section" class="full-screen-section">
                 <div class="login-container">
+                    <a href="index.php" class="back-arrow" title="Back to Time Clock Terminal">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
                     <div class="login-logo">
                         <img src="images/jowens.png" alt="Jowen's Kitchen & Cafe Logo">
                     </div>
@@ -1618,7 +1626,6 @@ $currentRole = $_SESSION['role'] ?? null;
                             <a href="#" class="sidebar-item active" onclick="showCashierContent('order')">Take Order</a>
                             <a href="#" class="sidebar-item" onclick="showCashierContent('transaction')">Transactions</a>
                             <a href="#" class="sidebar-item" onclick="showCashierContent('daily')">Daily Summary</a>
-                            <a href="#" class="sidebar-item" onclick="showCashierContent('timeclock')">Time Clock</a>
                         </nav>
                         <form method="post" class="logout-form">
                             <input type="hidden" name="action" value="logout" />
@@ -1635,8 +1642,9 @@ $currentRole = $_SESSION['role'] ?? null;
                             <div class="order-form">
                                 <label>Drink:<input type="text" id="drinkName" placeholder="Select a drink" readonly /></label>
                                 <label>Qty:</label>
-                                <input type="number" id="drinkQty" placeholder="0" />
+                                <input type="number" id="drinkQty" placeholder="0" min="1" step="1" />
                                 <input type="hidden" id="drinkPrice" />
+                                <input type="hidden" id="drinkProductId" />
                                 <button onclick="addOrder()">Add Order</button>
                                 <button onclick="clearOrder()">Clear All</button>
                                 <button onclick="checkOut()">Checkout</button>
@@ -1672,27 +1680,6 @@ $currentRole = $_SESSION['role'] ?? null;
 
                             <!-- Order Summary with VAT Breakdown -->
                             <div class="order-summary-box">
-                                <div class="summary-line">
-                                    <span>Subtotal:</span>
-                                    <span>₱<span id="orderSubtotal">0.00</span></span>
-                                </div>
-                                <div class="summary-line discount-line" id="discountLine" style="display: none;">
-                                    <span>Discount (<span id="discountLabel"></span>):</span>
-                                    <span class="discount-amount">-₱<span id="orderDiscount">0.00</span></span>
-                                </div>
-                                <div class="summary-line-divider"></div>
-                                <div class="summary-line vat-line">
-                                    <span>Vatable Sales:</span>
-                                    <span>₱<span id="orderVatableSales">0.00</span></span>
-                                </div>
-                                <div class="summary-line vat-line">
-                                    <span>VAT-Exempt Sales:</span>
-                                    <span>₱<span id="orderVatExempt">0.00</span></span>
-                                </div>
-                                <div class="summary-line vat-line">
-                                    <span>VAT (12%):</span>
-                                    <span>₱<span id="orderVAT">0.00</span></span>
-                                </div>
                                 <div class="summary-line-divider"></div>
                                 <div class="summary-line total-line">
                                     <span class="order-total-label">TOTAL:</span>
@@ -1821,39 +1808,6 @@ $currentRole = $_SESSION['role'] ?? null;
                             </table>
                         </div>
 
-                        <div id="timeclock-content" class="content-section hidden">
-                            <div class="dashboard-header"><h1>Time Clock</h1></div>
-                            <div class="timeclock-panel">
-                                <div class="timeclock-status">
-                                    <h3>⏰ Current Status</h3>
-                                    <div id="currentTimeClockStatus" class="status-display">
-                                        <p class="status-text">Loading...</p>
-                                    </div>
-                                </div>
-                                <div class="timeclock-actions">
-                                    <button id="timeInBtn" onclick="cashierTimeIn()" class="timeclock-btn time-in-btn">
-                                        ⏱️ Time In
-                                    </button>
-                                    <button id="timeOutBtn" onclick="cashierTimeOut()" class="timeclock-btn time-out-btn">
-                                        ⏹️ Time Out
-                                    </button>
-                                </div>
-                            </div>
-                            <h3>📋 My Attendance History (Today)</h3>
-                            <table id="cashierAttendanceTable" class="summary-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Time In</th>
-                                        <th>Time Out</th>
-                                        <th>Hours Worked</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td colspan="4">Loading attendance records...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
                     </main>
                 </div>
             </section>

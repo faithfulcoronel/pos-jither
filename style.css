@@ -247,6 +247,36 @@ textarea:focus {
   box-shadow: var(--shadow-strong);
   text-align: center;
   animation: fadeInUp 0.6s ease;
+  position: relative;
+}
+
+.login-container .back-arrow {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--primary-dark);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid rgba(139, 69, 19, 0.2);
+}
+
+.login-container .back-arrow:hover {
+  background: rgba(139, 69, 19, 0.2);
+  transform: translateX(-3px);
+  box-shadow: var(--shadow-medium);
+}
+
+.login-container .back-arrow svg {
+  width: 20px;
+  height: 20px;
 }
 
 @keyframes fadeInUp {
@@ -1227,6 +1257,10 @@ textarea:focus {
   border: 1px solid rgba(139, 69, 19, 0.16);
   cursor: pointer;
   transition: all var(--transition-normal);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
 .transaction-item:hover {
@@ -1271,6 +1305,39 @@ textarea:focus {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--primary-brown);
+}
+
+.print-transaction-btn {
+  padding: 8px 16px;
+  background: var(--primary-brown);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.print-transaction-btn:hover {
+  background: var(--primary-dark);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-medium);
+}
+
+.print-transaction-btn:active {
+  transform: scale(0.98);
+}
+
+.transaction-item.selected .print-transaction-btn {
+  background: white;
+  color: var(--primary-brown);
+}
+
+.transaction-item.selected .print-transaction-btn:hover {
+  background: var(--accent-cream);
 }
 
 .empty-state,
