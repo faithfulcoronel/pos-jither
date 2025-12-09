@@ -65,6 +65,8 @@ $currentUsername = $_SESSION['username'] ?? '';
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jowen's Kitchen & Cafe POS</title>
+    <!-- Unified Layout System - Load First -->
+    <link rel="stylesheet" href="css/unified-layout.css" />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="css/recipe-form-styles.css" />
     <link rel="stylesheet" href="css/inventify-theme.css" />
@@ -72,6 +74,8 @@ $currentUsername = $_SESSION['username'] ?? '';
     <link rel="stylesheet" href="css/sales-dashboard.css" />
     <link rel="stylesheet" href="css/staff-dashboard.css" />
     <link rel="stylesheet" href="css/timekeeping.css" />
+    <link rel="stylesheet" href="css/discount-modal.css" />
+    <link rel="stylesheet" href="css/business-reports.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
@@ -615,6 +619,42 @@ $currentUsername = $_SESSION['username'] ?? '';
                                     </div>
                                 </div>
 
+                                <!-- Inventory Analytics Charts -->
+                                <div class="inventify-charts-section">
+                                    <!-- Stock Status Distribution -->
+                                    <div class="inventify-chart-card">
+                                        <div class="inventify-chart-header">
+                                            <h3 class="inventify-chart-title">📊 Stock Status Distribution</h3>
+                                            <p class="inventify-chart-subtitle">Items by stock level</p>
+                                        </div>
+                                        <div class="inventify-chart-container">
+                                            <canvas id="inventory-status-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Top Value Items -->
+                                    <div class="inventify-chart-card">
+                                        <div class="inventify-chart-header">
+                                            <h3 class="inventify-chart-title">💰 Top 10 by Value</h3>
+                                            <p class="inventify-chart-subtitle">Highest inventory value items</p>
+                                        </div>
+                                        <div class="inventify-chart-container">
+                                            <canvas id="inventory-value-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Stock Levels Trend -->
+                                    <div class="inventify-chart-card large">
+                                        <div class="inventify-chart-header">
+                                            <h3 class="inventify-chart-title">📈 Stock Level Overview</h3>
+                                            <p class="inventify-chart-subtitle">Current quantity vs reorder levels</p>
+                                        </div>
+                                        <div class="inventify-chart-container">
+                                            <canvas id="inventory-levels-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Toolbar -->
                                 <div class="inventify-toolbar">
                                     <div class="inventify-search">
@@ -857,276 +897,182 @@ $currentUsername = $_SESSION['username'] ?? '';
                         </div>
 
                         <div id="reports-content" class="content-section hidden">
-                            <div class="dashboard-header"><h1>Business Reports</h1></div>
+                            <!-- Modern Business Reports Dashboard -->
+                            <div class="business-reports-dashboard">
+                                <!-- Header -->
+                                <div class="reports-header">
+                                    <div class="reports-header-content">
+                                        <div>
+                                            <h1 class="reports-title">📊 <strong>Business</strong> Reports</h1>
+                                            <p class="reports-subtitle">Historical sales data and performance metrics</p>
+                                        </div>
+                                        <div class="reports-actions">
+                                            <button class="reports-btn reports-btn-primary" onclick="generateReportPDF()">
+                                                <span>📄</span> Export PDF
+                                            </button>
+                                            <button class="reports-btn reports-btn-secondary" onclick="generateReportExcel()">
+                                                <span>📊</span> Export Excel
+                                            </button>
+                                        </div>
+                                    </div>
 
-                            <!-- Reports Tabs -->
-                            <div class="reports-tabs">
-                                <button class="report-tab active" onclick="showReportTab('sales-report', event)">📊 Sales Reports</button>
-                                <button class="report-tab" onclick="showReportTab('inventory-summary', event)">📦 Inventory Summary</button>
-                                <button class="report-tab" onclick="showReportTab('item-velocity', event)">🔥 Item Velocity</button>
-                                <button class="report-tab" onclick="showReportTab('stock-aging', event)">⏰ Stock Aging</button>
-                                <button class="report-tab" onclick="showReportTab('purchase-history', event)">🛒 Purchase History</button>
-                                <button class="report-tab" onclick="showReportTab('profit-loss', event)">💰 Profit & Loss</button>
-                                <button class="report-tab" onclick="showReportTab('shrinkage', event)">⚠️ Shrinkage</button>
-                            </div>
+                                    <!-- Filters -->
+                                    <div class="reports-filters">
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">📅 Date Range</label>
+                                            <select id="reports-period-filter" class="reports-filter-select" onchange="loadBusinessReports()">
+                                                <option value="7">Last 7 Days</option>
+                                                <option value="30" selected>Last 30 Days</option>
+                                                <option value="90">Last 90 Days</option>
+                                                <option value="365">Last Year</option>
+                                            </select>
+                                        </div>
 
-                            <!-- Sales Reports Tab -->
-                            <div id="sales-report-tab" class="report-tab-content">
-                                <h3>📊 Sales Reports</h3>
-                                <div class="report-controls">
-                                    <label>Report Period:</label>
-                                    <select id="salesReportPeriod" onchange="generateSalesReport()">
-                                        <option value="daily">Daily</option>
-                                        <option value="weekly">Weekly</option>
-                                        <option value="monthly">Monthly</option>
-                                        <option value="custom">Custom Range</option>
-                                    </select>
-                                    <input type="date" id="salesStartDate" onchange="generateSalesReport()">
-                                    <input type="date" id="salesEndDate" onchange="generateSalesReport()">
-                                    <button onclick="generateSalesReport()">Generate Report</button>
-                                    <button onclick="exportReport('sales')">Export CSV</button>
-                                </div>
-                                <div id="sales-report-summary" class="report-summary-cards">
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Revenue</div>
-                                        <div class="card-value" id="totalRevenue">₱0.00</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Transactions</div>
-                                        <div class="card-value" id="totalTransactions">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Average Transaction</div>
-                                        <div class="card-value" id="avgTransaction">₱0.00</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Discounts</div>
-                                        <div class="card-value" id="totalDiscounts">₱0.00</div>
-                                    </div>
-                                </div>
-                                <canvas id="salesReportChart" style="max-height: 300px;"></canvas>
-                                <table id="salesReportTable" class="summary-table">
-                                    <thead>
-                                        <tr><th>Date</th><th>Transactions</th><th>Revenue</th><th>Discounts</th><th>Tax</th><th>Net Revenue</th></tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">From Date</label>
+                                            <input type="date" id="reports-from-date" class="reports-filter-input" onchange="loadBusinessReports()">
+                                        </div>
 
-                            <!-- Inventory Summary Tab -->
-                            <div id="inventory-summary-tab" class="report-tab-content hidden">
-                                <h3>📦 Inventory Summary</h3>
-                                <div class="report-controls">
-                                    <button onclick="generateInventorySummary()">Refresh Summary</button>
-                                    <button onclick="exportReport('inventory')">Export CSV</button>
-                                </div>
-                                <div id="inventory-summary-cards" class="report-summary-cards">
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Items</div>
-                                        <div class="card-value" id="totalItems">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Low Stock Items</div>
-                                        <div class="card-value warning" id="lowStockItems">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Out of Stock</div>
-                                        <div class="card-value danger" id="outOfStockItems">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Inventory Value</div>
-                                        <div class="card-value" id="totalInventoryValue">₱0.00</div>
-                                    </div>
-                                </div>
-                                <table id="inventorySummaryTable" class="summary-table">
-                                    <thead>
-                                        <tr><th>Item</th><th>Current Stock</th><th>Unit</th><th>Min/Max</th><th>Status</th><th>Value</th></tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">To Date</label>
+                                            <input type="date" id="reports-to-date" class="reports-filter-input" onchange="loadBusinessReports()">
+                                        </div>
 
-                            <!-- Item Velocity Tab -->
-                            <div id="item-velocity-tab" class="report-tab-content hidden">
-                                <h3>🔥 Fast-Moving & Slow-Moving Items</h3>
-                                <div class="report-controls">
-                                    <label>Analysis Period:</label>
-                                    <select id="velocityPeriod" onchange="generateItemVelocity()">
-                                        <option value="7">Last 7 Days</option>
-                                        <option value="30" selected>Last 30 Days</option>
-                                        <option value="90">Last 90 Days</option>
-                                    </select>
-                                    <button onclick="generateItemVelocity()">Analyze</button>
-                                    <button onclick="exportReport('velocity')">Export CSV</button>
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">Status</label>
+                                            <select id="reports-status-filter" class="reports-filter-select" onchange="loadBusinessReports()">
+                                                <option value="all">All Reports</option>
+                                                <option value="finalized">Finalized (Z-Read)</option>
+                                                <option value="open">Open (X-Read)</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="velocity-sections">
-                                    <div class="velocity-section">
-                                        <h4>🔥 Fast-Moving Items</h4>
-                                        <table id="fastMovingTable" class="summary-table">
+
+                                <!-- Summary Cards -->
+                                <div class="reports-summary-grid">
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💰</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Total Sales</h3>
+                                            <p class="reports-card-value" id="reports-total-sales">₱0.00</p>
+                                            <p class="reports-card-change positive" id="reports-sales-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🛒</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Total Transactions</h3>
+                                            <p class="reports-card-value" id="reports-total-transactions">0</p>
+                                            <p class="reports-card-change positive" id="reports-transactions-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">📦</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Items Sold</h3>
+                                            <p class="reports-card-value" id="reports-total-items">0</p>
+                                            <p class="reports-card-change positive" id="reports-items-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📊</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Average Order</h3>
+                                            <p class="reports-card-value" id="reports-avg-order">₱0.00</p>
+                                            <p class="reports-card-change positive" id="reports-avg-change">+0%</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Charts Section -->
+                                <div class="reports-charts-section">
+                                    <!-- Sales Trend Chart -->
+                                    <div class="reports-chart-card large">
+                                        <div class="reports-chart-header">
+                                            <h3 class="reports-chart-title">📈 Sales Trend</h3>
+                                            <p class="reports-chart-subtitle">Daily sales performance over time</p>
+                                        </div>
+                                        <div class="reports-chart-container">
+                                            <canvas id="business-reports-trend-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Payment Methods Chart -->
+                                    <div class="reports-chart-card">
+                                        <div class="reports-chart-header">
+                                            <h3 class="reports-chart-title">💳 Payment Methods</h3>
+                                            <p class="reports-chart-subtitle">Distribution by payment type</p>
+                                        </div>
+                                        <div class="reports-chart-container">
+                                            <canvas id="business-reports-payment-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Transactions Chart -->
+                                    <div class="reports-chart-card">
+                                        <div class="reports-chart-header">
+                                            <h3 class="reports-chart-title">🛒 Transaction Volume</h3>
+                                            <p class="reports-chart-subtitle">Number of transactions per day</p>
+                                        </div>
+                                        <div class="reports-chart-container">
+                                            <canvas id="business-reports-transactions-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Average Order Value Chart -->
+                                    <div class="reports-chart-card">
+                                        <div class="reports-chart-header">
+                                            <h3 class="reports-chart-title">📊 Average Order Value</h3>
+                                            <p class="reports-chart-subtitle">Average transaction amount</p>
+                                        </div>
+                                        <div class="reports-chart-container">
+                                            <canvas id="business-reports-aov-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reports Table -->
+                                <div class="reports-table-section">
+                                    <div class="reports-section-header">
+                                        <h2 class="reports-section-title">📅 Daily Reports History</h2>
+                                        <button class="reports-btn reports-btn-outline" onclick="loadBusinessReports()">
+                                            <span>🔄</span> Refresh
+                                        </button>
+                                    </div>
+
+                                    <div class="reports-table-container">
+                                        <table id="businessReportsTable" class="reports-table">
                                             <thead>
-                                                <tr><th>Product</th><th>Total Sold</th><th>Revenue</th><th>Avg Daily Sales</th></tr>
+                                                <tr>
+                                                    <th>📅 Date</th>
+                                                    <th>💰 Total Sales</th>
+                                                    <th>🛒 Transactions</th>
+                                                    <th>📦 Items Sold</th>
+                                                    <th>📊 Avg Order</th>
+                                                    <th>💳 Cash</th>
+                                                    <th>💳 Card/GCash</th>
+                                                    <th>🏷️ Status</th>
+                                                    <th>⚙️ Actions</th>
+                                                </tr>
                                             </thead>
-                                            <tbody></tbody>
+                                            <tbody>
+                                                <tr class="reports-empty-row">
+                                                    <td colspan="9">
+                                                        <div class="reports-empty-state">
+                                                            <div class="reports-empty-icon">📊</div>
+                                                            <h3>No Reports Found</h3>
+                                                            <p>Business reports will appear here once daily summaries are saved</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
                                         </table>
                                     </div>
-                                    <div class="velocity-section">
-                                        <h4>🐌 Slow-Moving Items</h4>
-                                        <table id="slowMovingTable" class="summary-table">
-                                            <thead>
-                                                <tr><th>Product</th><th>Total Sold</th><th>Revenue</th><th>Avg Daily Sales</th></tr>
-                                            </thead>
-                                            <tbody></tbody>
-                                        </table>
-                                    </div>
                                 </div>
-                            </div>
-
-                            <!-- Stock Aging Tab -->
-                            <div id="stock-aging-tab" class="report-tab-content hidden">
-                                <h3>⏰ Stock Aging Report</h3>
-                                <div class="report-controls">
-                                    <button onclick="generateStockAging()">Generate Report</button>
-                                    <button onclick="exportReport('aging')">Export CSV</button>
-                                </div>
-                                <div class="aging-summary">
-                                    <div class="summary-card">
-                                        <div class="card-label">Fresh (0-30 days)</div>
-                                        <div class="card-value" id="fresh30">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Medium (31-60 days)</div>
-                                        <div class="card-value warning" id="medium60">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Old (61-90 days)</div>
-                                        <div class="card-value danger" id="old90">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Very Old (90+ days)</div>
-                                        <div class="card-value danger" id="veryOld90">0</div>
-                                    </div>
-                                </div>
-                                <table id="stockAgingTable" class="summary-table">
-                                    <thead>
-                                        <tr><th>Batch #</th><th>Item</th><th>Quantity</th><th>Received Date</th><th>Age (Days)</th><th>Status</th><th>Expiry</th></tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-
-                            <!-- Purchase History Tab -->
-                            <div id="purchase-history-tab" class="report-tab-content hidden">
-                                <h3>🛒 Purchase History</h3>
-                                <div class="report-controls">
-                                    <label>Period:</label>
-                                    <select id="purchasePeriod" onchange="generatePurchaseHistory()">
-                                        <option value="30">Last 30 Days</option>
-                                        <option value="60">Last 60 Days</option>
-                                        <option value="90">Last 90 Days</option>
-                                        <option value="all">All Time</option>
-                                    </select>
-                                    <button onclick="generatePurchaseHistory()">Generate</button>
-                                    <button onclick="exportReport('purchase')">Export CSV</button>
-                                </div>
-                                <div class="report-summary-cards">
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Orders</div>
-                                        <div class="card-value" id="totalPOs">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Spent</div>
-                                        <div class="card-value" id="totalSpent">₱0.00</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Pending Orders</div>
-                                        <div class="card-value warning" id="pendingPOs">0</div>
-                                    </div>
-                                </div>
-                                <table id="purchaseHistoryTable" class="summary-table">
-                                    <thead>
-                                        <tr><th>PO #</th><th>Supplier</th><th>Order Date</th><th>Expected</th><th>Status</th><th>Amount</th><th>Items</th></tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-
-                            <!-- Profit & Loss Tab -->
-                            <div id="profit-loss-tab" class="report-tab-content hidden">
-                                <h3>💰 Profit & Loss Estimation</h3>
-                                <div class="report-controls">
-                                    <label>Report Period:</label>
-                                    <select id="plPeriod" onchange="generateProfitLoss()">
-                                        <option value="daily">Daily</option>
-                                        <option value="weekly">Weekly</option>
-                                        <option value="monthly" selected>Monthly</option>
-                                        <option value="yearly">Yearly</option>
-                                    </select>
-                                    <input type="date" id="plStartDate" onchange="generateProfitLoss()">
-                                    <input type="date" id="plEndDate" onchange="generateProfitLoss()">
-                                    <button onclick="generateProfitLoss()">Generate</button>
-                                    <button onclick="exportReport('profitloss')">Export CSV</button>
-                                </div>
-                                <div class="report-summary-cards">
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Revenue</div>
-                                        <div class="card-value" id="plRevenue">₱0.00</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Cost of Goods</div>
-                                        <div class="card-value" id="plCogs">₱0.00</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Gross Profit</div>
-                                        <div class="card-value success" id="plGrossProfit">₱0.00</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Profit Margin</div>
-                                        <div class="card-value success" id="plMargin">0%</div>
-                                    </div>
-                                </div>
-                                <canvas id="profitLossChart" style="max-height: 300px;"></canvas>
-                                <table id="profitLossTable" class="summary-table">
-                                    <thead>
-                                        <tr><th>Period</th><th>Revenue</th><th>COGS</th><th>Gross Profit</th><th>Margin %</th></tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-
-                            <!-- Shrinkage Tab -->
-                            <div id="shrinkage-tab" class="report-tab-content hidden">
-                                <h3>⚠️ Shrinkage & Discrepancy Report</h3>
-                                <div class="report-controls">
-                                    <label>Period:</label>
-                                    <select id="shrinkagePeriod" onchange="generateShrinkageReport()">
-                                        <option value="30">Last 30 Days</option>
-                                        <option value="60">Last 60 Days</option>
-                                        <option value="90">Last 90 Days</option>
-                                    </select>
-                                    <button onclick="generateShrinkageReport()">Analyze</button>
-                                    <button onclick="exportReport('shrinkage')">Export CSV</button>
-                                </div>
-                                <div class="report-summary-cards">
-                                    <div class="summary-card">
-                                        <div class="card-label">Total Shrinkage Value</div>
-                                        <div class="card-value danger" id="shrinkageValue">₱0.00</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Items Affected</div>
-                                        <div class="card-value" id="shrinkageItems">0</div>
-                                    </div>
-                                    <div class="summary-card">
-                                        <div class="card-label">Shrinkage Rate</div>
-                                        <div class="card-value warning" id="shrinkageRate">0%</div>
-                                    </div>
-                                </div>
-                                <p class="report-note">⚠️ Shrinkage = Expected Stock - Actual Stock (due to theft, damage, waste, or errors)</p>
-                                <table id="shrinkageTable" class="summary-table">
-                                    <thead>
-                                        <tr><th>Item</th><th>Expected Stock</th><th>Actual Stock</th><th>Difference</th><th>Value Loss</th><th>Last Audit</th></tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
                             </div>
                         </div>
 
@@ -1258,12 +1204,10 @@ $currentUsername = $_SESSION['username'] ?? '';
                                     <div class="staff-section-header">
                                         <h2 class="staff-section-title">
                                             <span class="staff-section-icon">🕒</span>
-                                            Today's Timekeeping Records
+                                            <span id="timekeeping-title">Today's Timekeeping Records</span>
                                         </h2>
                                         <div class="staff-filter-buttons">
-                                            <button class="staff-filter-btn active" onclick="filterTimekeeping('today')">Today</button>
-                                            <button class="staff-filter-btn" onclick="filterTimekeeping('week')">This Week</button>
-                                            <button class="staff-filter-btn" onclick="filterTimekeeping('month')">This Month</button>
+                                            <input type="date" id="timekeeping-date-picker" class="staff-date-picker" onchange="loadTimekeepingByDate()" title="Select date to view records">
                                         </div>
                                     </div>
 
@@ -1307,50 +1251,33 @@ $currentUsername = $_SESSION['username'] ?? '';
                                     <!-- Filters -->
                                     <div class="sales-filters">
                                         <div class="sales-filter-group">
-                                            <label class="sales-filter-label">Period</label>
-                                            <select id="sales-period-filter" class="sales-filter-select">
-                                                <option value="daily">Daily</option>
-                                                <option value="weekly">Weekly</option>
-                                                <option value="monthly" selected>Monthly</option>
-                                                <option value="quarterly">Quarterly</option>
-                                                <option value="yearly">Yearly</option>
+                                            <label class="sales-filter-label">📅 Select Date</label>
+                                            <input type="date" id="sales-date-filter" class="sales-filter-input sales-date-picker" onchange="updateFiltersFromDate()">
+                                        </div>
+
+                                        <div class="sales-filter-group">
+                                            <label class="sales-filter-label">Date Range</label>
+                                            <select id="sales-range-filter" class="sales-filter-select" onchange="updateDateRange()">
+                                                <option value="day">Single Day</option>
+                                                <option value="week">Week</option>
+                                                <option value="month" selected>Month</option>
+                                                <option value="quarter">Quarter</option>
+                                                <option value="year">Year</option>
                                             </select>
                                         </div>
 
                                         <div class="sales-filter-group">
-                                            <label class="sales-filter-label">Year</label>
-                                            <select id="sales-year-filter" class="sales-filter-select">
-                                                <option value="2023">2023</option>
-                                                <option value="2024">2024</option>
-                                                <option value="2025" selected>2025</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="sales-filter-group">
-                                            <label class="sales-filter-label">Month</label>
-                                            <select id="sales-month-filter" class="sales-filter-select">
-                                                <option value="1">January</option>
-                                                <option value="2">February</option>
-                                                <option value="3">March</option>
-                                                <option value="4">April</option>
-                                                <option value="5">May</option>
-                                                <option value="6">June</option>
-                                                <option value="7">July</option>
-                                                <option value="8">August</option>
-                                                <option value="9">September</option>
-                                                <option value="10">October</option>
-                                                <option value="11">November</option>
-                                                <option value="12">December</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="sales-filter-group">
-                                            <label class="sales-filter-label">Quarter</label>
-                                            <select id="sales-quarter-filter" class="sales-filter-select">
-                                                <option value="1">Q1</option>
-                                                <option value="2">Q2</option>
-                                                <option value="3">Q3</option>
-                                                <option value="4">Q4</option>
+                                            <label class="sales-filter-label">Quick Select</label>
+                                            <select id="sales-quick-filter" class="sales-filter-select" onchange="applyQuickFilter()">
+                                                <option value="">Custom...</option>
+                                                <option value="today">Today</option>
+                                                <option value="yesterday">Yesterday</option>
+                                                <option value="this-week">This Week</option>
+                                                <option value="last-week">Last Week</option>
+                                                <option value="this-month" selected>This Month</option>
+                                                <option value="last-month">Last Month</option>
+                                                <option value="this-quarter">This Quarter</option>
+                                                <option value="this-year">This Year</option>
                                             </select>
                                         </div>
                                     </div>
@@ -1460,12 +1387,12 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         </div>
                                     </div>
 
-                                    <!-- Sales by Location -->
+                                    <!-- Product Range Analysis -->
                                     <div class="sales-chart-card span-4">
                                         <div class="sales-chart-header">
                                             <div>
-                                                <h3 class="sales-chart-title">Sales & Profit by Location</h3>
-                                                <p class="sales-chart-subtitle">Store Performance</p>
+                                                <h3 class="sales-chart-title">Product Range Analysis</h3>
+                                                <p class="sales-chart-subtitle">Sales by Price Range</p>
                                             </div>
                                         </div>
                                         <div class="sales-chart-container">
@@ -1523,20 +1450,141 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
 
                         <div id="report-content" class="content-section hidden">
-                            <div class="dashboard-header"><h1>Business Report</h1></div>
-                            <h3>📊 Monthly Report</h3>
-                            <table class="summary-table">
-                                <thead>
-                                    <tr><th>Month</th><th>Revenue (₱)</th><th>Expenses (₱)</th><th>Profit (₱)</th></tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td>May 2024</td><td>96,000</td><td>45,000</td><td>51,000</td></tr>
-                                </tbody>
-                            </table>
+                            <!-- Modern Business Reports Dashboard -->
+                            <div class="business-reports-dashboard">
+                                <!-- Header -->
+                                <div class="reports-header">
+                                    <div class="reports-header-content">
+                                        <div>
+                                            <h1 class="reports-title">📊 <strong>Business</strong> Reports</h1>
+                                            <p class="reports-subtitle">Historical sales data and performance metrics</p>
+                                        </div>
+                                        <div class="reports-actions">
+                                            <button class="reports-btn reports-btn-primary" onclick="generateReportPDF()">
+                                                <span>📄</span> Export PDF
+                                            </button>
+                                            <button class="reports-btn reports-btn-secondary" onclick="generateReportExcel()">
+                                                <span>📊</span> Export Excel
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Filters -->
+                                    <div class="reports-filters">
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">📅 Date Range</label>
+                                            <select id="reports-period-filter" class="reports-filter-select" onchange="loadBusinessReports()">
+                                                <option value="7">Last 7 Days</option>
+                                                <option value="30" selected>Last 30 Days</option>
+                                                <option value="90">Last 90 Days</option>
+                                                <option value="365">Last Year</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">From Date</label>
+                                            <input type="date" id="reports-from-date" class="reports-filter-input" onchange="loadBusinessReports()">
+                                        </div>
+
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">To Date</label>
+                                            <input type="date" id="reports-to-date" class="reports-filter-input" onchange="loadBusinessReports()">
+                                        </div>
+
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">Status</label>
+                                            <select id="reports-status-filter" class="reports-filter-select" onchange="loadBusinessReports()">
+                                                <option value="all">All Reports</option>
+                                                <option value="finalized">Finalized (Z-Read)</option>
+                                                <option value="open">Open (X-Read)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Cards -->
+                                <div class="reports-summary-grid">
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💰</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Total Sales</h3>
+                                            <p class="reports-card-value" id="reports-total-sales">₱0.00</p>
+                                            <p class="reports-card-change positive" id="reports-sales-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🛒</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Total Transactions</h3>
+                                            <p class="reports-card-value" id="reports-total-transactions">0</p>
+                                            <p class="reports-card-change positive" id="reports-transactions-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">📦</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Items Sold</h3>
+                                            <p class="reports-card-value" id="reports-total-items">0</p>
+                                            <p class="reports-card-change positive" id="reports-items-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📊</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Average Order</h3>
+                                            <p class="reports-card-value" id="reports-avg-order">₱0.00</p>
+                                            <p class="reports-card-change positive" id="reports-avg-change">+0%</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reports Table -->
+                                <div class="reports-table-section">
+                                    <div class="reports-section-header">
+                                        <h2 class="reports-section-title">📅 Daily Reports History</h2>
+                                        <button class="reports-btn reports-btn-outline" onclick="loadBusinessReports()">
+                                            <span>🔄</span> Refresh
+                                        </button>
+                                    </div>
+
+                                    <div class="reports-table-container">
+                                        <table id="businessReportsTable" class="reports-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>📅 Date</th>
+                                                    <th>💰 Total Sales</th>
+                                                    <th>🛒 Transactions</th>
+                                                    <th>📦 Items Sold</th>
+                                                    <th>📊 Avg Order</th>
+                                                    <th>💳 Cash</th>
+                                                    <th>💳 Card/GCash</th>
+                                                    <th>🏷️ Status</th>
+                                                    <th>⚙️ Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr class="reports-empty-row">
+                                                    <td colspan="9">
+                                                        <div class="reports-empty-state">
+                                                            <div class="reports-empty-icon">📊</div>
+                                                            <h3>No Reports Found</h3>
+                                                            <p>Business reports will appear here once daily summaries are saved</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </main>
 
@@ -1651,8 +1699,9 @@ $currentUsername = $_SESSION['username'] ?? '';
                             </div>
                             <ul id="orderList" class="order-list"></ul>
 
-                            <!-- Discount Type Selection -->
-                            <div class="discount-selector-container">
+                            <!-- Discount Type Selection - Hidden (shown after payment) -->
+                            <!-- Discount selection now appears after payment confirmation -->
+                            <div class="discount-selector-container" style="display: none;">
                                 <h4 class="discount-section-title">💳 Customer Discount Type</h4>
                                 <div class="discount-buttons-grid">
                                     <button class="discount-btn active" data-type="none" data-rate="0" onclick="selectDiscountType('none', 0, 'No Discount')">
@@ -1883,5 +1932,8 @@ $currentUsername = $_SESSION['username'] ?? '';
     <script defer src="js/home-dashboard.js"></script>
     <script defer src="js/sales-dashboard.js"></script>
     <script defer src="js/timekeeping.js"></script>
+    <script defer src="js/staff-timekeeping.js"></script>
+    <script defer src="js/daily-summary.js"></script>
+    <script defer src="js/business-reports.js"></script>
 </body>
 </html>

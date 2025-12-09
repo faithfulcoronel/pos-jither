@@ -584,6 +584,39 @@ function createStaffAccount(PDO $pdo, array $payload): void
         'employee_number' => $employeeNumber !== '' ? $employeeNumber : null,
         'status' => $status,
     ]);
+
+    // Also create employee record for time keeping system
+    // Only if employee_number is provided
+    if ($employeeNumber !== '') {
+        try {
+            // Check if employee already exists
+            $checkEmp = $pdo->prepare('SELECT COUNT(*) FROM employees WHERE employee_number = :emp_num');
+            $checkEmp->execute(['emp_num' => $employeeNumber]);
+            $empExists = (int)$checkEmp->fetchColumn() > 0;
+
+            if (!$empExists) {
+                // Convert status to lowercase for employees table (Active -> active, Inactive -> inactive)
+                $empStatus = ($status === 'Active') ? 'active' : 'inactive';
+
+                $empStatement = $pdo->prepare('
+                    INSERT INTO employees (employee_number, full_name, position, department, status, date_hired)
+                    VALUES (:emp_num, :full_name, :position, :department, :status, :date_hired)
+                ');
+                $empStatement->execute([
+                    'emp_num' => $employeeNumber,
+                    'full_name' => $name,
+                    'position' => $role,
+                    'department' => 'Front of House',
+                    'status' => $empStatus,
+                    'date_hired' => date('Y-m-d'),
+                ]);
+            }
+        } catch (PDOException $e) {
+            // If employees table doesn't exist, just continue
+            // The staff account was still created successfully
+            error_log('Could not create employee record: ' . $e->getMessage());
+        }
+    }
 }
 
 function updateStaffAccount(PDO $pdo, array $payload): void
@@ -618,6 +651,51 @@ function updateStaffAccount(PDO $pdo, array $payload): void
             throw new RuntimeException('Staff account not found.');
         }
     }
+
+    // Also update employee record for time keeping system
+    if ($employeeNumber !== '') {
+        try {
+            // Check if employee exists
+            $checkEmp = $pdo->prepare('SELECT id FROM employees WHERE employee_number = :emp_num');
+            $checkEmp->execute(['emp_num' => $employeeNumber]);
+            $employee = $checkEmp->fetch(PDO::FETCH_ASSOC);
+
+            // Convert status
+            $empStatus = ($status === 'Active') ? 'active' : 'inactive';
+
+            if ($employee) {
+                // Update existing employee
+                $empStatement = $pdo->prepare('
+                    UPDATE employees
+                    SET full_name = :full_name, position = :position, status = :status
+                    WHERE employee_number = :emp_num
+                ');
+                $empStatement->execute([
+                    'emp_num' => $employeeNumber,
+                    'full_name' => $name,
+                    'position' => $role,
+                    'status' => $empStatus,
+                ]);
+            } else {
+                // Create new employee record
+                $empStatement = $pdo->prepare('
+                    INSERT INTO employees (employee_number, full_name, position, department, status, date_hired)
+                    VALUES (:emp_num, :full_name, :position, :department, :status, :date_hired)
+                ');
+                $empStatement->execute([
+                    'emp_num' => $employeeNumber,
+                    'full_name' => $name,
+                    'position' => $role,
+                    'department' => 'Front of House',
+                    'status' => $empStatus,
+                    'date_hired' => date('Y-m-d'),
+                ]);
+            }
+        } catch (PDOException $e) {
+            // If employees table doesn't exist, just continue
+            error_log('Could not update employee record: ' . $e->getMessage());
+        }
+    }
 }
 
 function deleteStaffAccount(PDO $pdo, array $payload): void
@@ -627,11 +705,27 @@ function deleteStaffAccount(PDO $pdo, array $payload): void
         throw new InvalidArgumentException('Staff account ID is required.');
     }
 
+    // Get employee number before deleting
+    $getEmpNum = $pdo->prepare('SELECT employee_number FROM staff_accounts WHERE id = :id');
+    $getEmpNum->execute(['id' => $id]);
+    $staff = $getEmpNum->fetch(PDO::FETCH_ASSOC);
+
     $statement = $pdo->prepare('DELETE FROM staff_accounts WHERE id = :id');
     $statement->execute(['id' => $id]);
 
     if ($statement->rowCount() === 0) {
         throw new RuntimeException('Staff account not found.');
+    }
+
+    // Also delete from employees table if employee_number exists
+    if ($staff && !empty($staff['employee_number'])) {
+        try {
+            $delEmp = $pdo->prepare('DELETE FROM employees WHERE employee_number = :emp_num');
+            $delEmp->execute(['emp_num' => $staff['employee_number']]);
+        } catch (PDOException $e) {
+            // If employees table doesn't exist or error, just continue
+            error_log('Could not delete employee record: ' . $e->getMessage());
+        }
     }
 }
 

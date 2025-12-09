@@ -137,6 +137,26 @@
     box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.2);
 }
 
+/* Date Picker Specific Styling */
+.sales-date-picker {
+    min-width: 200px;
+    cursor: pointer;
+}
+
+.sales-date-picker::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(0.6);
+    font-size: 18px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.sales-date-picker::-webkit-calendar-picker-indicator:hover {
+    background: rgba(212, 165, 116, 0.2);
+    filter: invert(0.4);
+}
+
 .sales-filter-btn {
     padding: 10px 24px;
     background: linear-gradient(135deg, var(--sales-primary) 0%, var(--sales-primary-dark) 100%);

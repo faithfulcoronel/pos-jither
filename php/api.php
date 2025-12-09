@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// Set timezone to Manila
+date_default_timezone_set('Asia/Manila');
+
 session_start();
 
 header('Content-Type: application/json');
@@ -301,14 +304,32 @@ function handlePostRequest(PDO $pdo, string $resource, string $action, $data): v
                         $reference = sprintf('TXN%s-%04d', $today, $countToday);
                     }
 
-                    // Insert into sales_transactions
+                    // Insert into sales_transactions with all required fields
+                    $subtotal = $data['subtotal'] ?? $data['total'] ?? 0;
+                    $discountAmount = $data['discount_amount'] ?? 0;
+                    $taxAmount = $data['tax_amount'] ?? 0;
+                    $total = $data['total'] ?? 0;
+                    $paymentMethod = $data['payment_method'] ?? 'cash';
+                    $amountTendered = $data['amount_tendered'] ?? $total;
+                    $changeAmount = $data['change_amount'] ?? 0;
+
                     $stmt = $pdo->prepare("
-                        INSERT INTO sales_transactions (reference, total, created_at, occurred_at)
-                        VALUES (?, ?, NOW(), NOW())
+                        INSERT INTO sales_transactions (
+                            reference, subtotal, discount_amount, tax_amount, total,
+                            payment_method, amount_tendered, change_amount,
+                            created_at, occurred_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                     ");
                     $stmt->execute([
                         $reference,
-                        $data['total'] ?? 0
+                        $subtotal,
+                        $discountAmount,
+                        $taxAmount,
+                        $total,
+                        $paymentMethod,
+                        $amountTendered,
+                        $changeAmount
                     ]);
                     $transactionId = $pdo->lastInsertId();
 
@@ -318,16 +339,26 @@ function handlePostRequest(PDO $pdo, string $resource, string $action, $data): v
 
                     if (!empty($data['items'])) {
                         $itemStmt = $pdo->prepare("
-                            INSERT INTO sales_transaction_items (transaction_id, product_id, product_name, quantity, unit_price, created_at)
-                            VALUES (?, ?, ?, ?, ?, NOW())
+                            INSERT INTO sales_transaction_items (
+                                transaction_id, product_id, product_name, quantity,
+                                unit_price, discount_amount, line_total, created_at
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                         ");
                         foreach ($data['items'] as $item) {
+                            $quantity = $item['quantity'] ?? 0;
+                            $unitPrice = $item['unit_price'] ?? 0;
+                            $itemDiscount = $item['discount_amount'] ?? 0;
+                            $lineTotal = ($quantity * $unitPrice) - $itemDiscount;
+
                             $itemStmt->execute([
                                 $transactionId,
                                 $item['product_id'] ?? null,
                                 $item['product_name'] ?? '',
-                                $item['quantity'] ?? 0,
-                                $item['unit_price'] ?? 0
+                                $quantity,
+                                $unitPrice,
+                                $itemDiscount,
+                                $lineTotal
                             ]);
 
                             // Deduct inventory for products with recipes

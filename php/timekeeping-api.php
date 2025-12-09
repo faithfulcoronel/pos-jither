@@ -8,6 +8,9 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
+// Set timezone to Manila
+date_default_timezone_set('Asia/Manila');
+
 header('Content-Type: application/json');
 
 // Database connection
@@ -81,9 +84,9 @@ function checkEmployeeStatus($pdo) {
     }
 
     try {
-        // Get employee details from staff_accounts
-        $stmt = $pdo->prepare('SELECT * FROM staff_accounts WHERE employee_number = ? AND status = ?');
-        $stmt->execute([$employeeNumber, 'Active']);
+        // Get employee details from employees table (for time keeping)
+        $stmt = $pdo->prepare('SELECT * FROM employees WHERE employee_number = ? AND status = ?');
+        $stmt->execute([$employeeNumber, 'active']);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$employee) {
@@ -124,7 +127,13 @@ function checkEmployeeStatus($pdo) {
 
         echo json_encode([
             'success' => true,
-            'employee' => $employee,
+            'employee' => [
+                'id' => $employee['id'],
+                'name' => $employee['full_name'],
+                'employee_number' => $employee['employee_number'],
+                'position' => $employee['position'],
+                'status' => $employee['status']
+            ],
             'status' => $status
         ]);
 
@@ -147,14 +156,14 @@ function handleTimeIn($pdo, $data) {
     try {
         $pdo->beginTransaction();
 
-        // Get employee from staff_accounts
-        $stmt = $pdo->prepare('SELECT * FROM staff_accounts WHERE employee_number = ? AND status = ?');
-        $stmt->execute([$employeeNumber, 'Active']);
+        // Get employee from employees table (for time keeping)
+        $stmt = $pdo->prepare('SELECT * FROM employees WHERE employee_number = ? AND status = ?');
+        $stmt->execute([$employeeNumber, 'active']);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$employee) {
             $pdo->rollBack();
-            echo json_encode(['success' => false, 'message' => 'Employee not found']);
+            echo json_encode(['success' => false, 'message' => 'Employee not found or inactive. Please check your employee number.']);
             return;
         }
 
@@ -215,7 +224,7 @@ function handleTimeIn($pdo, $data) {
         echo json_encode([
             'success' => true,
             'message' => 'Time in successful',
-            'employee_name' => $employee['name'],
+            'employee_name' => $employee['full_name'],
             'time_in' => date('h:i A', strtotime($now))
         ]);
 
@@ -241,14 +250,14 @@ function handleTimeOut($pdo, $data) {
     try {
         $pdo->beginTransaction();
 
-        // Get employee from staff_accounts
-        $stmt = $pdo->prepare('SELECT * FROM staff_accounts WHERE employee_number = ? AND status = ?');
-        $stmt->execute([$employeeNumber, 'Active']);
+        // Get employee from employees table (for time keeping)
+        $stmt = $pdo->prepare('SELECT * FROM employees WHERE employee_number = ? AND status = ?');
+        $stmt->execute([$employeeNumber, 'active']);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$employee) {
             $pdo->rollBack();
-            echo json_encode(['success' => false, 'message' => 'Employee not found']);
+            echo json_encode(['success' => false, 'message' => 'Employee not found or inactive. Please check your employee number.']);
             return;
         }
 
@@ -321,7 +330,7 @@ function handleTimeOut($pdo, $data) {
         echo json_encode([
             'success' => true,
             'message' => 'Time out successful',
-            'employee_name' => $employee['name'],
+            'employee_name' => $employee['full_name'],
             'time_out' => date('h:i A', strtotime($now)),
             'hours_worked' => number_format($updated['hours_worked'], 2) . ' hours'
         ]);
@@ -347,13 +356,13 @@ function getAttendanceHistory($pdo) {
     }
 
     try {
-        // Get employee from staff_accounts
-        $stmt = $pdo->prepare('SELECT id FROM staff_accounts WHERE employee_number = ?');
-        $stmt->execute([$employeeNumber]);
+        // Get employee from employees table (for time keeping)
+        $stmt = $pdo->prepare('SELECT id FROM employees WHERE employee_number = ? AND status = ?');
+        $stmt->execute([$employeeNumber, 'active']);
         $employee = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$employee) {
-            echo json_encode(['success' => false, 'message' => 'Employee not found']);
+            echo json_encode(['success' => false, 'message' => 'Employee not found or inactive']);
             return;
         }
 

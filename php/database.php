@@ -67,6 +67,10 @@ function getDatabaseConnection(): ?\PDO
             \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
         ]);
+
+        // Set timezone to Manila (Asia/Manila) for PHP and MySQL
+        date_default_timezone_set('Asia/Manila');
+        $pdo->exec("SET time_zone = '+08:00'");
     } catch (\PDOException $exception) {
         error_log('Unable to connect to the MySQL database: ' . $exception->getMessage());
         $pdo = null;

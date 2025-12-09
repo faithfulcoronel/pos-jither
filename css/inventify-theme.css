@@ -1,13 +1,13 @@
 /**
  * Inventify-Style Theme
- * Clean green and white design for inventory management
+ * Consistent brown/coffee shop design for inventory management
  */
 
 :root {
-    --inventify-primary: #10B981;
-    --inventify-primary-dark: #059669;
-    --inventify-primary-light: #D1FAE5;
-    --inventify-secondary: #3B82F6;
+    --inventify-primary: #8B6F47;      /* Brown - matches Staff theme */
+    --inventify-primary-dark: #6D5738; /* Dark brown */
+    --inventify-primary-light: #F5EFE7; /* Light brown/cream */
+    --inventify-secondary: #FF8C42;    /* Orange accent */
     --inventify-danger: #EF4444;
     --inventify-warning: #F59E0B;
     --inventify-success: #10B981;
@@ -635,4 +635,66 @@
 .inventify-tooltip:hover .inventify-tooltip-text {
     visibility: visible;
     opacity: 1;
+}
+
+/* Inventory Charts Section */
+.inventify-charts-section {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--inventify-space-lg);
+    margin-bottom: var(--inventify-space-xl);
+}
+
+.inventify-chart-card {
+    background: var(--inventify-white);
+    border-radius: var(--inventify-radius-lg);
+    padding: var(--inventify-space-lg);
+    box-shadow: var(--inventify-shadow-sm);
+    transition: all 0.3s;
+}
+
+.inventify-chart-card:hover {
+    box-shadow: var(--inventify-shadow-md);
+    transform: translateY(-2px);
+}
+
+.inventify-chart-card.large {
+    grid-column: span 2;
+}
+
+.inventify-chart-header {
+    margin-bottom: var(--inventify-space-md);
+}
+
+.inventify-chart-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--inventify-gray-900);
+    margin: 0 0 4px 0;
+}
+
+.inventify-chart-subtitle {
+    font-size: 12px;
+    color: var(--inventify-gray-500);
+    margin: 0;
+}
+
+.inventify-chart-container {
+    position: relative;
+    height: 280px;
+}
+
+.inventify-chart-card.large .inventify-chart-container {
+    height: 320px;
+}
+
+/* Responsive Charts */
+@media (max-width: 1024px) {
+    .inventify-charts-section {
+        grid-template-columns: 1fr;
+    }
+
+    .inventify-chart-card.large {
+        grid-column: span 1;
+    }
 }

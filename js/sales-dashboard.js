@@ -6,10 +6,10 @@
 let salesCharts = {};
 let salesData = {};
 let currentFilters = {
-    period: 'monthly',
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-    quarter: Math.floor(new Date().getMonth() / 3) + 1
+    selectedDate: new Date(),
+    dateRange: 'month', // day, week, month, quarter, year
+    startDate: null,
+    endDate: null
 };
 
 /**
@@ -25,41 +25,167 @@ function initializeSalesDashboard() {
  * Setup Event Listeners
  */
 function setupEventListeners() {
-    // Period filter
-    const periodFilter = document.getElementById('sales-period-filter');
-    if (periodFilter) {
-        periodFilter.addEventListener('change', function() {
-            currentFilters.period = this.value;
-            loadSalesData();
-        });
+    // Initialize date picker with current date
+    const datePicker = document.getElementById('sales-date-filter');
+    if (datePicker) {
+        const today = new Date();
+        datePicker.value = today.toISOString().split('T')[0];
+        currentFilters.selectedDate = today;
+
+        // Apply "This Month" as default
+        applyQuickFilter('this-month');
+    }
+}
+
+/**
+ * Update filters when date is selected from calendar
+ */
+function updateFiltersFromDate() {
+    const datePicker = document.getElementById('sales-date-filter');
+    const rangeFilter = document.getElementById('sales-range-filter');
+
+    if (datePicker && datePicker.value) {
+        currentFilters.selectedDate = new Date(datePicker.value);
+        currentFilters.dateRange = rangeFilter ? rangeFilter.value : 'month';
+
+        // Calculate date range based on selected date and range type
+        calculateDateRange();
+
+        // Reset quick select to custom
+        const quickFilter = document.getElementById('sales-quick-filter');
+        if (quickFilter) {
+            quickFilter.value = '';
+        }
+
+        loadSalesData();
+    }
+}
+
+/**
+ * Update date range type (day, week, month, quarter, year)
+ */
+function updateDateRange() {
+    const rangeFilter = document.getElementById('sales-range-filter');
+    if (rangeFilter) {
+        currentFilters.dateRange = rangeFilter.value;
+        calculateDateRange();
+        loadSalesData();
+    }
+}
+
+/**
+ * Apply quick filter shortcuts
+ */
+function applyQuickFilter(value) {
+    const quickFilter = document.getElementById('sales-quick-filter');
+    const datePicker = document.getElementById('sales-date-filter');
+    const rangeFilter = document.getElementById('sales-range-filter');
+
+    // If called with parameter, use it; otherwise get from dropdown
+    const filterValue = value || (quickFilter ? quickFilter.value : 'this-month');
+
+    if (!filterValue) return;
+
+    const today = new Date();
+    let targetDate = new Date();
+    let range = 'month';
+
+    switch(filterValue) {
+        case 'today':
+            targetDate = today;
+            range = 'day';
+            break;
+        case 'yesterday':
+            targetDate = new Date(today);
+            targetDate.setDate(today.getDate() - 1);
+            range = 'day';
+            break;
+        case 'this-week':
+            targetDate = today;
+            range = 'week';
+            break;
+        case 'last-week':
+            targetDate = new Date(today);
+            targetDate.setDate(today.getDate() - 7);
+            range = 'week';
+            break;
+        case 'this-month':
+            targetDate = today;
+            range = 'month';
+            break;
+        case 'last-month':
+            targetDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            range = 'month';
+            break;
+        case 'this-quarter':
+            targetDate = today;
+            range = 'quarter';
+            break;
+        case 'this-year':
+            targetDate = today;
+            range = 'year';
+            break;
     }
 
-    // Year filter
-    const yearFilter = document.getElementById('sales-year-filter');
-    if (yearFilter) {
-        yearFilter.addEventListener('change', function() {
-            currentFilters.year = parseInt(this.value);
-            loadSalesData();
-        });
+    // Update UI
+    if (datePicker) {
+        datePicker.value = targetDate.toISOString().split('T')[0];
+    }
+    if (rangeFilter) {
+        rangeFilter.value = range;
     }
 
-    // Month filter
-    const monthFilter = document.getElementById('sales-month-filter');
-    if (monthFilter) {
-        monthFilter.addEventListener('change', function() {
-            currentFilters.month = parseInt(this.value);
-            loadSalesData();
-        });
+    // Update filters and reload
+    currentFilters.selectedDate = targetDate;
+    currentFilters.dateRange = range;
+    calculateDateRange();
+    loadSalesData();
+}
+
+/**
+ * Calculate start and end dates based on selected date and range
+ */
+function calculateDateRange() {
+    const date = currentFilters.selectedDate;
+    const range = currentFilters.dateRange;
+
+    let startDate, endDate;
+
+    switch(range) {
+        case 'day':
+            startDate = new Date(date);
+            endDate = new Date(date);
+            break;
+
+        case 'week':
+            // Start from Monday
+            startDate = new Date(date);
+            const day = startDate.getDay();
+            const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+            startDate.setDate(diff);
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
+            break;
+
+        case 'month':
+            startDate = new Date(date.getFullYear(), date.getMonth(), 1);
+            endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            break;
+
+        case 'quarter':
+            const quarter = Math.floor(date.getMonth() / 3);
+            startDate = new Date(date.getFullYear(), quarter * 3, 1);
+            endDate = new Date(date.getFullYear(), quarter * 3 + 3, 0);
+            break;
+
+        case 'year':
+            startDate = new Date(date.getFullYear(), 0, 1);
+            endDate = new Date(date.getFullYear(), 11, 31);
+            break;
     }
 
-    // Quarter filter
-    const quarterFilter = document.getElementById('sales-quarter-filter');
-    if (quarterFilter) {
-        quarterFilter.addEventListener('change', function() {
-            currentFilters.quarter = parseInt(this.value);
-            loadSalesData();
-        });
-    }
+    currentFilters.startDate = startDate;
+    currentFilters.endDate = endDate;
 }
 
 /**
@@ -69,23 +195,34 @@ async function loadSalesData() {
     try {
         showSalesLoading();
 
-        // Fetch real data from API
+        // Calculate date range if not already done
+        if (!currentFilters.startDate || !currentFilters.endDate) {
+            calculateDateRange();
+        }
+
+        // Format dates for API
+        const formatDate = (date) => {
+            return date.toISOString().split('T')[0];
+        };
+
+        // Fetch real data from API with date range
         const params = new URLSearchParams({
-            period: currentFilters.period,
-            year: currentFilters.year,
-            month: currentFilters.month,
-            quarter: currentFilters.quarter
+            start_date: formatDate(currentFilters.startDate),
+            end_date: formatDate(currentFilters.endDate),
+            date_range: currentFilters.dateRange
         });
 
         // Fetch all data in parallel
-        const [kpis, trend, categories, quarterly, weekday, bestSellers, heatmap] = await Promise.all([
+        const [kpis, trend, categories, quarterly, weekday, bestSellers, heatmap, productRange, timePeriod] = await Promise.all([
             fetch(`php/sales-analytics-api.php?action=get_kpis&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_sales_trend&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_category_sales&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_quarterly_sales&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_weekday_sales&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_best_sellers&${params}`).then(r => r.json()),
-            fetch(`php/sales-analytics-api.php?action=get_heatmap&${params}`).then(r => r.json())
+            fetch(`php/sales-analytics-api.php?action=get_heatmap&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_product_range_analysis&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_time_period_comparison&${params}`).then(r => r.json())
         ]);
 
         // Store data
@@ -94,10 +231,16 @@ async function loadSalesData() {
             trend: trend.success ? trend.data : [],
             categories: categories.success ? categories.data : [],
             quarterly: quarterly.success ? quarterly.data : [],
-            weekday: weekday.success ? weekday.data : [],
+            weekdayWeekend: weekday.success ? weekday.data : { weekday: { sales: 0, orders: 0 }, weekend: { sales: 0, orders: 0 } },
+            locationBreakdown: [{ location: 'Main Store', sales: 0, profit: 0 }],
             bestSellers: bestSellers.success ? bestSellers.data : [],
-            heatmap: heatmap.success ? heatmap.data : []
+            heatmap: heatmap.success ? heatmap.data : [],
+            productRange: productRange.success ? productRange.data : [],
+            timePeriod: timePeriod.success ? timePeriod.data : [],
+            periodType: timePeriod.success ? timePeriod.period_type : 'month'
         };
+
+        console.log('Sales data loaded:', salesData);
 
         updateKPIs();
         renderAllCharts();
@@ -269,6 +412,7 @@ function renderAllCharts() {
     renderLocationChart();
     renderWeekdayWeekendChart();
     renderQuarterlyChart();
+    renderProductRangeChart();
 }
 
 /**
@@ -284,11 +428,14 @@ function renderSalesTrendChart() {
         salesCharts.trend.destroy();
     }
 
-    const data = salesData.trend || [];
+    // Use time period data if available, otherwise fall back to trend data
+    const data = (salesData.timePeriod && salesData.timePeriod.length > 0) ? salesData.timePeriod : salesData.trend;
 
     // Format labels based on period type
     const labels = data.map(d => {
-        if (d.period.includes(':')) {
+        if (d.label) {
+            return d.label;
+        } else if (d.period.includes(':')) {
             // Hour format (2025-01-01 14:00:00)
             return new Date(d.period).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
         } else if (d.period.length === 10) {
@@ -301,27 +448,49 @@ function renderSalesTrendChart() {
         }
     });
 
+    const salesValues = data.map(d => parseFloat(d.sales) || 0);
+    const ordersData = data.map(d => parseInt(d.orders || d.transactions) || 0);
+
     salesCharts.trend = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [
                 {
-                    label: 'Actual Sales',
-                    data: data.map(d => parseFloat(d.sales) || 0),
+                    label: 'Sales Revenue',
+                    data: salesValues,
                     borderColor: '#FF8C42',
                     backgroundColor: 'rgba(255, 140, 66, 0.1)',
-                    borderWidth: 2,
+                    borderWidth: 3,
                     fill: true,
                     tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#FF8C42',
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Number of Orders',
+                    data: ordersData,
+                    borderColor: '#8B6F47',
+                    backgroundColor: 'rgba(139, 111, 71, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
                     pointRadius: 4,
-                    pointBackgroundColor: '#FF8C42'
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#8B6F47',
+                    yAxisID: 'y1'
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend: {
                     display: true,
@@ -335,25 +504,49 @@ function renderSalesTrendChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                            if (context.datasetIndex === 0) {
+                                return 'Sales: ' + formatCurrency(context.parsed.y);
+                            } else {
+                                return 'Orders: ' + context.parsed.y;
+                            }
                         }
                     }
                 }
             },
             scales: {
                 y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
                     beginAtZero: true,
                     grid: { color: '#E9ECEF', drawBorder: false },
                     ticks: {
                         callback: function(value) {
-                            return '₱' + (value / 1000) + 'K';
+                            return '₱' + (value >= 1000 ? (value / 1000).toFixed(1) + 'K' : value);
+                        },
+                        font: { size: 10 }
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: { display: false },
+                    ticks: {
+                        callback: function(value) {
+                            return value + ' orders';
                         },
                         font: { size: 10 }
                     }
                 },
                 x: {
                     grid: { display: false, drawBorder: false },
-                    ticks: { font: { size: 10 } }
+                    ticks: {
+                        font: { size: 10 },
+                        maxRotation: 45,
+                        minRotation: 0
+                    }
                 }
             }
         }
@@ -365,7 +558,10 @@ function renderSalesTrendChart() {
  */
 function renderCategoryChart() {
     const canvas = document.getElementById('category-chart');
-    if (!canvas) return;
+    if (!canvas) {
+        console.warn('Category chart canvas not found');
+        return;
+    }
 
     const ctx = canvas.getContext('2d');
 
@@ -375,18 +571,31 @@ function renderCategoryChart() {
 
     const data = salesData.categories || [];
 
+    console.log('Category data:', data);
+
+    if (data.length === 0) {
+        // Show "No Data" message
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#999';
+        ctx.textAlign = 'center';
+        ctx.fillText('No sales data available', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
     salesCharts.category = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: data.map(d => d.category),
+            labels: data.map(d => d.category || 'Uncategorized'),
             datasets: [{
-                data: data.map(d => d.sales),
+                data: data.map(d => parseFloat(d.sales) || 0),
                 backgroundColor: [
                     '#FF8C42',
                     '#8B6F47',
                     '#D4A574',
                     '#FFC107',
-                    '#28A745'
+                    '#28A745',
+                    '#6366F1'
                 ],
                 borderWidth: 2,
                 borderColor: '#fff'
@@ -408,7 +617,7 @@ function renderCategoryChart() {
                     callbacks: {
                         label: function(context) {
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
                             return context.label + ': ' + formatCurrency(context.parsed) + ' (' + percentage + '%)';
                         }
                     }
@@ -615,6 +824,103 @@ function renderQuarterlyChart() {
 }
 
 /**
+ * Product Range Analysis Chart (Donut Chart for Price Ranges)
+ */
+function renderProductRangeChart() {
+    const canvas = document.getElementById('location-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    if (salesCharts.location) {
+        salesCharts.location.destroy();
+    }
+
+    const data = salesData.productRange || [];
+
+    if (data.length === 0) {
+        // Fallback to location chart if no product range data
+        renderLocationChart();
+        return;
+    }
+
+    salesCharts.location = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.price_range),
+            datasets: [{
+                data: data.map(d => parseFloat(d.total_revenue) || 0),
+                backgroundColor: [
+                    '#10B981', // Green for Budget
+                    '#3B82F6', // Blue for Economy
+                    '#FF8C42', // Orange for Standard
+                    '#8B6F47', // Brown for Premium
+                    '#EF4444'  // Red for Luxury
+                ],
+                borderWidth: 3,
+                borderColor: '#fff',
+                hoverBorderWidth: 4,
+                hoverBorderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 12,
+                        font: { size: 11, weight: '600' },
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            if (data.labels.length && data.datasets.length) {
+                                return data.labels.map((label, i) => {
+                                    const value = data.datasets[0].data[i];
+                                    const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return {
+                                        text: `${label} (${percentage}%)`,
+                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                        hidden: false,
+                                        index: i
+                                    };
+                                });
+                            }
+                            return [];
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+
+                            // Get additional data
+                            const rangeData = salesData.productRange[context.dataIndex];
+                            const products = rangeData ? rangeData.product_count : 0;
+                            const qty = rangeData ? rangeData.total_quantity : 0;
+
+                            return [
+                                `${label}`,
+                                `Revenue: ${formatCurrency(value)}`,
+                                `Products: ${products}`,
+                                `Quantity: ${qty}`,
+                                `Share: ${percentage}%`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
  * Render Best Sellers Table
  */
 function renderBestSellersTable() {
@@ -745,6 +1051,11 @@ function showSalesLoading() {
 
 function hideSalesLoading() {
     // Loading is automatically hidden when charts render
+}
+
+function showError(message) {
+    console.error('Sales Dashboard Error:', message);
+    // You can add a visual error notification here if needed
 }
 
 /**

@@ -17,6 +17,8 @@ let inventifyData = {
     }
 };
 
+let inventoryCharts = {};
+
 /**
  * Initialize Inventify Inventory System
  */
@@ -25,6 +27,7 @@ async function initializeInventify() {
     inventifyPopulateCategories();
     inventifyUpdateSummary();
     inventifyRenderStockTab();
+    renderInventoryCharts();
 }
 
 /**
@@ -152,12 +155,53 @@ function inventifyGetItemStatus(item) {
 }
 
 /**
- * Get status percentage
+ * Get status percentage based on item status
+ * - Out of Stock: 0%
+ * - Below Reorder: 1-33% (based on qty relative to reorder level)
+ * - Low Stock: 34-66% (based on qty relative to optimal level)
+ * - In Stock: 67-100% (based on qty relative to max stock)
  */
 function inventifyGetStatusPercentage(item) {
-    if (item.qty <= 0) return 0;
-    if (!item.maxStock || item.maxStock <= 0) return 100;
-    return Math.round((item.qty / item.maxStock) * 100);
+    const status = inventifyGetItemStatus(item);
+    const qty = item.qty || 0;
+    const reorderLevel = item.reorderLevel || 0;
+    const maxStock = item.maxStock || 0;
+
+    // Out of stock = 0%
+    if (status === 'out_of_stock' || qty <= 0) {
+        return 0;
+    }
+
+    // Below reorder level = 1-33%
+    if (status === 'below_reorder') {
+        if (reorderLevel <= 0) return 15;
+        const percentage = (qty / reorderLevel) * 33;
+        return Math.round(Math.max(1, Math.min(percentage, 33)));
+    }
+
+    // Low stock = 34-66%
+    if (status === 'low_stock') {
+        const optimalLevel = reorderLevel * 1.5;
+        if (optimalLevel <= 0) return 50;
+        const percentage = 33 + ((qty - reorderLevel) / (optimalLevel - reorderLevel)) * 33;
+        return Math.round(Math.max(34, Math.min(percentage, 66)));
+    }
+
+    // In stock = 67-100%
+    if (maxStock > 0) {
+        const optimalLevel = reorderLevel * 1.5;
+        const percentage = 66 + ((qty - optimalLevel) / (maxStock - optimalLevel)) * 34;
+        return Math.round(Math.max(67, Math.min(percentage, 100)));
+    }
+
+    // Default: if max stock not set, scale from reorder level
+    const defaultMax = reorderLevel * 3;
+    if (defaultMax > 0) {
+        const percentage = (qty / defaultMax) * 100;
+        return Math.round(Math.max(67, Math.min(percentage, 100)));
+    }
+
+    return 100;
 }
 
 /**
@@ -696,6 +740,213 @@ function inventifyExportCSV() {
     a.download = `inventory_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+}
+
+/**
+ * Render all inventory charts
+ */
+function renderInventoryCharts() {
+    renderInventoryStatusChart();
+    renderInventoryValueChart();
+    renderInventoryLevelsChart();
+}
+
+/**
+ * Render Stock Status Distribution Chart
+ */
+function renderInventoryStatusChart() {
+    const canvas = document.getElementById('inventory-status-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    if (inventoryCharts.status) {
+        inventoryCharts.status.destroy();
+    }
+
+    // Count items by status
+    let inStock = 0, lowStock = 0, belowReorder = 0, outOfStock = 0;
+
+    inventifyData.items.forEach(item => {
+        const status = inventifyGetItemStatus(item);
+        if (status === 'in_stock') inStock++;
+        else if (status === 'low_stock') lowStock++;
+        else if (status === 'below_reorder') belowReorder++;
+        else if (status === 'out_of_stock') outOfStock++;
+    });
+
+    inventoryCharts.status = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['In Stock', 'Low Stock', 'Below Reorder', 'Out of Stock'],
+            datasets: [{
+                data: [inStock, lowStock, belowReorder, outOfStock],
+                backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#6B7280'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 12,
+                        font: { size: 11, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.parsed + ' items (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Render Top Items by Value Chart
+ */
+function renderInventoryValueChart() {
+    const canvas = document.getElementById('inventory-value-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    if (inventoryCharts.value) {
+        inventoryCharts.value.destroy();
+    }
+
+    // Calculate value for each item and sort
+    const itemsWithValue = inventifyData.items.map(item => ({
+        name: item.item,
+        value: (item.qty || 0) * (item.costPerUnit || 0)
+    })).sort((a, b) => b.value - a.value).slice(0, 10);
+
+    inventoryCharts.value = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: itemsWithValue.map(item => item.name.length > 15 ? item.name.substring(0, 15) + '...' : item.name),
+            datasets: [{
+                label: 'Total Value',
+                data: itemsWithValue.map(item => item.value),
+                backgroundColor: '#FF8C42',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Value: ₱' + context.parsed.x.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: '#E5E7EB' },
+                    ticks: {
+                        callback: function(value) {
+                            return '₱' + (value / 1000).toFixed(0) + 'K';
+                        },
+                        font: { size: 10 }
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { font: { size: 10 } }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Render Stock Levels Overview Chart
+ */
+function renderInventoryLevelsChart() {
+    const canvas = document.getElementById('inventory-levels-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    if (inventoryCharts.levels) {
+        inventoryCharts.levels.destroy();
+    }
+
+    // Get top 15 items by quantity
+    const topItems = inventifyData.items
+        .sort((a, b) => (b.qty || 0) - (a.qty || 0))
+        .slice(0, 15);
+
+    inventoryCharts.levels = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: topItems.map(item => item.item.length > 20 ? item.item.substring(0, 20) + '...' : item.item),
+            datasets: [
+                {
+                    label: 'Current Stock',
+                    data: topItems.map(item => item.qty || 0),
+                    backgroundColor: '#FF8C42',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Reorder Level',
+                    data: topItems.map(item => item.reorderLevel || 0),
+                    backgroundColor: '#EF4444',
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: { size: 11, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y + ' ' + (topItems[context.dataIndex].unit || 'units');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#E5E7EB' },
+                    ticks: { font: { size: 10 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { size: 9 },
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
 }
 
 // Initialize when DOM is ready

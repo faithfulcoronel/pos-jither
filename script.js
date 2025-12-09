@@ -559,7 +559,15 @@ async function addInventory() {
         if (itemInput) itemInput.value = '';
         if (qtyInput) qtyInput.value = '';
         if (unitInput) unitInput.value = '';
+
+        // Reload all data to refresh inventory array globally
+        await reloadData();
         displayInventory();
+
+        // Update ingredient dropdown if it exists (in Add New Product modal)
+        if (typeof initializeIngredientSelect === 'function') {
+            initializeIngredientSelect();
+        }
     } catch (error) {
         alert(error.message || 'Unable to add the inventory item.');
     }
@@ -598,7 +606,15 @@ async function editInventory(index) {
             qty: newQty,
             unit: newUnit.trim()
         });
+
+        // Reload all data to refresh inventory array globally
+        await reloadData();
         displayInventory();
+
+        // Update ingredient dropdown if it exists (in Add New Product modal)
+        if (typeof initializeIngredientSelect === 'function') {
+            initializeIngredientSelect();
+        }
     } catch (error) {
         alert(error.message || 'Unable to update the inventory item.');
     }
@@ -617,7 +633,15 @@ async function deleteInventory(index) {
 
     try {
         await apiRequest('inventory', 'delete', { id: inv.id });
+
+        // Reload all data to refresh inventory array globally
+        await reloadData();
         displayInventory();
+
+        // Update ingredient dropdown if it exists (in Add New Product modal)
+        if (typeof initializeIngredientSelect === 'function') {
+            initializeIngredientSelect();
+        }
     } catch (error) {
         alert(error.message || 'Unable to remove the inventory item.');
     }
@@ -1132,6 +1156,11 @@ function showManagerContent(id) {
         // Load overall sales chart and sales table
         generateOverallSalesChart();
         loadSalesByDate();
+
+        // Initialize Sales Analysis Dashboard with charts
+        if (typeof initializeSalesDashboard === 'function') {
+            initializeSalesDashboard();
+        }
     }
     if (id === 'recipe-management') {
         // Initialize recipe management
@@ -1614,21 +1643,54 @@ async function updateReceipt() {
         `;
     });
 
-    // Calculate VAT (12% inclusive)
-    // Total = Subtotal (which already includes VAT)
-    // Vatable Sales = Subtotal / 1.12
-    // VAT = Subtotal - Vatable Sales
+    // Apply discount if selected (from discount-vat-system.js)
+    const discountRate = (typeof currentDiscount !== 'undefined' && currentDiscount.rate) ? currentDiscount.rate : 0;
+    const discountLabel = (typeof currentDiscount !== 'undefined' && currentDiscount.label) ? currentDiscount.label : 'No Discount';
+    const isVatExempt = (typeof currentDiscount !== 'undefined' && currentDiscount.isVatExempt) ? currentDiscount.isVatExempt : false;
+
+    const discountAmount = (subtotal * discountRate) / 100;
+    const afterDiscount = subtotal - discountAmount;
+
+    // Calculate VAT based on discount type
+    let vatableSales = 0;
+    let vatExemptSales = 0;
+    let vat = 0;
     const vatRate = 0.12;
-    const vatableSales = subtotal / (1 + vatRate);
-    const vat = subtotal - vatableSales;
-    const vatExemptSales = 0; // For now, all sales are vatable
+
+    if (isVatExempt) {
+        // Senior Citizen or PWD: VAT-exempt
+        vatExemptSales = afterDiscount;
+        vatableSales = 0;
+        vat = 0;
+    } else {
+        // Regular or Athlete: 12% VAT (inclusive)
+        vatableSales = afterDiscount / (1 + vatRate);
+        vat = afterDiscount - vatableSales;
+        vatExemptSales = 0;
+    }
+
+    // Show/hide discount on receipt
+    const discountLine = document.getElementById('receipt-discount-line');
+    const discountAmountEl = document.getElementById('receipt-discount');
+    const discountTypeLine = document.getElementById('receipt-discount-type-line');
+    const discountTypeEl = document.getElementById('receipt-discount-type');
+
+    if (discountRate > 0) {
+        if (discountLine) discountLine.style.display = 'flex';
+        if (discountAmountEl) discountAmountEl.textContent = discountAmount.toFixed(2);
+        if (discountTypeLine) discountTypeLine.style.display = 'block';
+        if (discountTypeEl) discountTypeEl.textContent = discountLabel + ' (' + discountRate + '%)';
+    } else {
+        if (discountLine) discountLine.style.display = 'none';
+        if (discountTypeLine) discountTypeLine.style.display = 'none';
+    }
 
     // Update receipt display
     if (receiptSubtotal) receiptSubtotal.textContent = subtotal.toFixed(2);
     if (receiptVatable) receiptVatable.textContent = vatableSales.toFixed(2);
     if (receiptVatExempt) receiptVatExempt.textContent = vatExemptSales.toFixed(2);
     if (receiptVat) receiptVat.textContent = vat.toFixed(2);
-    receiptTotalEl.textContent = subtotal.toFixed(2);
+    receiptTotalEl.textContent = afterDiscount.toFixed(2);
 
     if (receiptDate) receiptDate.textContent = new Date().toLocaleString();
 
@@ -2133,22 +2195,28 @@ function closePaymentModal() {
 async function processPayment(paymentMethod, total) {
     closePaymentModal();
 
+    let received = total;
+    let change = 0;
+
     // For cash payment, show change calculator
     if (paymentMethod === 'Cash') {
         const amountReceived = prompt(`Total: ₱${total.toFixed(2)}\n\nEnter amount received:`, total.toFixed(2));
         if (amountReceived === null) return; // Cancelled
 
-        const received = parseFloat(amountReceived);
+        received = parseFloat(amountReceived);
         if (isNaN(received) || received < total) {
             alert('Invalid amount or insufficient payment.');
             return;
         }
 
-        const change = received - total;
+        change = received - total;
         alert(`Payment Method: ${paymentMethod}\nAmount Received: ₱${received.toFixed(2)}\nChange: ₱${change.toFixed(2)}`);
     } else {
         alert(`Processing ${paymentMethod} payment of ₱${total.toFixed(2)}...\nPayment confirmed!`);
     }
+
+    // Show discount selection AFTER payment
+    await showDiscountSelectionDialog();
 
     // Process the receipt and finalize sale
     await updateReceipt();
@@ -2157,6 +2225,65 @@ async function processPayment(paymentMethod, total) {
     if (confirm('Payment successful!')) {
         printReceipt();
     }
+}
+
+// Show discount selection dialog after payment
+function showDiscountSelectionDialog() {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content discount-modal" style="max-width: 500px;">
+                <h2 style="margin-bottom: 20px; color: #333;">💳 Select Customer Discount Type</h2>
+
+                <div style="display: grid; gap: 15px;">
+                    <button class="discount-select-btn" data-type="none" data-rate="0"
+                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
+                            onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                        🧑 No Discount (0%)
+                    </button>
+
+                    <button class="discount-select-btn" data-type="senior" data-rate="20"
+                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
+                            onmouseover="this.style.background='#fff3cd'" onmouseout="this.style.background='white'">
+                        👵 Senior Citizen (20% + VAT Exempt)
+                    </button>
+
+                    <button class="discount-select-btn" data-type="pwd" data-rate="20"
+                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
+                            onmouseover="this.style.background='#d1ecf1'" onmouseout="this.style.background='white'">
+                        ♿ PWD (20% + VAT Exempt)
+                    </button>
+
+                    <button class="discount-select-btn" data-type="athlete" data-rate="20"
+                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
+                            onmouseover="this.style.background='#d4edda'" onmouseout="this.style.background='white'">
+                        🏅 National Athlete (20%)
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Handle discount selection
+        modal.querySelectorAll('.discount-select-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const type = this.dataset.type;
+                const rate = parseInt(this.dataset.rate);
+                const label = this.textContent.trim();
+
+                // Apply discount
+                if (typeof selectDiscountType === 'function') {
+                    selectDiscountType(type, rate, label);
+                }
+
+                // Close modal
+                document.body.removeChild(modal);
+                resolve();
+            });
+        });
+    });
 }
 
 

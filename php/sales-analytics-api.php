@@ -4,6 +4,9 @@
  * Provides real-time sales data for the Sales Analysis Dashboard
  */
 
+// Set timezone to Manila
+date_default_timezone_set('Asia/Manila');
+
 header('Content-Type: application/json');
 error_reporting(0);
 ini_set('display_errors', '0');
@@ -19,22 +22,29 @@ try {
     }
 
     $action = $_GET['action'] ?? '';
-    $period = $_GET['period'] ?? 'monthly';
+
+    // Support new date-based parameters
+    $startDate = $_GET['start_date'] ?? date('Y-m-01');
+    $endDate = $_GET['end_date'] ?? date('Y-m-t');
+    $dateRange = $_GET['date_range'] ?? 'month';
+
+    // Legacy support for old parameters
+    $period = $_GET['period'] ?? $dateRange;
     $year = $_GET['year'] ?? date('Y');
     $month = $_GET['month'] ?? date('n');
     $quarter = $_GET['quarter'] ?? ceil(date('n') / 3);
 
     switch ($action) {
         case 'get_kpis':
-            getKPIs($pdo, $period, $year, $month, $quarter);
+            getKPIs($pdo, $startDate, $endDate, $dateRange);
             break;
 
         case 'get_sales_trend':
-            getSalesTrend($pdo, $period, $year, $month, $quarter);
+            getSalesTrend($pdo, $startDate, $endDate, $dateRange);
             break;
 
         case 'get_category_sales':
-            getCategorySales($pdo, $period, $year, $month, $quarter);
+            getCategorySales($pdo, $startDate, $endDate);
             break;
 
         case 'get_quarterly_sales':
@@ -42,15 +52,27 @@ try {
             break;
 
         case 'get_weekday_sales':
-            getWeekdaySales($pdo, $period, $year, $month, $quarter);
+            getWeekdaySales($pdo, $startDate, $endDate);
             break;
 
         case 'get_best_sellers':
-            getBestSellers($pdo, $period, $year, $month, $quarter);
+            getBestSellers($pdo, $startDate, $endDate);
             break;
 
         case 'get_heatmap':
-            getHeatmapData($pdo, $period, $year, $month, $quarter);
+            getHeatmapData($pdo, $startDate, $endDate);
+            break;
+
+        case 'get_product_range_analysis':
+            getProductRangeAnalysis($pdo, $startDate, $endDate);
+            break;
+
+        case 'get_time_period_comparison':
+            getTimePeriodComparison($pdo, $startDate, $endDate, $dateRange);
+            break;
+
+        case 'get_inventory_impact':
+            getInventoryImpact($pdo, $startDate, $endDate);
             break;
 
         default:
@@ -156,9 +178,16 @@ function getPreviousDateRange($period, $year, $month, $quarter) {
 /**
  * Get KPIs (Key Performance Indicators)
  */
-function getKPIs($pdo, $period, $year, $month, $quarter) {
-    $dateRange = getDateRange($period, $year, $month, $quarter);
-    $prevRange = getPreviousDateRange($period, $year, $month, $quarter);
+function getKPIs($pdo, $startDate, $endDate, $dateRange) {
+    // Calculate previous period
+    $start = new DateTime($startDate);
+    $end = new DateTime($endDate);
+    $diff = $start->diff($end)->days + 1;
+
+    $prevEnd = clone $start;
+    $prevEnd->modify('-1 day');
+    $prevStart = clone $prevEnd;
+    $prevStart->modify('-' . ($diff - 1) . ' days');
 
     // Current period KPIs
     $stmt = $pdo->prepare("
@@ -171,11 +200,11 @@ function getKPIs($pdo, $period, $year, $month, $quarter) {
         LEFT JOIN sales_transaction_items sti ON st.id = sti.transaction_id
         WHERE DATE(st.occurred_at) BETWEEN ? AND ?
     ");
-    $stmt->execute([$dateRange['start'], $dateRange['end']]);
+    $stmt->execute([$startDate, $endDate]);
     $current = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Previous period KPIs for comparison
-    $stmt->execute([$prevRange['start'], $prevRange['end']]);
+    $stmt->execute([$prevStart->format('Y-m-d'), $prevEnd->format('Y-m-d')]);
     $previous = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Calculate percentage changes
@@ -208,20 +237,18 @@ function getKPIs($pdo, $period, $year, $month, $quarter) {
 /**
  * Get Sales Trend Over Time
  */
-function getSalesTrend($pdo, $period, $year, $month, $quarter) {
-    $dateRange = getDateRange($period, $year, $month, $quarter);
-
+function getSalesTrend($pdo, $startDate, $endDate, $dateRange) {
     $groupBy = '';
-    switch ($period) {
-        case 'daily':
-        case 'weekly':
+    switch ($dateRange) {
+        case 'day':
             $groupBy = "DATE_FORMAT(occurred_at, '%Y-%m-%d %H:00:00')";
             break;
-        case 'monthly':
+        case 'week':
+        case 'month':
             $groupBy = "DATE(occurred_at)";
             break;
-        case 'quarterly':
-        case 'yearly':
+        case 'quarter':
+        case 'year':
             $groupBy = "DATE_FORMAT(occurred_at, '%Y-%m')";
             break;
     }
@@ -236,7 +263,7 @@ function getSalesTrend($pdo, $period, $year, $month, $quarter) {
         GROUP BY period
         ORDER BY period ASC
     ");
-    $stmt->execute([$dateRange['start'], $dateRange['end']]);
+    $stmt->execute([$startDate, $endDate]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
@@ -248,22 +275,21 @@ function getSalesTrend($pdo, $period, $year, $month, $quarter) {
 /**
  * Get Sales by Category
  */
-function getCategorySales($pdo, $period, $year, $month, $quarter) {
-    $dateRange = getDateRange($period, $year, $month, $quarter);
-
+function getCategorySales($pdo, $startDate, $endDate) {
     $stmt = $pdo->prepare("
         SELECT
-            COALESCE(p.category, 'Uncategorized') as category,
-            COALESCE(SUM(sti.subtotal), 0) as sales,
+            COALESCE(pc.name, 'Uncategorized') as category,
+            COALESCE(SUM(sti.line_total), 0) as sales,
             SUM(sti.quantity) as quantity
         FROM sales_transaction_items sti
         JOIN sales_transactions st ON sti.transaction_id = st.id
         LEFT JOIN products p ON sti.product_id = p.id
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
         WHERE DATE(st.occurred_at) BETWEEN ? AND ?
-        GROUP BY category
+        GROUP BY pc.name
         ORDER BY sales DESC
     ");
-    $stmt->execute([$dateRange['start'], $dateRange['end']]);
+    $stmt->execute([$startDate, $endDate]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
@@ -298,51 +324,68 @@ function getQuarterlySales($pdo, $year) {
 /**
  * Get Weekday vs Weekend Sales
  */
-function getWeekdaySales($pdo, $period, $year, $month, $quarter) {
-    $dateRange = getDateRange($period, $year, $month, $quarter);
-
+function getWeekdaySales($pdo, $startDate, $endDate) {
     $stmt = $pdo->prepare("
         SELECT
-            DAYNAME(occurred_at) as day_name,
-            DAYOFWEEK(occurred_at) as day_number,
+            CASE
+                WHEN DAYOFWEEK(occurred_at) IN (1, 7) THEN 'Weekend'
+                ELSE 'Weekday'
+            END as period_type,
             COALESCE(SUM(total), 0) as sales,
             COUNT(*) as orders
         FROM sales_transactions
         WHERE DATE(occurred_at) BETWEEN ? AND ?
-        GROUP BY day_name, day_number
-        ORDER BY day_number ASC
+        GROUP BY period_type
     ");
-    $stmt->execute([$dateRange['start'], $dateRange['end']]);
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([$startDate, $endDate]);
+    $rawData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Format for frontend
+    $weekdayData = ['sales' => 0, 'orders' => 0, 'avgOrder' => 0];
+    $weekendData = ['sales' => 0, 'orders' => 0, 'avgOrder' => 0];
+
+    foreach ($rawData as $row) {
+        if ($row['period_type'] === 'Weekday') {
+            $weekdayData['sales'] = floatval($row['sales']);
+            $weekdayData['orders'] = intval($row['orders']);
+            $weekdayData['avgOrder'] = $weekdayData['orders'] > 0 ? $weekdayData['sales'] / $weekdayData['orders'] : 0;
+        } else {
+            $weekendData['sales'] = floatval($row['sales']);
+            $weekendData['orders'] = intval($row['orders']);
+            $weekendData['avgOrder'] = $weekendData['orders'] > 0 ? $weekendData['sales'] / $weekendData['orders'] : 0;
+        }
+    }
 
     echo json_encode([
         'success' => true,
-        'data' => $data
+        'data' => [
+            'weekday' => $weekdayData,
+            'weekend' => $weekendData
+        ]
     ]);
 }
 
 /**
  * Get Best Sellers
  */
-function getBestSellers($pdo, $period, $year, $month, $quarter) {
-    $dateRange = getDateRange($period, $year, $month, $quarter);
-
+function getBestSellers($pdo, $startDate, $endDate) {
     $stmt = $pdo->prepare("
         SELECT
             sti.product_id,
             sti.product_name,
-            COALESCE(p.category, 'Uncategorized') as category,
+            COALESCE(pc.name, 'Uncategorized') as category,
             SUM(sti.quantity) as quantity_sold,
-            COALESCE(SUM(sti.subtotal), 0) as revenue
+            COALESCE(SUM(sti.line_total), 0) as revenue
         FROM sales_transaction_items sti
         JOIN sales_transactions st ON sti.transaction_id = st.id
         LEFT JOIN products p ON sti.product_id = p.id
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
         WHERE DATE(st.occurred_at) BETWEEN ? AND ?
-        GROUP BY sti.product_id, sti.product_name, category
+        GROUP BY sti.product_id, sti.product_name, pc.name
         ORDER BY revenue DESC
         LIMIT 10
     ");
-    $stmt->execute([$dateRange['start'], $dateRange['end']]);
+    $stmt->execute([$startDate, $endDate]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
@@ -354,9 +397,7 @@ function getBestSellers($pdo, $period, $year, $month, $quarter) {
 /**
  * Get Heatmap Data (Sales by Hour and Day)
  */
-function getHeatmapData($pdo, $period, $year, $month, $quarter) {
-    $dateRange = getDateRange($period, $year, $month, $quarter);
-
+function getHeatmapData($pdo, $startDate, $endDate) {
     $stmt = $pdo->prepare("
         SELECT
             DAYOFWEEK(occurred_at) as day_of_week,
@@ -368,11 +409,194 @@ function getHeatmapData($pdo, $period, $year, $month, $quarter) {
         GROUP BY day_of_week, hour
         ORDER BY day_of_week, hour
     ");
-    $stmt->execute([$dateRange['start'], $dateRange['end']]);
+    $stmt->execute([$startDate, $endDate]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'success' => true,
         'data' => $data
+    ]);
+}
+
+/**
+ * Get Product Range Analysis (Price ranges and performance)
+ */
+function getProductRangeAnalysis($pdo, $startDate, $endDate) {
+    // Get products grouped by price range
+    $stmt = $pdo->prepare("
+        SELECT
+            CASE
+                WHEN p.price < 50 THEN 'Budget (₱0-₱49)'
+                WHEN p.price >= 50 AND p.price < 100 THEN 'Economy (₱50-₱99)'
+                WHEN p.price >= 100 AND p.price < 150 THEN 'Standard (₱100-₱149)'
+                WHEN p.price >= 150 AND p.price < 200 THEN 'Premium (₱150-₱199)'
+                ELSE 'Luxury (₱200+)'
+            END as price_range,
+            COUNT(DISTINCT sti.product_id) as product_count,
+            SUM(sti.quantity) as total_quantity,
+            COALESCE(SUM(sti.line_total), 0) as total_revenue,
+            ROUND(AVG(p.price), 2) as avg_price
+        FROM sales_transaction_items sti
+        JOIN sales_transactions st ON sti.transaction_id = st.id
+        LEFT JOIN products p ON sti.product_id = p.id
+        WHERE DATE(st.occurred_at) BETWEEN ? AND ?
+        GROUP BY price_range
+        ORDER BY
+            CASE price_range
+                WHEN 'Budget (₱0-₱49)' THEN 1
+                WHEN 'Economy (₱50-₱99)' THEN 2
+                WHEN 'Standard (₱100-₱149)' THEN 3
+                WHEN 'Premium (₱150-₱199)' THEN 4
+                WHEN 'Luxury (₱200+)' THEN 5
+            END
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'success' => true,
+        'data' => $data
+    ]);
+}
+
+/**
+ * Get Time Period Comparison (Daily, Weekly, Monthly breakdown)
+ */
+function getTimePeriodComparison($pdo, $startDate, $endDate, $dateRange) {
+    $groupBy = '';
+    $labelFormat = '';
+
+    switch ($dateRange) {
+        case 'day':
+            // Hourly breakdown for single day
+            $groupBy = "HOUR(occurred_at)";
+            $labelFormat = "CONCAT(HOUR(occurred_at), ':00')";
+            break;
+        case 'week':
+            // Daily breakdown for week
+            $groupBy = "DATE(occurred_at)";
+            $labelFormat = "DATE_FORMAT(occurred_at, '%a, %b %d')";
+            break;
+        case 'month':
+            // Daily breakdown for month
+            $groupBy = "DATE(occurred_at)";
+            $labelFormat = "DATE_FORMAT(occurred_at, '%b %d')";
+            break;
+        case 'quarter':
+            // Weekly breakdown for quarter
+            $groupBy = "YEARWEEK(occurred_at, 1)";
+            $labelFormat = "CONCAT('Week ', WEEK(occurred_at, 1))";
+            break;
+        case 'year':
+            // Monthly breakdown for year
+            $groupBy = "DATE_FORMAT(occurred_at, '%Y-%m')";
+            $labelFormat = "DATE_FORMAT(occurred_at, '%b %Y')";
+            break;
+        default:
+            $groupBy = "DATE(occurred_at)";
+            $labelFormat = "DATE_FORMAT(occurred_at, '%b %d')";
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT
+            $groupBy as period,
+            $labelFormat as label,
+            DATE(occurred_at) as date,
+            COALESCE(SUM(total), 0) as sales,
+            COUNT(*) as transactions,
+            COUNT(DISTINCT st.id) as orders,
+            COALESCE(AVG(total), 0) as avg_order_value,
+            COALESCE(SUM(sti.quantity), 0) as items_sold
+        FROM sales_transactions st
+        LEFT JOIN sales_transaction_items sti ON st.id = sti.transaction_id
+        WHERE DATE(st.occurred_at) BETWEEN ? AND ?
+        GROUP BY period, label, date
+        ORDER BY period ASC
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'success' => true,
+        'period_type' => $dateRange,
+        'data' => $data
+    ]);
+}
+
+/**
+ * Get Inventory Impact from Sales
+ * Shows how sales are affecting inventory levels
+ */
+function getInventoryImpact($pdo, $startDate, $endDate) {
+    // Get products with their current inventory status and sales impact
+    $stmt = $pdo->prepare("
+        SELECT
+            ii.id,
+            ii.item as inventory_item,
+            ii.quantity as current_quantity,
+            ii.unit,
+            ii.min_stock,
+            ii.reorder_level,
+            ii.max_stock,
+            COALESCE(ii.cost_per_unit, 0) as cost_per_unit,
+            COALESCE(ii.quantity * ii.cost_per_unit, 0) as current_value,
+
+            -- Calculate total deducted from sales in period
+            COALESCE(SUM(ABS(sm.quantity)), 0) as total_deducted,
+
+            -- Calculate stock status
+            CASE
+                WHEN ii.quantity <= 0 THEN 'out_of_stock'
+                WHEN ii.quantity <= ii.min_stock THEN 'below_reorder'
+                WHEN ii.quantity <= ii.reorder_level THEN 'low_stock'
+                ELSE 'in_stock'
+            END as stock_status,
+
+            -- Calculate percentage remaining
+            CASE
+                WHEN ii.max_stock > 0 THEN ROUND((ii.quantity / ii.max_stock) * 100, 1)
+                ELSE 100
+            END as stock_percentage,
+
+            -- Count affected products
+            COUNT(DISTINCT sm.reference_id) as sales_count
+
+        FROM inventory_items ii
+        LEFT JOIN stock_movements sm ON ii.id = sm.inventory_item_id
+            AND sm.movement_type = 'sale'
+            AND DATE(sm.created_at) BETWEEN ? AND ?
+        GROUP BY ii.id, ii.item, ii.quantity, ii.unit, ii.min_stock,
+                 ii.reorder_level, ii.max_stock, ii.cost_per_unit
+        HAVING total_deducted > 0 OR current_quantity < reorder_level
+        ORDER BY total_deducted DESC, current_quantity ASC
+        LIMIT 20
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get summary statistics
+    $summaryStmt = $pdo->prepare("
+        SELECT
+            COUNT(DISTINCT ii.id) as total_items_affected,
+            SUM(CASE WHEN ii.quantity <= 0 THEN 1 ELSE 0 END) as out_of_stock_count,
+            SUM(CASE WHEN ii.quantity > 0 AND ii.quantity <= ii.min_stock THEN 1 ELSE 0 END) as below_reorder_count,
+            SUM(CASE WHEN ii.quantity > ii.min_stock AND ii.quantity <= ii.reorder_level THEN 1 ELSE 0 END) as low_stock_count,
+            SUM(CASE WHEN ii.quantity > ii.reorder_level THEN 1 ELSE 0 END) as in_stock_count,
+            SUM(ii.quantity * ii.cost_per_unit) as total_inventory_value
+        FROM inventory_items ii
+        WHERE EXISTS (
+            SELECT 1 FROM stock_movements sm
+            WHERE sm.inventory_item_id = ii.id
+            AND sm.movement_type = 'sale'
+            AND DATE(sm.created_at) BETWEEN ? AND ?
+        )
+    ");
+    $summaryStmt->execute([$startDate, $endDate]);
+    $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'success' => true,
+        'data' => $data,
+        'summary' => $summary
     ]);
 }

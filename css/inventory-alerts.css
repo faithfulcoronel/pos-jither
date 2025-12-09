@@ -1,0 +1,345 @@
+/**
+ * Inventory Alerts CSS
+ * Styling for inventory depletion notifications and alerts
+ */
+
+/* Alert Badge */
+.alert-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    animation: pulse-badge 2s infinite;
+    z-index: 10;
+}
+
+@keyframes pulse-badge {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+    }
+}
+
+/* Alert Modal */
+.inventory-alert-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+    transition: opacity 0.3s ease;
+}
+
+.inventory-alert-content {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    overflow: hidden;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.inventory-alert-header {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.inventory-alert-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.inventory-alert-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    font-weight: 300;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.inventory-alert-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.inventory-alert-body {
+    padding: 24px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #374151;
+}
+
+.inventory-alert-body strong {
+    color: #1F2937;
+}
+
+.inventory-alert-footer {
+    padding: 16px 24px;
+    background: #F9FAFB;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.inventory-alert-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.inventory-alert-btn.primary {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.inventory-alert-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.inventory-alert-btn.secondary {
+    background: #E5E7EB;
+    color: #374151;
+}
+
+.inventory-alert-btn.secondary:hover {
+    background: #D1D5DB;
+}
+
+/* Alerts Panel */
+.inventory-alerts-panel {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+    overflow: hidden;
+    border: 2px solid #F59E0B;
+}
+
+.alerts-panel-header {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #F59E0B;
+}
+
+.alerts-panel-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #92400E;
+}
+
+.alerts-panel-close {
+    background: none;
+    border: none;
+    color: #92400E;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.alerts-panel-close:hover {
+    background: rgba(146, 64, 14, 0.1);
+}
+
+.alerts-panel-body {
+    padding: 20px;
+}
+
+.alert-section {
+    margin-bottom: 20px;
+}
+
+.alert-section:last-child {
+    margin-bottom: 0;
+}
+
+.alert-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1F2937;
+}
+
+.alert-section.depleted h4 {
+    color: #DC2626;
+}
+
+.alert-section.low h4 {
+    color: #D97706;
+}
+
+.alert-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.alert-item {
+    background: #F9FAFB;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s;
+    border-left: 4px solid #D1D5DB;
+}
+
+.alert-section.depleted .alert-item {
+    border-left-color: #EF4444;
+    background: #FEF2F2;
+}
+
+.alert-section.low .alert-item {
+    border-left-color: #F59E0B;
+    background: #FFFBEB;
+}
+
+.alert-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.alert-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.alert-item-info strong {
+    font-size: 14px;
+    color: #1F2937;
+}
+
+.alert-item-detail {
+    font-size: 12px;
+    color: #6B7280;
+}
+
+.alert-item-action {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.alert-item-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+}
+
+.alert-item-action:active {
+    transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .inventory-alert-content {
+        max-width: 95%;
+    }
+
+    .inventory-alert-header {
+        padding: 16px 20px;
+    }
+
+    .inventory-alert-header h3 {
+        font-size: 18px;
+    }
+
+    .inventory-alert-body {
+        padding: 20px;
+        font-size: 13px;
+    }
+
+    .inventory-alert-footer {
+        flex-direction: column;
+    }
+
+    .inventory-alert-btn {
+        width: 100%;
+    }
+
+    .alert-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .alert-item-action {
+        width: 100%;
+    }
+}

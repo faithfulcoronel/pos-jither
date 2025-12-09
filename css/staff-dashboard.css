@@ -449,6 +449,46 @@
 .staff-filter-buttons {
     display: flex;
     gap: var(--staff-space-sm);
+    align-items: center;
+}
+
+/* Date Picker for Timekeeping */
+.staff-date-picker {
+    padding: var(--staff-space-sm) var(--staff-space-md);
+    background: var(--staff-white);
+    border: 2px solid var(--staff-primary);
+    border-radius: var(--staff-radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--staff-gray-800);
+    cursor: pointer;
+    transition: all var(--staff-transition-base);
+    font-family: 'Inter', sans-serif;
+    box-shadow: var(--staff-shadow-sm);
+}
+
+.staff-date-picker:hover {
+    border-color: var(--staff-primary-dark);
+    box-shadow: var(--staff-shadow-md);
+}
+
+.staff-date-picker:focus {
+    outline: none;
+    border-color: var(--staff-primary-dark);
+    box-shadow: 0 0 0 4px rgba(255, 140, 66, 0.2);
+}
+
+.staff-date-picker::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(0.5) sepia(1) saturate(5) hue-rotate(5deg);
+    font-size: 18px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.staff-date-picker::-webkit-calendar-picker-indicator:hover {
+    background: rgba(255, 140, 66, 0.1);
 }
 
 .staff-filter-btn {
@@ -629,6 +669,63 @@
     background: var(--staff-success-light);
     color: var(--staff-success-dark);
     border: 1px solid var(--staff-success);
+}
+
+/* Staff Badge Styles for Timekeeping Records */
+.staff-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: var(--staff-radius-full);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.staff-badge-success {
+    background: var(--staff-success-light);
+    color: var(--staff-success-dark);
+    border: 1px solid var(--staff-success);
+}
+
+.staff-badge-warning {
+    background: var(--staff-warning-light);
+    color: #92400E;
+    border: 1px solid var(--staff-warning);
+}
+
+.staff-badge-danger {
+    background: var(--staff-danger-light);
+    color: var(--staff-danger);
+    border: 1px solid var(--staff-danger);
+}
+
+.staff-badge-info {
+    background: var(--staff-info-light);
+    color: #1E40AF;
+    border: 1px solid var(--staff-info);
+}
+
+/* Time Badge for Clock In/Out Times */
+.time-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--staff-gray-50);
+    border: 1px solid var(--staff-gray-200);
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--staff-gray-700);
+}
+
+/* Spin animation for loading */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Action Buttons */
