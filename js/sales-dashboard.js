@@ -213,7 +213,7 @@ async function loadSalesData() {
         });
 
         // Fetch all data in parallel
-        const [kpis, trend, categories, quarterly, weekday, bestSellers, heatmap, productRange, timePeriod] = await Promise.all([
+        const [kpis, trend, categories, quarterly, weekday, bestSellers, heatmap, productRange, timePeriod, summary] = await Promise.all([
             fetch(`php/sales-analytics-api.php?action=get_kpis&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_sales_trend&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_category_sales&${params}`).then(r => r.json()),
@@ -222,7 +222,8 @@ async function loadSalesData() {
             fetch(`php/sales-analytics-api.php?action=get_best_sellers&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_heatmap&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_product_range_analysis&${params}`).then(r => r.json()),
-            fetch(`php/sales-analytics-api.php?action=get_time_period_comparison&${params}`).then(r => r.json())
+            fetch(`php/sales-analytics-api.php?action=get_time_period_comparison&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_sales_summary&${params}`).then(r => r.json())
         ]);
 
         // Store data
@@ -237,11 +238,13 @@ async function loadSalesData() {
             heatmap: heatmap.success ? heatmap.data : [],
             productRange: productRange.success ? productRange.data : [],
             timePeriod: timePeriod.success ? timePeriod.data : [],
-            periodType: timePeriod.success ? timePeriod.period_type : 'month'
+            periodType: timePeriod.success ? timePeriod.period_type : 'month',
+            summary: summary.success ? summary.data : null
         };
 
         console.log('Sales data loaded:', salesData);
 
+        renderSalesSummary();
         updateKPIs();
         renderAllCharts();
         renderBestSellersTable();
@@ -423,6 +426,7 @@ function renderSalesTrendChart() {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
+    const container = canvas.closest('.sales-chart-container');
 
     if (salesCharts.trend) {
         salesCharts.trend.destroy();
@@ -430,6 +434,16 @@ function renderSalesTrendChart() {
 
     // Use time period data if available, otherwise fall back to trend data
     const data = (salesData.timePeriod && salesData.timePeriod.length > 0) ? salesData.timePeriod : salesData.trend;
+
+    if (!data || data.length === 0) {
+        if (container) {
+            container.innerHTML = '<div class="sales-empty"><div class="sales-empty-icon">📉</div><div class="sales-empty-title">No sales data found</div><div class="sales-empty-text">Make a sale to see the trend.</div></div>';
+        }
+        return;
+    } else if (container && container.querySelector('.sales-empty')) {
+        container.innerHTML = '<canvas id="sales-trend-chart"></canvas>';
+        return renderSalesTrendChart();
+    }
 
     // Format labels based on period type
     const labels = data.map(d => {
@@ -955,6 +969,25 @@ function renderBestSellersTable() {
 }
 
 /**
+ * Render high-level sales summary (gross/net/payments)
+ */
+function renderSalesSummary() {
+    const summary = salesData.summary || {};
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    setText('sales-gross-value', formatCurrency(summary.total_sales || 0));
+    setText('sales-net-value', formatCurrency(summary.net_sales || 0));
+    setText('sales-transactions-value', formatNumber(summary.total_transactions || 0));
+    setText('sales-avg-value', formatCurrency(summary.avg_order_value || 0));
+    setText('sales-cash-value', formatCurrency(summary.cash_sales || 0));
+    setText('sales-card-value', formatCurrency(summary.card_sales || 0));
+    setText('sales-ewallet-value', formatCurrency(summary.ewallet_sales || 0));
+}
+
+/**
  * Render Heatmap
  */
 function renderHeatmap() {
@@ -1045,12 +1078,33 @@ function formatNumber(value) {
 function showSalesLoading() {
     const containers = document.querySelectorAll('.sales-chart-container');
     containers.forEach(container => {
-        container.innerHTML = '<div class="sales-loading"><div class="sales-spinner"></div></div>';
+        container.classList.add('sales-loading-wrapper');
+
+        let overlay = container.querySelector('.sales-loading-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'sales-loading-overlay';
+            overlay.innerHTML = `
+                <div class="sales-loading">
+                    <div class="sales-spinner"></div>
+                    <div class="sales-loading-text">Loading sales data...</div>
+                </div>
+            `;
+            container.appendChild(overlay);
+        }
+
+        overlay.style.display = 'flex';
     });
 }
 
 function hideSalesLoading() {
-    // Loading is automatically hidden when charts render
+    document.querySelectorAll('.sales-loading-overlay').forEach(overlay => {
+        overlay.remove();
+    });
+
+    document.querySelectorAll('.sales-loading-wrapper').forEach(container => {
+        container.classList.remove('sales-loading-wrapper');
+    });
 }
 
 function showError(message) {

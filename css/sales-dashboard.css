@@ -102,6 +102,101 @@
     align-items: flex-end;
 }
 
+.sales-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--sales-space-md);
+    margin-top: var(--sales-space-md);
+}
+
+.sales-summary-card {
+    background: var(--sales-white);
+    border: 1px solid var(--sales-gray-200);
+    border-radius: var(--sales-radius-lg);
+    padding: var(--sales-space-lg);
+    box-shadow: var(--sales-shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sales-summary-card.muted {
+    background: #f8fafc;
+}
+
+.sales-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.sales-summary-title {
+    font-weight: 700;
+    color: var(--sales-gray-800);
+}
+
+.sales-summary-pill {
+    font-size: 11px;
+    padding: 6px 10px;
+    background: var(--sales-gray-100);
+    border-radius: 999px;
+    color: var(--sales-gray-600);
+    font-weight: 700;
+}
+
+.sales-summary-values {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.sales-summary-label {
+    margin: 0;
+    color: var(--sales-gray-500);
+    font-size: 12px;
+}
+
+.sales-summary-value {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--sales-gray-900);
+}
+
+.sales-summary-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--sales-gray-600);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.sales-summary-meta .divider {
+    color: var(--sales-gray-300);
+}
+
+.sales-summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sales-summary-row {
+    display: flex;
+    justify-content: space-between;
+    color: var(--sales-gray-700);
+    font-weight: 600;
+}
+
+.sales-summary-note {
+    margin: 4px 0 0;
+    color: var(--sales-gray-600);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
 .sales-filter-group {
     display: flex;
     flex-direction: column;
@@ -278,6 +373,18 @@
     gap: var(--sales-space-lg);
 }
 
+.sales-chart-container {
+    position: relative;
+    min-height: 360px;
+}
+
+.sales-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100%;
+    display: block;
+}
+
 /* Chart Cards */
 .sales-chart-card {
     background: var(--sales-white);
@@ -289,6 +396,7 @@
     display: flex;
     flex-direction: column;
     min-height: 450px;
+    overflow: hidden;
 }
 
 .sales-chart-card:hover {
@@ -352,46 +460,89 @@
 /* Heatmap Specific Styles */
 .sales-heatmap-container {
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     padding: var(--sales-space-md);
 }
 
 .sales-heatmap {
     display: grid;
-    grid-template-columns: 80px repeat(24, 1fr);
-    gap: 4px;
-    min-width: 1000px;
+    grid-template-columns: 64px repeat(24, minmax(22px, 1fr));
+    gap: 6px 4px;
+    min-width: 960px;
+    align-items: center;
 }
 
-.heatmap-hour-label,
-.heatmap-day-label {
-    font-size: 11px;
-    font-weight: 700;
+.sales-heatmap-label {
+    font-size: 12px;
+    font-weight: 600;
     color: var(--sales-gray-600);
-    text-align: center;
-    padding: 8px 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    text-align: right;
+    padding-right: 6px;
 }
 
-.heatmap-cell {
+.sales-heatmap-cell {
     aspect-ratio: 1;
-    border-radius: 4px;
-    transition: all 0.2s;
+    border-radius: 6px;
+    transition: all 0.18s;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--sales-gray-700);
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
-.heatmap-cell:hover {
-    transform: scale(1.1);
+.sales-heatmap-cell.header {
+    font-size: 11px;
+    color: var(--sales-gray-500);
+    background: #fff;
+    border: none;
+    cursor: default;
+}
+
+.sales-heatmap-cell:hover:not(.header) {
+    transform: scale(1.08);
     box-shadow: var(--sales-shadow-md);
     z-index: 10;
 }
+
+.sales-heatmap-cell.level-0 { background: #f8fafc; }
+.sales-heatmap-cell.level-1 { background: #e0f2fe; border-color: #bae6fd; color: #0ea5e9; }
+.sales-heatmap-cell.level-2 { background: #dbeafe; border-color: #bfdbfe; color: #2563eb; }
+.sales-heatmap-cell.level-3 { background: #e0e7ff; border-color: #c7d2fe; color: #4338ca; }
+.sales-heatmap-cell.level-4 { background: #ede9fe; border-color: #ddd6fe; color: #7c3aed; }
+.sales-heatmap-cell.level-5 { background: #f5d0fe; border-color: #f0abfc; color: #a855f7; }
+
+.sales-heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    color: var(--sales-gray-600);
+    font-size: 12px;
+}
+
+.sales-heatmap-legend-scale {
+    display: flex;
+    gap: 4px;
+}
+
+.sales-heatmap-legend-box {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+}
+.sales-heatmap-legend-box.level-0 { background: #f8fafc; }
+.sales-heatmap-legend-box.level-1 { background: #e0f2fe; border-color: #bae6fd; }
+.sales-heatmap-legend-box.level-2 { background: #dbeafe; border-color: #bfdbfe; }
+.sales-heatmap-legend-box.level-3 { background: #e0e7ff; border-color: #c7d2fe; }
+.sales-heatmap-legend-box.level-4 { background: #ede9fe; border-color: #ddd6fe; }
+.sales-heatmap-legend-box.level-5 { background: #f5d0fe; border-color: #f0abfc; }
 
 /* Donut Charts Container */
 .sales-donut-grid {
@@ -430,6 +581,35 @@
     min-height: 350px;
     color: var(--sales-gray-400);
     gap: var(--sales-space-md);
+}
+
+.sales-loading-wrapper {
+    position: relative;
+    min-height: 320px;
+}
+
+.sales-loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(3px);
+    z-index: 2;
+}
+
+.sales-spinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 4px solid #e5e7eb;
+    border-top-color: var(--sales-primary);
+    animation: sales-spin 0.9s linear infinite;
+}
+
+@keyframes sales-spin {
+    to { transform: rotate(360deg); }
 }
 
 .sales-loading-icon {

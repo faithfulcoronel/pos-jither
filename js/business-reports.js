@@ -11,6 +11,19 @@ let currentReportsFilter = {
     toDate: null,
     status: 'all'
 };
+let detailedInsights = {
+    salesSummary: null,
+    todaySummary: null
+};
+let currentExpenses = 0;
+let currentSummary = {};
+
+function normalizeDateInput(value) {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return null;
+    return parsed.toISOString().split('T')[0];
+}
 
 /**
  * Initialize Business Reports Dashboard
@@ -54,8 +67,25 @@ async function loadBusinessReports() {
         const statusSelect = document.getElementById('reports-status-filter');
 
         currentReportsFilter.period = periodSelect ? parseInt(periodSelect.value) : 30;
-        currentReportsFilter.fromDate = fromDateInput ? fromDateInput.value : null;
-        currentReportsFilter.toDate = toDateInput ? toDateInput.value : null;
+
+        const normalizedFrom = normalizeDateInput(fromDateInput ? fromDateInput.value : null);
+        const normalizedTo = normalizeDateInput(toDateInput ? toDateInput.value : null);
+
+        // Update inputs to normalized format to ensure API receives yyyy-mm-dd
+        if (fromDateInput && normalizedFrom) fromDateInput.value = normalizedFrom;
+        if (toDateInput && normalizedTo) toDateInput.value = normalizedTo;
+
+        // If both dates are set and reversed, swap them
+        if (normalizedFrom && normalizedTo && new Date(normalizedFrom) > new Date(normalizedTo)) {
+            currentReportsFilter.fromDate = normalizedTo;
+            currentReportsFilter.toDate = normalizedFrom;
+            if (fromDateInput) fromDateInput.value = currentReportsFilter.fromDate;
+            if (toDateInput) toDateInput.value = currentReportsFilter.toDate;
+        } else {
+            currentReportsFilter.fromDate = normalizedFrom;
+            currentReportsFilter.toDate = normalizedTo;
+        }
+
         currentReportsFilter.status = statusSelect ? statusSelect.value : 'all';
 
         // Build query parameters
@@ -81,6 +111,8 @@ async function loadBusinessReports() {
             updateReportsSummary(data.summary || {});
             renderReportsTable();
             renderBusinessReportsCharts();
+            await loadDetailedInsights();
+            await loadInventoryExpensesAndProfit();
         } else {
             console.error('Failed to load business reports:', data.message);
             showReportsError(data.message);
@@ -92,9 +124,66 @@ async function loadBusinessReports() {
 }
 
 /**
+ * Load detailed insights from sales (View Sales) and daily summary
+ */
+async function loadDetailedInsights() {
+    try {
+        const start = currentReportsFilter.fromDate;
+        const end = currentReportsFilter.toDate;
+
+        const params = new URLSearchParams();
+        if (start && end) {
+            params.append('start_date', start);
+            params.append('end_date', end);
+        }
+
+        const salesSummaryPromise = fetch(`php/sales-analytics-api.php?action=get_sales_summary&${params}`).then(r => r.json());
+        const todaySummaryPromise = fetch('php/daily-summary-api.php?action=get_today_summary').then(r => r.json());
+
+        const [salesSummary, todaySummary] = await Promise.all([salesSummaryPromise, todaySummaryPromise]);
+        detailedInsights.salesSummary = salesSummary.success ? salesSummary.data : null;
+        detailedInsights.todaySummary = todaySummary.success ? todaySummary.summary : null;
+
+        renderDetailedReportNarrative();
+    } catch (error) {
+        console.error('Error loading detailed insights:', error);
+        document.getElementById('reports-detailed-text').textContent = 'Unable to load detailed report.';
+    }
+}
+
+/**
+ * Render narrative report
+ */
+function renderDetailedReportNarrative() {
+    const container = document.getElementById('reports-detailed-text');
+    if (!container) return;
+
+    const s = detailedInsights.salesSummary || {};
+    const d = detailedInsights.todaySummary || {};
+    const expenses = currentExpenses || 0;
+    const profit = expenses - (s.total_sales || 0);
+
+    const sections = [
+        `Executive Summary\nRevenue ${formatCurrency(s.total_sales || 0)}; Net Sales ${formatCurrency(s.net_sales || s.total_sales || 0)}; Orders ${formatNumber(s.total_transactions || 0)}; AOV ${formatCurrency(s.avg_order_value || 0)}; Profit ${formatCurrency(profit)}.`,
+        `Sales Trends\nPeriod revenue: ${formatCurrency(s.total_sales || 0)}. Orders: ${formatNumber(s.total_transactions || 0)}.`,
+        `Product Performance\nTop categories and best sellers available in View Sales. Discounts applied: ${formatCurrency((s.total_sales || 0) - (s.net_sales || s.total_sales || 0))}.`,
+        `Time-Based Analysis\nDaily summary today: sales ${formatCurrency(d.total_sales || 0)}, transactions ${formatNumber(d.transaction_count || 0)}, first sale ${d.opening_time || 'N/A'}, last sale ${d.closing_time || 'N/A'}.`,
+        `Financial Metrics\nGross sales ${formatCurrency(s.total_sales || 0)}, net ${formatCurrency(s.net_sales || s.total_sales || 0)}, discounts ${formatCurrency(s.total_discount || 0)}, expenses (inventory) ${formatCurrency(expenses)}, profit ${formatCurrency(profit)}.`,
+        `Payment Methods\nCash ${formatCurrency(s.cash_sales || 0)}, Card ${formatCurrency(s.card_sales || 0)}, e-Wallet ${formatCurrency(s.ewallet_sales || 0)}.`,
+        `Customer Insights\nRetention and repeat behavior available via View Sales time-period comparison.`,
+        `Inventory Status\nInventory value used as expenses: ${formatCurrency(expenses)}. Check Inventory module for low/out-of-stock items.`,
+        `Staff Performance\nLink receipts/discounts to cashier/timekeeping logs for accountability.`,
+        `Shift Reports\nX-Read/Z-Read available in Daily Summary; align filters here for consistent periods.`
+    ];
+
+    container.textContent = sections.join('\n\n');
+}
+
+/**
  * Update summary cards
  */
 function updateReportsSummary(summary) {
+    currentSummary = summary || {};
     document.getElementById('reports-total-sales').textContent = formatCurrency(summary.total_sales || 0);
     document.getElementById('reports-total-transactions').textContent = formatNumber(summary.total_transactions || 0);
     document.getElementById('reports-total-items').textContent = formatNumber(summary.total_items || 0);
@@ -110,6 +199,12 @@ function updateReportsSummary(summary) {
     updateChangeIndicator('reports-transactions-change', transactionsChange);
     updateChangeIndicator('reports-items-change', itemsChange);
     updateChangeIndicator('reports-avg-change', avgChange);
+
+    // Expenses and profit are handled after inventory fetch
+    const expensesEl = document.getElementById('reports-total-expenses');
+    const profitEl = document.getElementById('reports-total-profit');
+    if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
+    if (profitEl) profitEl.textContent = formatCurrency(currentExpenses - (summary.total_sales || 0));
 }
 
 /**
@@ -174,6 +269,53 @@ function renderReportsTable() {
     });
 
     tbody.innerHTML = html;
+}
+
+/**
+ * Export detailed narrative text
+ */
+function downloadDetailedReport() {
+    const textEl = document.getElementById('reports-detailed-text');
+    if (!textEl) return;
+    const blob = new Blob([textEl.textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `business_report_${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Fetch inventory and compute expenses + profit
+ */
+async function loadInventoryExpensesAndProfit() {
+    try {
+        const response = await fetch('php/api.php?resource=inventory-with-cost');
+        const result = await response.json();
+        if (result.success) {
+            const items = result.data.inventory || [];
+            currentExpenses = items.reduce((sum, item) => {
+                const qty = Number(item.qty ?? item.quantity ?? 0);
+                const cost = Number(item.costPerUnit ?? item.cost_per_unit ?? 0);
+                return sum + qty * cost;
+            }, 0);
+        } else {
+            currentExpenses = 0;
+        }
+    } catch (error) {
+        console.error('Error loading inventory expenses:', error);
+        currentExpenses = 0;
+    }
+
+    const expensesEl = document.getElementById('reports-total-expenses');
+    const profitEl = document.getElementById('reports-total-profit');
+    const totalSales = currentSummary.total_sales || (businessReportsData || []).reduce((sum, r) => sum + (parseFloat(r.total_sales) || 0), 0);
+    const profit = currentExpenses - totalSales;
+    if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
+    if (profitEl) profitEl.textContent = formatCurrency(profit);
 }
 
 /**
@@ -247,17 +389,118 @@ function closeReportModal() {
 }
 
 /**
- * Generate PDF report (placeholder)
+ * Generate PDF report (simple printable view)
+ * Builds a lightweight HTML table and opens the browser print-to-PDF dialog.
  */
 function generateReportPDF() {
-    alert('PDF export functionality will be implemented soon!\n\nThis will export the current reports data to a PDF file.');
+    if (!businessReportsData || businessReportsData.length === 0) {
+        alert('No report data to export.');
+        return;
+    }
+
+    const rows = businessReportsData.map(r => `
+        <tr>
+            <td>${formatReportDate(r.report_date)}</td>
+            <td>${formatCurrency(r.total_sales)}</td>
+            <td>${formatNumber(r.total_transactions)}</td>
+            <td>${formatNumber(r.total_items_sold)}</td>
+            <td>${formatCurrency(r.average_transaction)}</td>
+            <td>${formatCurrency(r.cash_sales)}</td>
+            <td>${formatCurrency((parseFloat(r.card_sales || 0) + parseFloat(r.gcash_sales || 0)))}</td>
+            <td>${r.is_finalized ? 'Finalized' : 'Open'}</td>
+        </tr>
+    `).join('');
+
+    const html = `
+        <html>
+        <head>
+            <title>Business Reports</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
+                h1 { margin-bottom: 8px; }
+                h2 { margin: 4px 0 16px; font-size: 14px; color: #6B7280; }
+                table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+                th, td { border: 1px solid #E5E7EB; padding: 8px; font-size: 12px; text-align: left; }
+                th { background: #F3F4F6; }
+            </style>
+        </head>
+        <body>
+            <h1>Business Reports</h1>
+            <h2>Exported on ${new Date().toLocaleString()}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Total Sales</th>
+                        <th>Transactions</th>
+                        <th>Items Sold</th>
+                        <th>Avg Transaction</th>
+                        <th>Cash</th>
+                        <th>Card/GCash</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </body>
+        </html>
+    `;
+
+    const win = window.open('', '_blank');
+    if (win) {
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        win.print();
+    } else {
+        alert('Pop-up blocked. Please allow pop-ups to export PDF.');
+    }
 }
 
 /**
- * Generate Excel report (placeholder)
+ * Generate Excel/CSV export of report data
  */
 function generateReportExcel() {
-    alert('Excel export functionality will be implemented soon!\n\nThis will export the current reports data to an Excel file.');
+    if (!businessReportsData || businessReportsData.length === 0) {
+        alert('No report data to export.');
+        return;
+    }
+
+    const headers = [
+        'Date',
+        'Total Sales',
+        'Transactions',
+        'Items Sold',
+        'Avg Transaction',
+        'Cash',
+        'Card/GCash',
+        'Status'
+    ];
+
+    const rows = businessReportsData.map(r => ([
+        formatReportDate(r.report_date),
+        (r.total_sales || 0),
+        (r.total_transactions || 0),
+        (r.total_items_sold || 0),
+        (r.average_transaction || 0),
+        (r.cash_sales || 0),
+        ((parseFloat(r.card_sales || 0) + parseFloat(r.gcash_sales || 0)) || 0),
+        r.is_finalized ? 'Finalized' : 'Open'
+    ]));
+
+    const csv = [headers.join(',')]
+        .concat(rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')))
+        .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `business_reports_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 /**
@@ -372,12 +615,14 @@ function renderSalesTrendChart() {
         businessReportsCharts.trend.destroy();
     }
 
-    const labels = businessReportsData.map(report => {
+    const sorted = [...businessReportsData].sort((a, b) => new Date(a.report_date) - new Date(b.report_date));
+
+    const labels = sorted.map(report => {
         const date = new Date(report.report_date);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
 
-    const salesData = businessReportsData.map(report => parseFloat(report.total_sales) || 0);
+    const salesData = sorted.map(report => parseFloat(report.total_sales) || 0);
 
     businessReportsCharts.trend = new Chart(ctx, {
         type: 'line',

@@ -5,17 +5,14 @@
 
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
-    backdrop-filter: blur(8px);
+    inset: 0;
+    background: linear-gradient(135deg, rgba(76, 106, 212, 0.65) 0%, rgba(122, 81, 200, 0.65) 100%);
+    backdrop-filter: blur(10px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 10000;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 0.25s ease;
 }
 
 @keyframes fadeIn {
@@ -28,19 +25,19 @@
 }
 
 .modal-content {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    padding: 40px;
-    border-radius: 24px;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-    animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    max-width: 550px;
-    width: 90%;
-    border: 3px solid rgba(255, 255, 255, 0.8);
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35), 0 6px 18px rgba(15, 23, 42, 0.12);
+    animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+    max-width: 520px;
+    width: 92%;
+    border: 1px solid #e2e8f0;
 }
 
 @keyframes slideUp {
     from {
-        transform: translateY(50px) scale(0.9);
+        transform: translateY(30px) scale(0.97);
         opacity: 0;
     }
     to {
@@ -49,164 +46,197 @@
     }
 }
 
-.discount-modal h2 {
-    text-align: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 30px;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
+.discount-modal {
+    color: #0f172a;
 }
 
-.discount-modal > div {
+.discount-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.discount-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     display: grid;
-    gap: 15px;
+    place-items: center;
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    color: #4338ca;
+    font-weight: 700;
+    font-size: 18px;
+    border: 1px solid #d4d8ff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.discount-eyebrow {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+    font-weight: 700;
+}
+
+.discount-modal h2 {
+    margin: 2px 0 0;
+    font-size: 22px;
+    color: #312e81;
+    letter-spacing: -0.2px;
+}
+
+.discount-close-btn {
+    margin-left: auto;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.discount-close-btn:hover {
+    background: #eef2ff;
+    color: #3730a3;
+    box-shadow: 0 8px 20px rgba(55, 48, 163, 0.18);
+}
+
+.discount-close-btn:focus-visible {
+    outline: 2px solid #4338ca;
+    outline-offset: 2px;
+}
+
+.discount-options {
+    display: grid;
+    gap: 12px;
 }
 
 .discount-select-btn {
+    --accent: #6366f1;
+    --accent-soft: rgba(99, 102, 241, 0.08);
     width: 100%;
-    padding: 20px 24px;
-    border: 3px solid #e0e0e0;
-    border-radius: 16px;
-    background: white;
+    padding: 16px 18px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
     cursor: pointer;
-    font-size: 18px;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    text-align: left;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 14px;
     position: relative;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-}
-
-.discount-select-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.5s;
-}
-
-.discount-select-btn:hover::before {
-    left: 100%;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    transition: all 0.22s ease;
+    text-align: left;
 }
 
 .discount-select-btn:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-    border-width: 3px;
+    border-color: var(--accent);
+    box-shadow: 0 20px 45px rgba(99, 102, 241, 0.18);
+    transform: translateY(-2px);
 }
 
-.discount-select-btn:active {
-    transform: translateY(-2px) scale(1);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+.discount-select-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
-/* Specific hover colors for each discount type */
+.discount-option-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.discount-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.discount-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.discount-subtitle {
+    font-size: 13px;
+    color: #475569;
+}
+
+.discount-rate-chip {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
 .discount-select-btn[data-type="none"] {
-    border-color: #6c757d;
-}
-
-.discount-select-btn[data-type="none"]:hover {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-    border-color: #495057;
-    color: #212529;
+    --accent: #64748b;
+    --accent-soft: rgba(100, 116, 139, 0.08);
 }
 
 .discount-select-btn[data-type="senior"] {
-    border-color: #ffc107;
-}
-
-.discount-select-btn[data-type="senior"]:hover {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%) !important;
-    border-color: #ffb300;
-    color: #856404;
+    --accent: #f59e0b;
+    --accent-soft: rgba(245, 158, 11, 0.12);
 }
 
 .discount-select-btn[data-type="pwd"] {
-    border-color: #17a2b8;
+    --accent: #0ea5e9;
+    --accent-soft: rgba(14, 165, 233, 0.12);
 }
 
-.discount-select-btn[data-type="pwd"]:hover {
-    background: linear-gradient(135deg, #d1ecf1 0%, #9fdbeb 100%) !important;
-    border-color: #138496;
-    color: #0c5460;
-}
-
-.discount-select-btn[data-type="athlete"] {
-    border-color: #28a745;
-}
-
-.discount-select-btn[data-type="athlete"]:hover {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
-    border-color: #218838;
-    color: #155724;
-}
-
-/* Add checkmark animation on hover */
-.discount-select-btn::after {
-    content: '✓';
-    position: absolute;
-    right: 20px;
-    font-size: 24px;
-    font-weight: bold;
-    opacity: 0;
-    transform: scale(0);
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.discount-select-btn:hover::after {
-    opacity: 0.3;
-    transform: scale(1);
-}
-
-/* Responsive */
-@media (max-width: 600px) {
+@media (max-width: 640px) {
     .modal-content {
-        padding: 30px 20px;
-        max-width: 95%;
-        border-radius: 20px;
+        padding: 22px;
+        width: 94%;
     }
 
     .discount-modal h2 {
-        font-size: 24px;
-        margin-bottom: 25px;
+        font-size: 20px;
     }
 
     .discount-select-btn {
-        padding: 16px 20px;
-        font-size: 16px;
+        padding: 14px;
         gap: 12px;
     }
 
-    .discount-select-btn::after {
-        right: 15px;
-        font-size: 20px;
+    .discount-option-icon {
+        width: 40px;
+        height: 40px;
     }
 }
 
-@media (max-width: 400px) {
-    .modal-content {
-        padding: 25px 15px;
+@media (max-width: 420px) {
+    .discount-modal-header {
+        align-items: flex-start;
     }
 
-    .discount-modal h2 {
-        font-size: 20px;
-        margin-bottom: 20px;
+    .discount-close-btn {
+        width: 34px;
+        height: 34px;
     }
 
-    .discount-select-btn {
-        padding: 14px 16px;
+    .discount-title {
         font-size: 15px;
-        gap: 10px;
+    }
+
+    .discount-subtitle,
+    .discount-rate-chip {
+        font-size: 12px;
     }
 }

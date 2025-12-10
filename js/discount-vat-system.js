@@ -13,7 +13,7 @@ let currentDiscount = {
 
 /**
  * Select discount type and update UI
- * @param {string} type - Discount type ('none', 'senior', 'pwd', 'athlete')
+ * @param {string} type - Discount type ('none', 'senior', 'pwd')
  * @param {number} rate - Discount percentage (0-100)
  * @param {string} label - Display label
  */
@@ -74,12 +74,6 @@ function calculateOrderTotal() {
         vatExemptAmount = afterDiscount;
         vatableAmount = 0;
         vatAmount = 0;
-    } else {
-        // For regular/athlete: Calculate 12% VAT (inclusive)
-        // Philippine VAT formula: VAT = (Amount / 1.12) * 0.12
-        vatableAmount = afterDiscount / 1.12;
-        vatAmount = vatableAmount * 0.12;
-        vatExemptAmount = 0;
     }
 
     const total = afterDiscount;
@@ -214,8 +208,7 @@ function getDiscountLabel(type) {
     const labels = {
         'none': 'No Discount',
         'senior': 'Senior Citizen',
-        'pwd': 'PWD',
-        'athlete': 'National Athlete'
+        'pwd': 'PWD'
     };
     return labels[type] || type;
 }

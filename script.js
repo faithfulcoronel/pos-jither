@@ -227,6 +227,10 @@ function displayMenuItems() {
         return;
     }
 
+    // Apply category filter if selected
+    const categoryFilter = document.getElementById('menuCategoryFilter');
+    const selectedCategory = categoryFilter ? categoryFilter.value : '';
+
     if (products.length === 0) {
         container.innerHTML = '<p class="empty-state">No menu items available.</p>';
         return;
@@ -234,6 +238,9 @@ function displayMenuItems() {
 
     const grouped = products.reduce((accumulator, item, index) => {
         const categoryId = item.categoryId || FALLBACK_CATEGORY_ID;
+        if (selectedCategory && categoryId !== selectedCategory) {
+            return accumulator; // skip non-matching categories
+        }
         if (!accumulator[categoryId]) {
             accumulator[categoryId] = [];
         }
@@ -243,7 +250,14 @@ function displayMenuItems() {
 
     container.innerHTML = '';
 
-    Object.keys(grouped).forEach(categoryId => {
+    const categoryIds = Object.keys(grouped);
+
+    if (categoryIds.length === 0) {
+        container.innerHTML = '<p class="empty-state">No menu items found for this category.</p>';
+        return;
+    }
+
+    categoryIds.forEach(categoryId => {
         const section = document.createElement('div');
         section.className = 'menu-category';
 
@@ -2233,32 +2247,42 @@ function showDiscountSelectionDialog() {
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal-content discount-modal" style="max-width: 500px;">
-                <h2 style="margin-bottom: 20px; color: #333;">💳 Select Customer Discount Type</h2>
+            <div class="modal-content discount-modal">
+                <div class="discount-modal-header">
+                    <div class="discount-badge">%</div>
+                    <div>
+                        <p class="discount-eyebrow">Discount options</p>
+                        <h2>Select Customer Discount Type</h2>
+                    </div>
+                    <button class="discount-close-btn" type="button" aria-label="Close discount selection">&times;</button>
+                </div>
 
-                <div style="display: grid; gap: 15px;">
-                    <button class="discount-select-btn" data-type="none" data-rate="0"
-                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
-                            onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
-                        🧑 No Discount (0%)
+                <div class="discount-options">
+                    <button class="discount-select-btn" data-type="none" data-rate="0" data-label="No Discount">
+                        <div class="discount-option-icon">-</div>
+                        <div class="discount-details">
+                            <span class="discount-title">No Discount</span>
+                            <span class="discount-subtitle">Charge regular price</span>
+                        </div>
+                        <span class="discount-rate-chip">0%</span>
                     </button>
 
-                    <button class="discount-select-btn" data-type="senior" data-rate="20"
-                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
-                            onmouseover="this.style.background='#fff3cd'" onmouseout="this.style.background='white'">
-                        👵 Senior Citizen (20% + VAT Exempt)
+                    <button class="discount-select-btn" data-type="senior" data-rate="20" data-label="Senior Citizen">
+                        <div class="discount-option-icon">SC</div>
+                        <div class="discount-details">
+                            <span class="discount-title">Senior Citizen</span>
+                            <span class="discount-subtitle">20% off and VAT exempt</span>
+                        </div>
+                        <span class="discount-rate-chip">20%</span>
                     </button>
 
-                    <button class="discount-select-btn" data-type="pwd" data-rate="20"
-                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
-                            onmouseover="this.style.background='#d1ecf1'" onmouseout="this.style.background='white'">
-                        ♿ PWD (20% + VAT Exempt)
-                    </button>
-
-                    <button class="discount-select-btn" data-type="athlete" data-rate="20"
-                            style="padding: 15px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s;"
-                            onmouseover="this.style.background='#d4edda'" onmouseout="this.style.background='white'">
-                        🏅 National Athlete (20%)
+                    <button class="discount-select-btn" data-type="pwd" data-rate="20" data-label="PWD">
+                        <div class="discount-option-icon">PWD</div>
+                        <div class="discount-details">
+                            <span class="discount-title">Person with Disability</span>
+                            <span class="discount-subtitle">20% off and VAT exempt</span>
+                        </div>
+                        <span class="discount-rate-chip">20%</span>
                     </button>
                 </div>
             </div>
@@ -2266,12 +2290,28 @@ function showDiscountSelectionDialog() {
 
         document.body.appendChild(modal);
 
+        const closeModal = () => {
+            document.body.removeChild(modal);
+            resolve();
+        };
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        const closeButton = modal.querySelector('.discount-close-btn');
+        if (closeButton) {
+            closeButton.addEventListener('click', closeModal);
+        }
+
         // Handle discount selection
         modal.querySelectorAll('.discount-select-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const type = this.dataset.type;
                 const rate = parseInt(this.dataset.rate);
-                const label = this.textContent.trim();
+                const label = this.dataset.label || (this.querySelector('.discount-title')?.textContent || '').trim();
 
                 // Apply discount
                 if (typeof selectDiscountType === 'function') {
@@ -2279,13 +2319,11 @@ function showDiscountSelectionDialog() {
                 }
 
                 // Close modal
-                document.body.removeChild(modal);
-                resolve();
+                closeModal();
             });
         });
     });
 }
-
 
 // Print Transaction Receipt from List
 function printTransactionReceipt(transaction) {

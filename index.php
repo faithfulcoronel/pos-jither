@@ -360,196 +360,144 @@ $currentUsername = $_SESSION['username'] ?? '';
                                 <!-- Dashboard Header -->
                                 <div class="analytics-header">
                                     <h1>Business Analytics Dashboard</h1>
-                                    <p class="subtitle">Coffee Shop Performance & Insights</p>
+                                    <p class="subtitle">Dynamic filters for categories</p>
                                 </div>
 
                                 <!-- Filters -->
                                 <div class="analytics-filters">
                                     <div class="filter-group">
-                                        <label>Year</label>
-                                        <select id="home-year-filter" class="filter-select" onchange="refreshHomeDashboard()">
-                                            <option value="2024">2024</option>
-                                            <option value="2023">2023</option>
-                                            <option value="2022">2022</option>
-                                        </select>
+                                        <label>Date Range</label>
+                                        <input type="date" id="home-start-date" class="filter-select" onchange="refreshHomeDashboard()">
+                                        <input type="date" id="home-end-date" class="filter-select" onchange="refreshHomeDashboard()">
                                     </div>
                                     <div class="filter-group">
-                                        <label>Quarter</label>
-                                        <select id="home-quarter-filter" class="filter-select" onchange="refreshHomeDashboard()">
-                                            <option value="all">All Quarters</option>
-                                            <option value="Q1">Q1 (Jan-Mar)</option>
-                                            <option value="Q2">Q2 (Apr-Jun)</option>
-                                            <option value="Q3">Q3 (Jul-Sep)</option>
-                                            <option value="Q4">Q4 (Oct-Dec)</option>
-                                        </select>
-                                    </div>
-                                    <div class="filter-group">
-                                        <label>Region</label>
-                                        <select id="home-region-filter" class="filter-select" onchange="refreshHomeDashboard()">
-                                            <option value="all">All Regions</option>
-                                            <option value="north">North</option>
-                                            <option value="south">South</option>
-                                            <option value="east">East</option>
-                                            <option value="west">West</option>
-                                            <option value="central">Central</option>
+                                        <label>Category</label>
+                                        <select id="home-category-filter" class="filter-select" onchange="refreshHomeDashboard()">
+                                            <option value="all">All Categories</option>
+                                            <option value="coffee">Coffee</option>
+                                            <option value="food">Food</option>
+                                            <option value="beverages">Beverages</option>
                                         </select>
                                     </div>
                                     <button class="refresh-btn" onclick="refreshHomeDashboard()">
-                                        🔄 Refresh Data
+                                        🔄 Refresh
                                     </button>
                                 </div>
 
                                 <!-- KPI Cards -->
                                 <div class="kpi-cards">
                                     <div class="kpi-card">
-                                        <div class="kpi-label">Total Revenue</div>
-                                        <div class="kpi-value" id="home-kpi-revenue">₱0.00</div>
-                                        <div class="kpi-change up" id="home-kpi-revenue-change">
-                                            <span>↑</span> <span>0%</span> vs last period
-                                        </div>
+                                        <div class="kpi-label">Revenue</div>
+                                        <div class="kpi-value" id="home-kpi-revenue">₱0</div>
+                                        <div class="kpi-change up" id="home-kpi-revenue-change"></div>
                                     </div>
                                     <div class="kpi-card">
-                                        <div class="kpi-label">Gross Profit</div>
-                                        <div class="kpi-value" id="home-kpi-profit">₱0.00</div>
-                                        <div class="kpi-change up" id="home-kpi-profit-change">
-                                            <span>↑</span> <span>0%</span> vs last period
-                                        </div>
+                                        <div class="kpi-label">Profit</div>
+                                        <div class="kpi-value" id="home-kpi-profit">₱0</div>
+                                        <div class="kpi-change up" id="home-kpi-profit-change"></div>
                                     </div>
                                     <div class="kpi-card">
-                                        <div class="kpi-label">Avg Margin</div>
-                                        <div class="kpi-value" id="home-kpi-margin">0%</div>
-                                        <div class="kpi-change up" id="home-kpi-margin-change">
-                                            <span>↑</span> <span>0%</span> vs last period
-                                        </div>
-                                    </div>
-                                    <div class="kpi-card">
-                                        <div class="kpi-label">Total Orders</div>
+                                        <div class="kpi-label">Orders</div>
                                         <div class="kpi-value" id="home-kpi-orders">0</div>
-                                        <div class="kpi-change up" id="home-kpi-orders-change">
-                                            <span>↑</span> <span>0%</span> vs last period
-                                        </div>
+                                        <div class="kpi-change up" id="home-kpi-orders-change"></div>
+                                    </div>
+                                    <div class="kpi-card">
+                                        <div class="kpi-label">Avg Order Value</div>
+                                        <div class="kpi-value" id="home-kpi-aov">₱0</div>
+                                        <div class="kpi-change up" id="home-kpi-aov-change"></div>
                                     </div>
                                 </div>
 
                                 <!-- Charts Grid -->
                                 <div class="analytics-grid">
 
-                                    <!-- Yearly Sales by Region (Stacked Bar) -->
                                     <div class="chart-card span-8">
                                         <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Yearly Sales by Region</h3>
-                                            <span class="chart-card-icon">📊</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-sales-by-region"></canvas>
-                                        </div>
-                                    </div>
-
-                                    <!-- Gross Margin by Category (Donut Charts) -->
-                                    <div class="chart-card span-4">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Gross Margin by Category</h3>
-                                            <span class="chart-card-icon">🍩</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <div class="donut-charts-container">
-                                                <div class="donut-chart-wrapper">
-                                                    <div class="donut-chart-title">Revenue</div>
-                                                    <canvas id="home-chart-margin-revenue" class="donut-chart-canvas"></canvas>
-                                                </div>
-                                                <div class="donut-chart-wrapper">
-                                                    <div class="donut-chart-title">Profit</div>
-                                                    <canvas id="home-chart-margin-profit" class="donut-chart-canvas"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Actual vs Plan by Sales Month (Line Chart) -->
-                                    <div class="chart-card span-8">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Actual vs Plan by Sales Month</h3>
+                                            <h3 class="chart-card-title">Sales Trend</h3>
                                             <span class="chart-card-icon">📈</span>
                                         </div>
                                         <div class="chart-card-body">
-                                            <canvas id="home-chart-actual-vs-plan"></canvas>
+                                            <canvas id="home-chart-sales-trend"></canvas>
                                         </div>
                                     </div>
 
-                                    <!-- Sales & Profit by Region (Horizontal Stacked Bar) -->
                                     <div class="chart-card span-4">
                                         <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Sales & Profit by Region</h3>
-                                            <span class="chart-card-icon">🌍</span>
+                                            <h3 class="chart-card-title">Revenue vs Orders</h3>
+                                            <span class="chart-card-icon">📊</span>
                                         </div>
                                         <div class="chart-card-body">
-                                            <canvas id="home-chart-sales-profit-region"></canvas>
+                                            <canvas id="home-chart-revenue-orders"></canvas>
                                         </div>
                                     </div>
 
-                                    <!-- Sales Crosstab by Category and Region (Table) -->
                                     <div class="chart-card span-6">
                                         <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Sales Crosstab by Category & Region</h3>
-                                            <span class="chart-card-icon">📋</span>
+                                            <h3 class="chart-card-title">Sales by Category</h3>
+                                            <span class="chart-card-icon">🛒</span>
                                         </div>
-                                        <div class="chart-card-body" style="overflow-x: auto;">
-                                            <table class="analytics-table" id="home-table-crosstab">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Category</th>
-                                                        <th class="cell-number">North</th>
-                                                        <th class="cell-number">South</th>
-                                                        <th class="cell-number">East</th>
-                                                        <th class="cell-number">West</th>
-                                                        <th class="cell-number">Central</th>
-                                                        <th class="cell-number">Total</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="home-tbody-crosstab">
-                                                    <tr>
-                                                        <td colspan="7" class="chart-loading">
-                                                            <div class="chart-loading-spinner"></div>
-                                                            Loading data...
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                        <div class="chart-card-body">
+                                            <canvas id="home-chart-category-sales"></canvas>
                                         </div>
                                     </div>
 
-                                    <!-- Actual Sales vs Plan Sales (Table) -->
                                     <div class="chart-card span-6">
                                         <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Actual Sales vs Plan Sales</h3>
-                                            <div style="display: flex; gap: 8px;">
-                                                <button class="export-btn" onclick="exportTableToCSV('home-table-variance')">
-                                                    📥 Export
-                                                </button>
-                                                <span class="chart-card-icon">💰</span>
-                                            </div>
+                                            <h3 class="chart-card-title">Top Items</h3>
+                                            <span class="chart-card-icon">⭐</span>
                                         </div>
-                                        <div class="chart-card-body" style="overflow-x: auto;">
-                                            <table class="analytics-table" id="home-table-variance">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Month</th>
-                                                        <th class="cell-currency">Plan</th>
-                                                        <th class="cell-currency">Actual</th>
-                                                        <th class="cell-currency">Variance</th>
-                                                        <th class="cell-percent">%</th>
-                                                        <th class="cell-currency">Profit</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="home-tbody-variance">
-                                                    <tr>
-                                                        <td colspan="6" class="chart-loading">
-                                                            <div class="chart-loading-spinner"></div>
-                                                            Loading data...
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                        <div class="chart-card-body">
+                                            <canvas id="home-chart-top-items"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <div class="chart-card span-6">
+                                        <div class="chart-card-header">
+                                            <h3 class="chart-card-title">Peak Hours</h3>
+                                            <span class="chart-card-icon">⏰</span>
+                                        </div>
+                                        <div class="chart-card-body">
+                                            <canvas id="home-chart-peak-hours"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <div class="chart-card span-6">
+                                        <div class="chart-card-header">
+                                            <h3 class="chart-card-title">Weekly Performance</h3>
+                                            <span class="chart-card-icon">📅</span>
+                                        </div>
+                                        <div class="chart-card-body">
+                                            <canvas id="home-chart-weekly-performance"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <div class="chart-card span-6">
+                                        <div class="chart-card-header">
+                                            <h3 class="chart-card-title">Profit by Category</h3>
+                                            <span class="chart-card-icon">💹</span>
+                                        </div>
+                                        <div class="chart-card-body">
+                                            <canvas id="home-chart-profit-category"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <div class="chart-card span-6">
+                                        <div class="chart-card-header">
+                                            <h3 class="chart-card-title">Payment Methods</h3>
+                                            <span class="chart-card-icon">💳</span>
+                                        </div>
+                                        <div class="chart-card-body">
+                                            <canvas id="home-chart-payment-methods"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <div class="chart-card span-6">
+                                        <div class="chart-card-header">
+                                            <h3 class="chart-card-title">Customer Retention</h3>
+                                            <span class="chart-card-icon">🔁</span>
+                                        </div>
+                                        <div class="chart-card-body">
+                                            <canvas id="home-chart-retention"></canvas>
                                         </div>
                                     </div>
 
@@ -985,6 +933,35 @@ $currentUsername = $_SESSION['username'] ?? '';
                                             <p class="reports-card-value" id="reports-avg-order">₱0.00</p>
                                             <p class="reports-card-change positive" id="reports-avg-change">+0%</p>
                                         </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #f8b500 0%, #fceabb 100%);">💸</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Expenses (Inventory Value)</h3>
+                                            <p class="reports-card-value" id="reports-total-expenses">₱0.00</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #7f5af0 0%, #9a86fd 100%);">💹</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Profit</h3>
+                                            <p class="reports-card-value" id="reports-total-profit">₱0.00</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Detailed Business Report -->
+                                <div class="reports-detailed-card">
+                                    <div class="reports-detailed-header">
+                                        <div>
+                                            <h3 class="reports-detailed-title">Detailed Business Report</h3>
+                                            <p class="reports-detailed-subtitle">Auto-generated using Daily Summary and View Sales data</p>
+                                        </div>
+                                        <button class="reports-btn reports-btn-secondary" onclick="downloadDetailedReport()">
+                                            <span>📥</span> Export Narrative
+                                        </button>
                                     </div>
                                 </div>
 

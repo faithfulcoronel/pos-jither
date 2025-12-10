@@ -46,7 +46,7 @@
     max-width: 1200px;
     width: 95%;
     max-height: 90vh;
-    overflow-y: auto;
+    overflow: hidden;
     position: relative;
     z-index: 9999;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -96,12 +96,13 @@
 /* Modal Body */
 .product-modal-body {
     padding: 30px;
+    overflow: auto;
 }
 
 .menu-form {
     background: #ffffff;
-    padding: 0;
-    border-radius: 0;
+    padding: 10px;
+    border-radius: 8px;
     margin: 0;
     box-shadow: none;
 }
@@ -109,19 +110,28 @@
 /* Two-column layout for the form */
 .menu-form-layout {
     display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 30px;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
     margin-bottom: 25px;
+    align-items: start;
 }
 
 .menu-form-left {
     flex: 1;
+    background: #f9fafb;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
 }
 
 .menu-form-right {
     position: sticky;
     top: 20px;
     height: fit-content;
+    background: #f9fafb;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
 }
 
 .menu-form h4 {
@@ -138,7 +148,7 @@
 
 .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 15px;
     margin-bottom: 30px;
 }
@@ -165,6 +175,7 @@
     padding: 20px;
     border-radius: 6px;
     margin: 15px 0;
+    border: 1px dashed #d1d5db;
 }
 
 .ingredients-list {
@@ -246,6 +257,7 @@
     background: #f0f8ff;
     border-radius: 6px;
     border: 2px dashed #2196F3;
+    margin-top: 10px;
 }
 
 .add-ingredient-form select,
@@ -256,8 +268,18 @@
     font-size: 14px;
 }
 
+.add-ingredient-form button {
+    width: 100%;
+    min-width: 140px;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
 .btn-add-ingredient {
-    padding: 10px 20px;
+    padding: 10px 16px;
     background: #2196F3;
     color: white;
     border: none;
@@ -277,7 +299,7 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 20px;
     border-radius: 8px;
-    margin: 15px 0;
+    margin: 10px 0 0 0;
 }
 
 .profit-row {
@@ -373,11 +395,12 @@
 @media (max-width: 992px) {
     .menu-form-layout {
         grid-template-columns: 1fr;
-        gap: 25px;
+        gap: 20px;
     }
 
     .menu-form-right {
         position: static;
+        order: -1;
     }
 }
 

@@ -40,7 +40,26 @@ async function inventifyLoadData() {
         const itemsResult = await itemsResponse.json();
 
         if (itemsResult.success) {
-            inventifyData.items = itemsResult.data.inventory || [];
+            inventifyData.items = (itemsResult.data.inventory || []).map((raw) => {
+                // Normalize snake_case → camelCase so charts read correct values
+                const qty = Number(raw.qty ?? raw.quantity ?? 0);
+                const reorderLevel = Number(raw.reorderLevel ?? raw.reorder_level ?? 0);
+                const maxStock = Number(raw.maxStock ?? raw.max_stock ?? 0);
+                const costPerUnit = Number(raw.costPerUnit ?? raw.cost_per_unit ?? 0);
+                const totalValue = Number(raw.totalValue ?? raw.total_value ?? (qty * costPerUnit));
+                const categoryValue = raw.category || raw.category_name || raw.categoryId || raw.category_id || '';
+
+                return {
+                    ...raw,
+                    qty,
+                    reorderLevel,
+                    maxStock,
+                    costPerUnit,
+                    totalValue,
+                    unit: raw.unit || raw.uom || '',
+                    category: typeof categoryValue === 'string' ? categoryValue : String(categoryValue || '')
+                };
+            });
         }
 
         // Load stock movements
@@ -61,6 +80,9 @@ async function inventifyLoadData() {
             }
         }
 
+        // Build audit logs from stock movements so the Audit tab is populated
+        inventifyBuildAuditLogs();
+
     } catch (error) {
         console.error('Error loading Inventify data:', error);
     }
@@ -70,14 +92,16 @@ async function inventifyLoadData() {
  * Update summary cards
  */
 function inventifyUpdateSummary() {
-    const items = inventifyGetFilteredItems();
+    // Use all items for headline metrics (not filtered list)
+    const items = inventifyData.items || [];
 
     const totalItems = items.length;
     const totalValue = items.reduce((sum, item) => sum + (item.totalValue || 0), 0);
-    const lowStock = items.filter(item =>
-        item.status === 'low_stock' || item.status === 'below_reorder'
-    ).length;
-    const outOfStock = items.filter(item => item.status === 'out_of_stock').length;
+    const lowStock = items.filter(item => {
+        const status = inventifyGetItemStatus(item);
+        return status === 'low_stock' || status === 'below_reorder';
+    }).length;
+    const outOfStock = items.filter(item => inventifyGetItemStatus(item) === 'out_of_stock').length;
 
     document.getElementById('inventify-total-items').textContent = totalItems;
     document.getElementById('inventify-current-value').textContent = `₱${totalValue.toFixed(2)}`;
@@ -89,7 +113,24 @@ function inventifyUpdateSummary() {
  * Populate category dropdowns
  */
 function inventifyPopulateCategories() {
-    const categories = ['General', 'Beverages', 'Food', 'Supplies', 'Raw Materials', 'Equipment'];
+    const categoriesSet = new Set();
+
+    // From API categories list
+    (inventifyData.categories || []).forEach(cat => {
+        if (cat && cat.name) categoriesSet.add(cat.name);
+    });
+
+    // From existing items
+    inventifyData.items.forEach(item => {
+        if (item.category) categoriesSet.add(item.category);
+    });
+
+    // Fallback defaults if empty
+    if (categoriesSet.size === 0) {
+        ['General', 'Beverages', 'Food', 'Supplies', 'Raw Materials', 'Equipment'].forEach(c => categoriesSet.add(c));
+    }
+
+    const categories = Array.from(categoriesSet).sort((a, b) => a.localeCompare(b));
 
     // Filter dropdown
     const filterSelect = document.getElementById('inventify-category-filter');
@@ -130,7 +171,8 @@ function inventifyGetFilteredItems() {
 
     // Category filter
     if (inventifyData.filters.category) {
-        filtered = filtered.filter(item => item.category === inventifyData.filters.category);
+        const targetCategory = inventifyData.filters.category.toLowerCase();
+        filtered = filtered.filter(item => (item.category || '').toLowerCase() === targetCategory);
     }
 
     // Status filter
@@ -149,8 +191,9 @@ function inventifyGetFilteredItems() {
  */
 function inventifyGetItemStatus(item) {
     if (item.qty <= 0) return 'out_of_stock';
-    if (item.qty <= item.reorderLevel) return 'below_reorder';
-    if (item.qty <= (item.reorderLevel * 1.5)) return 'low_stock';
+    const reorderLevel = item.reorderLevel || 0;
+    if (reorderLevel > 0 && item.qty <= reorderLevel) return 'below_reorder';
+    if (reorderLevel > 0 && item.qty <= (reorderLevel * 1.5)) return 'low_stock';
     return 'in_stock';
 }
 
@@ -378,16 +421,39 @@ function inventifyRenderActivitiesTab() {
  */
 function inventifyRenderAuditTab() {
     const tbody = document.getElementById('inventify-audit-tbody');
+    if (!tbody) return;
 
-    tbody.innerHTML = `
+    const logs = (inventifyData.auditLogs || []).slice(0, 100);
+
+    if (logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="inventify-empty">
+                    <div class="inventify-empty-icon">🔍</div>
+                    <div class="inventify-empty-title">No audit entries yet</div>
+                    <div class="inventify-empty-text">Inventory changes will appear here</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    const formatValue = (val) => {
+        if (val === null || val === undefined || val === '') return '—';
+        return typeof val === 'number' ? val : `${val}`;
+    };
+
+    tbody.innerHTML = logs.map(log => `
         <tr>
-            <td colspan="7" class="inventify-empty">
-                <div class="inventify-empty-icon">🔍</div>
-                <div class="inventify-empty-title">Audit logs coming soon</div>
-                <div class="inventify-empty-text">Detailed audit trail will be available here</div>
-            </td>
+            <td>${new Date(log.timestamp).toLocaleString()}</td>
+            <td>${log.item || 'Item'}</td>
+            <td>${log.action}</td>
+            <td>${log.field || 'quantity'}</td>
+            <td>${formatValue(log.oldValue)}</td>
+            <td>${formatValue(log.newValue)}</td>
+            <td>${log.changedBy || 'System'}</td>
         </tr>
-    `;
+    `).join('');
 }
 
 /**
@@ -947,6 +1013,50 @@ function renderInventoryLevelsChart() {
             }
         }
     });
+}
+
+/**
+ * Build audit log entries using movement history as source
+ */
+function inventifyBuildAuditLogs() {
+    const movements = inventifyData.movements || [];
+    inventifyData.auditLogs = movements.map(m => {
+        const qtyChange = Number(m.quantity || 0);
+        const prevQty = Number(m.previousQuantity ?? m.previous_quantity ?? m.balance_before ?? NaN);
+        const nextQty = Number(m.currentQuantity ?? m.current_quantity ?? (isNaN(prevQty) ? NaN : prevQty + qtyChange));
+
+        return {
+            timestamp: m.createdAt || m.created_at || new Date().toISOString(),
+            item: m.inventoryItemName || m.item || (m.inventoryItemId ? `Item #${m.inventoryItemId}` : 'Item'),
+            action: m.movementType || 'Stock Movement',
+            field: m.fieldChanged || 'quantity',
+            oldValue: isNaN(prevQty) ? '—' : prevQty,
+            newValue: isNaN(nextQty) ? qtyChange : nextQty,
+            changedBy: m.performedBy || m.user || m.staffName || m.staff || 'System'
+        };
+    });
+}
+
+/**
+ * Push a single audit log entry and refresh the Audit tab if active
+ */
+function inventifyPushAuditLog(entry) {
+    const log = {
+        timestamp: entry.timestamp || new Date().toISOString(),
+        item: entry.item || 'Item',
+        action: entry.action || 'Update',
+        field: entry.field || 'quantity',
+        oldValue: entry.oldValue ?? '—',
+        newValue: entry.newValue ?? '—',
+        changedBy: entry.changedBy || window.currentUsername || 'System',
+        notes: entry.notes || ''
+    };
+
+    inventifyData.auditLogs = [log, ...(inventifyData.auditLogs || [])].slice(0, 200);
+
+    if (inventifyData.currentTab === 'audit') {
+        inventifyRenderAuditTab();
+    }
 }
 
 // Initialize when DOM is ready

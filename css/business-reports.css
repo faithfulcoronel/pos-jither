@@ -548,3 +548,42 @@
         padding: 12px 8px;
     }
 }
+
+
+/* Detailed report block */
+.reports-detailed-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    margin-top: 12px;
+}
+
+.reports-detailed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.reports-detailed-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.reports-detailed-subtitle {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.reports-detailed-text {
+    margin-top: 12px;
+    line-height: 1.5;
+    color: #1f2937;
+    white-space: pre-line;
+}

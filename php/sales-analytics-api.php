@@ -75,6 +75,10 @@ try {
             getInventoryImpact($pdo, $startDate, $endDate);
             break;
 
+        case 'get_sales_summary':
+            getSalesSummaryRange($pdo, $startDate, $endDate);
+            break;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
     }
@@ -179,6 +183,54 @@ function getPreviousDateRange($period, $year, $month, $quarter) {
  * Get KPIs (Key Performance Indicators)
  */
 function getKPIs($pdo, $startDate, $endDate, $dateRange) {
+    $useDaily = hasDailyReports($pdo, $startDate, $endDate);
+
+    if ($useDaily) {
+        // Aggregate from daily snapshots
+        $stmt = $pdo->prepare("
+            SELECT
+                COALESCE(SUM(total_sales), 0) AS total_sales,
+                COALESCE(SUM(total_transactions), 0) AS total_orders,
+                COALESCE(SUM(total_items_sold), 0) AS quantity_sold,
+                CASE WHEN SUM(total_transactions) > 0
+                    THEN ROUND(SUM(total_sales) / SUM(total_transactions), 2)
+                    ELSE 0 END AS avg_order_value
+            FROM daily_business_reports
+            WHERE report_date BETWEEN ? AND ?
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $current = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Previous period
+        [$prevStart, $prevEnd] = getPreviousRange($startDate, $endDate);
+        $stmt->execute([$prevStart, $prevEnd]);
+        $previous = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $salesChange = ($previous['total_sales'] ?? 0) > 0
+            ? (($current['total_sales'] - $previous['total_sales']) / $previous['total_sales']) * 100
+            : 0;
+        $ordersChange = ($previous['total_orders'] ?? 0) > 0
+            ? (($current['total_orders'] - $previous['total_orders']) / $previous['total_orders']) * 100
+            : 0;
+        $quantityChange = ($previous['quantity_sold'] ?? 0) > 0
+            ? (($current['quantity_sold'] - $previous['quantity_sold']) / $previous['quantity_sold']) * 100
+            : 0;
+
+        echo json_encode([
+            'success' => true,
+            'kpis' => [
+                'total_sales' => floatval($current['total_sales']),
+                'sales_change' => round($salesChange, 1),
+                'total_orders' => intval($current['total_orders']),
+                'orders_change' => round($ordersChange, 1),
+                'quantity_sold' => intval($current['quantity_sold']),
+                'quantity_change' => round($quantityChange, 1),
+                'avg_order_value' => floatval($current['avg_order_value'])
+            ]
+        ]);
+        return;
+    }
+
     // Calculate previous period
     $start = new DateTime($startDate);
     $end = new DateTime($endDate);
@@ -238,6 +290,28 @@ function getKPIs($pdo, $startDate, $endDate, $dateRange) {
  * Get Sales Trend Over Time
  */
 function getSalesTrend($pdo, $startDate, $endDate, $dateRange) {
+    $useDaily = hasDailyReports($pdo, $startDate, $endDate);
+
+    if ($useDaily) {
+        $stmt = $pdo->prepare("
+            SELECT
+                report_date AS period,
+                total_sales AS sales,
+                total_transactions AS orders
+            FROM daily_business_reports
+            WHERE report_date BETWEEN ? AND ?
+            ORDER BY report_date ASC
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'data' => $data
+        ]);
+        return;
+    }
+
     $groupBy = '';
     switch ($dateRange) {
         case 'day':
@@ -276,6 +350,29 @@ function getSalesTrend($pdo, $startDate, $endDate, $dateRange) {
  * Get Sales by Category
  */
 function getCategorySales($pdo, $startDate, $endDate) {
+    $useDaily = hasDailyReports($pdo, $startDate, $endDate);
+
+    if ($useDaily) {
+        $stmt = $pdo->prepare("
+            SELECT
+                COALESCE(category_name, 'Uncategorized') AS category,
+                COALESCE(SUM(total_revenue), 0) AS sales,
+                COALESCE(SUM(quantity_sold), 0) AS quantity
+            FROM daily_item_sales
+            WHERE report_date BETWEEN ? AND ?
+            GROUP BY category_name
+            ORDER BY sales DESC
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'data' => $data
+        ]);
+        return;
+    }
+
     $stmt = $pdo->prepare("
         SELECT
             COALESCE(pc.name, 'Uncategorized') as category,
@@ -325,6 +422,49 @@ function getQuarterlySales($pdo, $year) {
  * Get Weekday vs Weekend Sales
  */
 function getWeekdaySales($pdo, $startDate, $endDate) {
+    $useDaily = hasDailyReports($pdo, $startDate, $endDate);
+
+    if ($useDaily) {
+        $stmt = $pdo->prepare("
+            SELECT
+                CASE
+                    WHEN DAYOFWEEK(report_date) IN (1,7) THEN 'Weekend'
+                    ELSE 'Weekday'
+                END AS period_type,
+                SUM(total_sales) AS sales,
+                SUM(total_transactions) AS orders
+            FROM daily_business_reports
+            WHERE report_date BETWEEN ? AND ?
+            GROUP BY period_type
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $rawData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $weekdayData = ['sales' => 0, 'orders' => 0, 'avgOrder' => 0];
+        $weekendData = ['sales' => 0, 'orders' => 0, 'avgOrder' => 0];
+
+        foreach ($rawData as $row) {
+            if ($row['period_type'] === 'Weekday') {
+                $weekdayData['sales'] = floatval($row['sales']);
+                $weekdayData['orders'] = intval($row['orders']);
+                $weekdayData['avgOrder'] = $weekdayData['orders'] > 0 ? $weekdayData['sales'] / $weekdayData['orders'] : 0;
+            } else {
+                $weekendData['sales'] = floatval($row['sales']);
+                $weekendData['orders'] = intval($row['orders']);
+                $weekendData['avgOrder'] = $weekendData['orders'] > 0 ? $weekendData['sales'] / $weekendData['orders'] : 0;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'weekday' => $weekdayData,
+                'weekend' => $weekendData
+            ]
+        ]);
+        return;
+    }
+
     $stmt = $pdo->prepare("
         SELECT
             CASE
@@ -369,6 +509,32 @@ function getWeekdaySales($pdo, $startDate, $endDate) {
  * Get Best Sellers
  */
 function getBestSellers($pdo, $startDate, $endDate) {
+    $useDaily = hasDailyReports($pdo, $startDate, $endDate);
+
+    if ($useDaily) {
+        $stmt = $pdo->prepare("
+            SELECT
+                product_id,
+                product_name,
+                COALESCE(category_name, 'Uncategorized') as category,
+                SUM(quantity_sold) as quantity_sold,
+                COALESCE(SUM(total_revenue), 0) as revenue
+            FROM daily_item_sales
+            WHERE report_date BETWEEN ? AND ?
+            GROUP BY product_id, product_name, category_name
+            ORDER BY revenue DESC
+            LIMIT 10
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'data' => $data
+        ]);
+        return;
+    }
+
     $stmt = $pdo->prepare("
         SELECT
             sti.product_id,
@@ -463,6 +629,53 @@ function getProductRangeAnalysis($pdo, $startDate, $endDate) {
  * Get Time Period Comparison (Daily, Weekly, Monthly breakdown)
  */
 function getTimePeriodComparison($pdo, $startDate, $endDate, $dateRange) {
+    $useDaily = hasDailyReports($pdo, $startDate, $endDate);
+    // For day-level range we still need hourly data; only use daily snapshots when grouping by days or larger
+    if ($useDaily && $dateRange !== 'day') {
+        $groupBy = 'report_date';
+        $labelFormat = "DATE_FORMAT(report_date, '%b %d')";
+
+        switch ($dateRange) {
+            case 'week':
+            case 'month':
+                $groupBy = 'report_date';
+                $labelFormat = "DATE_FORMAT(report_date, '%b %d')";
+                break;
+            case 'quarter':
+                $groupBy = "CONCAT(YEAR(report_date), '-Q', QUARTER(report_date))";
+                $labelFormat = $groupBy;
+                break;
+            case 'year':
+                $groupBy = "DATE_FORMAT(report_date, '%Y-%m')";
+                $labelFormat = "DATE_FORMAT(report_date, '%b %Y')";
+                break;
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT
+                $groupBy AS period,
+                $labelFormat AS label,
+                report_date AS date,
+                COALESCE(SUM(total_sales), 0) AS sales,
+                SUM(total_transactions) AS orders,
+                CASE WHEN SUM(total_transactions) > 0 THEN ROUND(SUM(total_sales) / SUM(total_transactions), 2) ELSE 0 END AS avg_order_value,
+                SUM(total_items_sold) AS items_sold
+            FROM daily_business_reports
+            WHERE report_date BETWEEN ? AND ?
+            GROUP BY period, label, date
+            ORDER BY period ASC
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'period_type' => $dateRange,
+            'data' => $data
+        ]);
+        return;
+    }
+
     $groupBy = '';
     $labelFormat = '';
 
@@ -521,6 +734,36 @@ function getTimePeriodComparison($pdo, $startDate, $endDate, $dateRange) {
         'period_type' => $dateRange,
         'data' => $data
     ]);
+}
+
+/**
+ * Check if daily summaries exist for the requested range
+ */
+function hasDailyReports($pdo, $startDate, $endDate) {
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as cnt
+        FROM daily_business_reports
+        WHERE report_date BETWEEN ? AND ?
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return ($row['cnt'] ?? 0) > 0;
+}
+
+/**
+ * Get previous date range based on explicit start/end (used for KPIs)
+ */
+function getPreviousRange($startDate, $endDate) {
+    $start = new DateTime($startDate);
+    $end = new DateTime($endDate);
+    $diff = $start->diff($end)->days + 1;
+
+    $prevEnd = clone $start;
+    $prevEnd->modify('-1 day');
+    $prevStart = clone $prevEnd;
+    $prevStart->modify('-' . ($diff - 1) . ' days');
+
+    return [$prevStart->format('Y-m-d'), $prevEnd->format('Y-m-d')];
 }
 
 /**
@@ -598,5 +841,60 @@ function getInventoryImpact($pdo, $startDate, $endDate) {
         'success' => true,
         'data' => $data,
         'summary' => $summary
+    ]);
+}
+
+/**
+ * Sales summary (gross/net/discounts/payment) for a date range
+ */
+function getSalesSummaryRange($pdo, $startDate, $endDate) {
+    $useDaily = hasDailyReports($pdo, $startDate, $endDate);
+
+    if ($useDaily) {
+        $stmt = $pdo->prepare("
+            SELECT
+                COALESCE(SUM(total_sales), 0) AS total_sales,
+                COALESCE(SUM(total_discount), 0) AS total_discount,
+                COALESCE(SUM(total_sales - total_discount), 0) AS net_sales,
+                COALESCE(SUM(total_transactions), 0) AS total_transactions,
+                CASE WHEN SUM(total_transactions) > 0
+                    THEN ROUND(SUM(total_sales) / SUM(total_transactions), 2)
+                    ELSE 0 END AS avg_order_value,
+                COALESCE(SUM(cash_sales), 0) AS cash_sales,
+                COALESCE(SUM(card_sales), 0) AS card_sales,
+                COALESCE(SUM(gcash_sales), 0) AS ewallet_sales
+            FROM daily_business_reports
+            WHERE report_date BETWEEN ? AND ?
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'data' => $data
+        ]);
+        return;
+    }
+
+    // Fallback to live transactions
+    $stmt = $pdo->prepare("
+        SELECT
+            COALESCE(SUM(total), 0) AS total_sales,
+            COALESCE(SUM(discount_amount), 0) AS total_discount,
+            COALESCE(SUM(total - discount_amount), 0) AS net_sales,
+            COUNT(*) AS total_transactions,
+            CASE WHEN COUNT(*) > 0 THEN ROUND(SUM(total) / COUNT(*), 2) ELSE 0 END AS avg_order_value,
+            COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total ELSE 0 END), 0) AS cash_sales,
+            COALESCE(SUM(CASE WHEN payment_method = 'card' THEN total ELSE 0 END), 0) AS card_sales,
+            COALESCE(SUM(CASE WHEN payment_method = 'gcash' THEN total ELSE 0 END), 0) AS ewallet_sales
+        FROM sales_transactions
+        WHERE DATE(occurred_at) BETWEEN ? AND ?
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'success' => true,
+        'data' => $data
     ]);
 }

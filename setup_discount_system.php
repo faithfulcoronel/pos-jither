@@ -198,7 +198,6 @@ try {
     echo '<h3>🏷️ Available Discount Types</h3>';
     echo '<div class="field"><span class="field-icon">👵</span> <strong>Senior Citizen:</strong> 20% discount + VAT exempt</div>';
     echo '<div class="field"><span class="field-icon">♿</span> <strong>PWD:</strong> 20% discount + VAT exempt</div>';
-    echo '<div class="field"><span class="field-icon">🏅</span> <strong>National Athlete:</strong> 20% discount (VAT applies)</div>';
     echo '<div class="field"><span class="field-icon">👤</span> <strong>No Discount:</strong> Regular price with 12% VAT</div>';
     echo '</div>';
 

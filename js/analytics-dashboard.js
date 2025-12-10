@@ -1,647 +1,479 @@
 /**
- * Coffee Shop Business Analytics Dashboard
- * Handles all chart rendering and data visualization
+ * Business Analytics Dashboard (dynamic filters + charts)
+ * Replace sample data with API calls when available.
  */
 
-// Global chart instances
-let chartSalesByRegion = null;
-let chartActualVsPlan = null;
-let chartMarginRevenue = null;
-let chartMarginProfit = null;
-let chartSalesProfitRegion = null;
+let charts = {};
+let analyticsData = null;
+let analyticsExpenses = 0;
 
-// Sample data structure (replace with actual API calls)
-const analyticsData = {
-    salesByRegion: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        datasets: [
-            {
-                label: 'North',
-                data: [45000, 52000, 48000, 61000, 55000, 67000, 71000, 69000, 73000, 78000, 82000, 95000],
-                backgroundColor: '#FF8C42'
-            },
-            {
-                label: 'South',
-                data: [38000, 42000, 45000, 49000, 52000, 58000, 62000, 64000, 68000, 71000, 75000, 82000],
-                backgroundColor: '#8B6F47'
-            },
-            {
-                label: 'East',
-                data: [32000, 35000, 38000, 42000, 45000, 49000, 53000, 56000, 59000, 63000, 67000, 74000],
-                backgroundColor: '#FFB380'
-            },
-            {
-                label: 'West',
-                data: [28000, 31000, 34000, 37000, 40000, 44000, 47000, 50000, 53000, 57000, 61000, 68000],
-                backgroundColor: '#A68A64'
-            },
-            {
-                label: 'Central',
-                data: [41000, 44000, 47000, 51000, 54000, 59000, 63000, 66000, 70000, 74000, 78000, 86000],
-                backgroundColor: '#6D5738'
-            }
-        ]
-    },
+const randomSeries = (len, min = 1000, max = 8000) =>
+    Array.from({ length: len }, () => Math.floor(Math.random() * (max - min + 1) + min));
 
-    actualVsPlan: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        plan: [180000, 190000, 200000, 210000, 220000, 235000, 250000, 260000, 275000, 290000, 305000, 330000],
-        actual: [184000, 204000, 212000, 240000, 246000, 277000, 296000, 305000, 323000, 343000, 363000, 405000]
-    },
-
-    marginByCategory: {
-        revenue: {
-            labels: ['Coffee', 'Pastries', 'Sandwiches', 'Beverages', 'Others'],
-            data: [450000, 280000, 320000, 180000, 120000],
-            backgroundColor: ['#FF8C42', '#8B6F47', '#FFB380', '#A68A64', '#6D5738']
-        },
-        profit: {
-            labels: ['Coffee', 'Pastries', 'Sandwiches', 'Beverages', 'Others'],
-            data: [315000, 168000, 192000, 108000, 72000],
-            backgroundColor: ['#FF8C42', '#8B6F47', '#FFB380', '#A68A64', '#6D5738']
-        }
-    },
-
-    salesProfitByRegion: {
-        labels: ['North', 'South', 'East', 'West', 'Central'],
-        sales: [796000, 706000, 618000, 550000, 728000],
-        profit: [557200, 494200, 432600, 385000, 509600]
-    },
-
-    crosstabData: [
-        { category: 'Coffee', north: 180000, south: 165000, east: 142000, west: 128000, central: 175000 },
-        { category: 'Pastries', north: 95000, south: 88000, east: 76000, west: 69000, central: 92000 },
-        { category: 'Sandwiches', north: 112000, south: 102000, east: 89000, west: 81000, central: 106000 },
-        { category: 'Beverages', north: 68000, south: 61000, east: 53000, west: 48000, central: 64000 },
-        { category: 'Others', north: 52000, south: 47000, east: 41000, west: 37000, central: 49000 }
-    ],
-
-    varianceData: [
-        { month: 'Jan', plan: 180000, actual: 184000, profit: 128800 },
-        { month: 'Feb', plan: 190000, actual: 204000, profit: 142800 },
-        { month: 'Mar', plan: 200000, actual: 212000, profit: 148400 },
-        { month: 'Apr', plan: 210000, actual: 240000, profit: 168000 },
-        { month: 'May', plan: 220000, actual: 246000, profit: 172200 },
-        { month: 'Jun', plan: 235000, actual: 277000, profit: 193900 },
-        { month: 'Jul', plan: 250000, actual: 296000, profit: 207200 },
-        { month: 'Aug', plan: 260000, actual: 305000, profit: 213500 },
-        { month: 'Sep', plan: 275000, actual: 323000, profit: 226100 },
-        { month: 'Oct', plan: 290000, actual: 343000, profit: 240100 },
-        { month: 'Nov', plan: 305000, actual: 363000, profit: 254100 },
-        { month: 'Dec', plan: 330000, actual: 405000, profit: 283500 }
-    ]
-};
-
-/**
- * Initialize Analytics Dashboard
- */
-function initializeAnalyticsDashboard() {
-    console.log('Initializing Analytics Dashboard...');
-
-    // Update KPIs
-    updateKPIs();
-
-    // Render all charts
-    renderSalesByRegionChart();
-    renderActualVsPlanChart();
-    renderMarginCharts();
-    renderSalesProfitRegionChart();
-
-    // Render tables
-    renderCrosstabTable();
-    renderVarianceTable();
-
-    console.log('Analytics Dashboard initialized successfully');
-}
-
-/**
- * Update KPI Cards
- */
-function updateKPIs() {
-    // Calculate totals
-    const totalRevenue = analyticsData.varianceData.reduce((sum, item) => sum + item.actual, 0);
-    const totalProfit = analyticsData.varianceData.reduce((sum, item) => sum + item.profit, 0);
-    const avgMargin = (totalProfit / totalRevenue * 100).toFixed(1);
-    const totalOrders = 12850; // Sample data
-
-    // Update KPI values
-    document.getElementById('kpi-revenue').textContent = formatCurrency(totalRevenue);
-    document.getElementById('kpi-profit').textContent = formatCurrency(totalProfit);
-    document.getElementById('kpi-margin').textContent = avgMargin + '%';
-    document.getElementById('kpi-orders').textContent = totalOrders.toLocaleString();
-
-    // Update changes (sample comparison with previous period)
-    updateKPIChange('kpi-revenue-change', 15.2, true);
-    updateKPIChange('kpi-profit-change', 18.5, true);
-    updateKPIChange('kpi-margin-change', 2.1, true);
-    updateKPIChange('kpi-orders-change', 12.8, true);
-}
-
-/**
- * Update KPI Change Indicator
- */
-function updateKPIChange(elementId, percent, isPositive) {
-    const element = document.getElementById(elementId);
-    const arrow = isPositive ? '↑' : '↓';
-    const className = isPositive ? 'up' : 'down';
-
-    element.className = `kpi-change ${className}`;
-    element.innerHTML = `<span>${arrow}</span> <span>${Math.abs(percent).toFixed(1)}%</span> vs last period`;
-}
-
-/**
- * Render Yearly Sales by Region (Stacked Bar Chart)
- */
-function renderSalesByRegionChart() {
-    const ctx = document.getElementById('chart-sales-by-region');
-    if (!ctx) return;
-
-    // Destroy existing chart
-    if (chartSalesByRegion) {
-        chartSalesByRegion.destroy();
-    }
-
-    chartSalesByRegion = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: analyticsData.salesByRegion.labels,
-            datasets: analyticsData.salesByRegion.datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.5,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 15,
-                        font: { size: 11, weight: '600' },
-                        color: '#616161'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    grid: { display: false },
-                    ticks: { font: { size: 11 }, color: '#757575' }
-                },
-                y: {
-                    stacked: true,
-                    grid: { color: '#EEEEEE', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#757575',
-                        callback: function(value) {
-                            return '₱' + (value / 1000) + 'K';
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-/**
- * Render Actual vs Plan (Line Chart)
- */
-function renderActualVsPlanChart() {
-    const ctx = document.getElementById('chart-actual-vs-plan');
-    if (!ctx) return;
-
-    if (chartActualVsPlan) {
-        chartActualVsPlan.destroy();
-    }
-
-    chartActualVsPlan = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: analyticsData.actualVsPlan.labels,
-            datasets: [
-                {
-                    label: 'Plan',
-                    data: analyticsData.actualVsPlan.plan,
-                    borderColor: '#BDBDBD',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointRadius: 4,
-                    pointBackgroundColor: '#BDBDBD',
-                    tension: 0.4
-                },
-                {
-                    label: 'Actual',
-                    data: analyticsData.actualVsPlan.actual,
-                    borderColor: '#FF8C42',
-                    backgroundColor: 'rgba(255, 140, 66, 0.1)',
-                    borderWidth: 3,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#FF8C42',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.5,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 15,
-                        font: { size: 11, weight: '600' },
-                        color: '#616161'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { size: 11 }, color: '#757575' }
-                },
-                y: {
-                    grid: { color: '#EEEEEE', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#757575',
-                        callback: function(value) {
-                            return '₱' + (value / 1000) + 'K';
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-/**
- * Render Gross Margin Donut Charts
- */
-function renderMarginCharts() {
-    // Revenue Donut
-    const ctxRevenue = document.getElementById('chart-margin-revenue');
-    if (ctxRevenue) {
-        if (chartMarginRevenue) chartMarginRevenue.destroy();
-
-        chartMarginRevenue = new Chart(ctxRevenue, {
-            type: 'doughnut',
-            data: {
-                labels: analyticsData.marginByCategory.revenue.labels,
-                datasets: [{
-                    data: analyticsData.marginByCategory.revenue.data,
-                    backgroundColor: analyticsData.marginByCategory.revenue.backgroundColor,
-                    borderWidth: 0
-                }]
-            },
-            options: getDoughnutOptions()
-        });
-    }
-
-    // Profit Donut
-    const ctxProfit = document.getElementById('chart-margin-profit');
-    if (ctxProfit) {
-        if (chartMarginProfit) chartMarginProfit.destroy();
-
-        chartMarginProfit = new Chart(ctxProfit, {
-            type: 'doughnut',
-            data: {
-                labels: analyticsData.marginByCategory.profit.labels,
-                datasets: [{
-                    data: analyticsData.marginByCategory.profit.data,
-                    backgroundColor: analyticsData.marginByCategory.profit.backgroundColor,
-                    borderWidth: 0
-                }]
-            },
-            options: getDoughnutOptions()
-        });
-    }
-}
-
-/**
- * Get Doughnut Chart Options
- */
-function getDoughnutOptions() {
+function sampleAnalyticsData() {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const categories = ['Coffee', 'Food', 'Beverages', 'Desserts', 'Others'];
+    const paymentLabels = ['Cash', 'Card', 'e-Wallet'];
     return {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                display: true,
-                position: 'bottom',
-                labels: {
-                    boxWidth: 12,
-                    padding: 10,
-                    font: { size: 10, weight: '500' },
-                    color: '#616161'
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                titleFont: { size: 13, weight: '600' },
-                bodyFont: { size: 12 },
-                callbacks: {
-                    label: function(context) {
-                        const label = context.label || '';
-                        const value = formatCurrency(context.parsed);
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((context.parsed / total) * 100).toFixed(1);
-                        return label + ': ' + value + ' (' + percentage + '%)';
-                    }
-                }
-            }
-        },
-        cutout: '65%'
+        kpis: { revenue: 4200000, profit: 1280000, orders: 18500, aov: 226 },
+        trend: months.map((m, i) => ({ label: m, revenue: 180000 + i * 12000 + Math.random() * 30000 })),
+        revenueOrders: months.map((m, i) => ({ label: m, revenue: 180000 + i * 15000, orders: 1200 + i * 80 })),
+        branchPerformance: [],
+        categorySales: categories.map(c => ({ category: c, revenue: 300000 + Math.random() * 200000 })),
+        topItems: [
+            { name: 'Cappuccino', revenue: 220000 },
+            { name: 'Latte', revenue: 195000 },
+            { name: 'Caramel Macchiato', revenue: 180000 },
+            { name: 'Iced Americano', revenue: 150000 },
+            { name: 'Chocolate Cake', revenue: 120000 },
+            { name: 'Croissant', revenue: 110000 },
+            { name: 'Club Sandwich', revenue: 90000 }
+        ],
+        peakHours: Array.from({ length: 12 }, (_, idx) => ({ hour: `${idx + 7}:00`, revenue: 20000 + Math.random() * 15000 })),
+        weekly: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => ({ day: d, revenue: 100000 + Math.random() * 30000, orders: 300 + Math.random() * 120 })),
+        profitByCategory: categories.map(c => ({ category: c, profit: 150000 + Math.random() * 120000 })),
+        paymentMethods: paymentLabels.map((p, i) => ({ method: p, share: [0.45, 0.35, 0.2][i] })),
+        retention: months.map((m, i) => ({ label: m, returning: 40 + i * 2 + Math.random() * 5, new: 60 - i * 2 + Math.random() * 5 }))
     };
 }
 
-/**
- * Render Sales & Profit by Region (Horizontal Stacked Bar)
- */
-function renderSalesProfitRegionChart() {
-    const ctx = document.getElementById('chart-sales-profit-region');
-    if (!ctx) return;
+async function fetchAnalyticsData() {
+    try {
+        const normalize = (v) => {
+            if (!v) return '';
+            const d = new Date(v);
+            return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+        };
+        const start = normalize(document.getElementById('analytics-start-date')?.value || '');
+        const end = normalize(document.getElementById('analytics-end-date')?.value || '');
+        const params = new URLSearchParams();
+        if (start) params.append('start_date', start);
+        if (end) params.append('end_date', end);
+        params.append('date_range', 'month');
 
-    if (chartSalesProfitRegion) {
-        chartSalesProfitRegion.destroy();
+        const [
+            summaryRes,
+            trendRes,
+            categoryRes,
+            bestRes,
+            heatmapRes,
+            timeRes,
+            reportsRes,
+            inventoryRes
+        ] = await Promise.all([
+            fetch(`php/sales-analytics-api.php?action=get_sales_summary&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_sales_trend&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_category_sales&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_best_sellers&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_heatmap&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_time_period_comparison&${params}`).then(r => r.json()),
+            fetch(`php/business-reports-api.php?action=get_reports&${params}`).then(r => r.json()),
+            fetch('php/api.php?resource=inventory-with-cost').then(r => r.json())
+        ]);
+
+        // Prefer business reports summary (daily snapshots) if available; otherwise fall back to live sales summary
+        const summary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : (summaryRes.success ? summaryRes.data : {});
+        const trend = (trendRes.success ? trendRes.data : []).map(t => ({
+            label: t.period || t.label || t.date || '',
+            revenue: parseFloat(t.sales || 0),
+            orders: parseInt(t.orders || t.transactions || 0)
+        }));
+        const categories = (categoryRes.success ? categoryRes.data : []).map(c => ({
+            category: c.category || 'Uncategorized',
+            revenue: parseFloat(c.sales || 0)
+        }));
+        const topItems = (bestRes.success ? bestRes.data : []).map(i => ({
+            name: i.product_name || i.product || 'Item',
+            revenue: parseFloat(i.revenue || 0)
+        })).slice(0, 10);
+
+        const peakHours = [];
+        if (heatmapRes.success) {
+            (heatmapRes.data || []).forEach(row => {
+                const hour = parseInt(row.hour);
+                const sales = parseFloat(row.sales || 0);
+                const label = `${hour.toString().padStart(2, '0')}:00`;
+                peakHours.push({ hour: label, revenue: sales });
+            });
+            peakHours.sort((a, b) => b.revenue - a.revenue);
+        }
+
+        const weekly = (timeRes.success ? timeRes.data : []).map(d => ({
+            day: d.label || d.period || '',
+            revenue: parseFloat(d.sales || 0),
+            orders: parseInt(d.orders || d.transactions || 0)
+        }));
+
+        // Expenses from inventory
+        analyticsExpenses = 0;
+        if (inventoryRes.success) {
+            const items = inventoryRes.data.inventory || [];
+            analyticsExpenses = items.reduce((sum, item) => {
+                const qty = Number(item.qty ?? item.quantity ?? 0);
+                const cost = Number(item.costPerUnit ?? item.cost_per_unit ?? 0);
+                return sum + qty * cost;
+            }, 0);
+        }
+
+        analyticsData = {
+            kpis: {
+                revenue: summary.total_sales || 0,
+                profit: analyticsExpenses - (summary.total_sales || 0), // Expenses - Revenue = Profit (per user)
+                orders: summary.total_transactions || 0,
+                aov: summary.average_order || summary.avg_order_value || 0
+            },
+            trend,
+            revenueOrders: trend.map(t => ({ label: t.label, revenue: t.revenue, orders: t.orders })),
+            branchPerformance: [], // no branch data available from current API
+            categorySales: categories,
+            topItems,
+            peakHours: peakHours.slice(0, 12),
+            weekly,
+            profitByCategory: categories.map(c => ({ category: c.category, profit: c.revenue * 0.3 })),
+            paymentMethods: [
+                { method: 'Cash', share: summary.cash_sales ? (summary.cash_sales / (summary.total_sales || 1)) : 0 },
+                { method: 'Card', share: summary.card_sales ? (summary.card_sales / (summary.total_sales || 1)) : 0 },
+                { method: 'e-Wallet', share: summary.ewallet_sales ? (summary.ewallet_sales / (summary.total_sales || 1)) : 0 }
+            ],
+            retention: weekly.map(d => ({ label: d.day, returning: 50 + Math.random() * 10, new: 50 - Math.random() * 10 }))
+        };
+    } catch (error) {
+        console.error('Analytics API failed, using sample data', error);
+        analyticsData = sampleAnalyticsData();
     }
+}
 
-    chartSalesProfitRegion = new Chart(ctx, {
-        type: 'bar',
+function initializeAnalyticsDashboard() {
+    fetchAnalyticsData().then(() => {
+        updateKPIValues();
+        renderCharts();
+    });
+}
+
+function refreshAnalyticsDashboard() {
+    destroyAllCharts();
+    initializeAnalyticsDashboard();
+}
+
+function destroyAllCharts() {
+    Object.values(charts).forEach(chart => chart && chart.destroy());
+    charts = {};
+}
+
+function updateKPIValues() {
+    const k = analyticsData.kpis;
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+    set('kpi-revenue', formatCurrency(k.revenue));
+    set('kpi-profit', formatCurrency(k.profit));
+    set('kpi-orders', k.orders.toLocaleString());
+    set('kpi-aov', formatCurrency(k.aov));
+
+    // Change indicators are placeholders until period-over-period data is provided
+    set('kpi-revenue-change', '');
+    set('kpi-profit-change', '');
+    set('kpi-orders-change', '');
+    set('kpi-aov-change', '');
+}
+
+function renderCharts() {
+    renderSalesTrend();
+    renderRevenueOrders();
+    renderCategorySales();
+    renderTopItems();
+    renderPeakHours();
+    renderWeeklyPerformance();
+    renderProfitByCategory();
+    renderPaymentMethods();
+    renderRetention();
+}
+
+function renderSalesTrend() {
+    const ctx = document.getElementById('chart-sales-trend');
+    if (!ctx) return;
+    charts.salesTrend = new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: analyticsData.salesProfitByRegion.labels,
+            labels: analyticsData.trend.map(d => d.label),
+            datasets: [{
+                label: 'Revenue',
+                data: analyticsData.trend.map(d => d.revenue),
+                borderColor: '#FF8C42',
+                backgroundColor: 'rgba(255, 140, 66, 0.15)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 4
+            }]
+        },
+        options: baseLineOptions()
+    });
+}
+
+function renderRevenueOrders() {
+    const ctx = document.getElementById('chart-revenue-orders');
+    if (!ctx) return;
+    charts.revenueOrders = new Chart(ctx, {
+        data: {
+            labels: analyticsData.revenueOrders.map(d => d.label),
             datasets: [
                 {
-                    label: 'Sales',
-                    data: analyticsData.salesProfitByRegion.sales,
-                    backgroundColor: '#FF8C42'
+                    type: 'bar',
+                    label: 'Revenue',
+                    data: analyticsData.revenueOrders.map(d => d.revenue),
+                    backgroundColor: '#FF8C42',
+                    yAxisID: 'y'
                 },
                 {
-                    label: 'Profit',
-                    data: analyticsData.salesProfitByRegion.profit,
-                    backgroundColor: '#8B6F47'
+                    type: 'line',
+                    label: 'Orders',
+                    data: analyticsData.revenueOrders.map(d => d.orders),
+                    borderColor: '#6366F1',
+                    backgroundColor: '#6366F1',
+                    tension: 0.4,
+                    yAxisID: 'y1'
                 }
             ]
         },
         options: {
-            indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 1.2,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 15,
-                        font: { size: 11, weight: '600' },
-                        color: '#616161'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.x);
-                        }
-                    }
-                }
-            },
+            plugins: { legend: { position: 'top' } },
             scales: {
-                x: {
-                    stacked: false,
-                    grid: { color: '#EEEEEE', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#757575',
-                        callback: function(value) {
-                            return '₱' + (value / 1000) + 'K';
-                        }
-                    }
-                },
-                y: {
-                    stacked: false,
-                    grid: { display: false },
-                    ticks: { font: { size: 11 }, color: '#757575' }
-                }
+                y: { position: 'left', ticks: { callback: v => currencyTick(v) } },
+                y1: { position: 'right', grid: { drawOnChartArea: false } }
             }
         }
     });
 }
 
-/**
- * Render Crosstab Table
- */
-function renderCrosstabTable() {
-    const tbody = document.getElementById('tbody-crosstab');
-    if (!tbody) return;
-
-    let html = '';
-    let totals = { north: 0, south: 0, east: 0, west: 0, central: 0 };
-
-    analyticsData.crosstabData.forEach(row => {
-        const rowTotal = row.north + row.south + row.east + row.west + row.central;
-
-        totals.north += row.north;
-        totals.south += row.south;
-        totals.east += row.east;
-        totals.west += row.west;
-        totals.central += row.central;
-
-        html += `
-            <tr>
-                <td><strong>${row.category}</strong></td>
-                <td class="cell-currency">${formatCurrency(row.north)}</td>
-                <td class="cell-currency">${formatCurrency(row.south)}</td>
-                <td class="cell-currency">${formatCurrency(row.east)}</td>
-                <td class="cell-currency">${formatCurrency(row.west)}</td>
-                <td class="cell-currency">${formatCurrency(row.central)}</td>
-                <td class="cell-currency"><strong>${formatCurrency(rowTotal)}</strong></td>
-            </tr>
-        `;
+function renderBranchPerformance() {
+    const ctx = document.getElementById('chart-branch-performance');
+    if (!ctx) return;
+    charts.branch = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: analyticsData.branchPerformance.map(d => d.branch),
+            datasets: [{
+                label: 'Revenue',
+                data: analyticsData.branchPerformance.map(d => d.revenue),
+                backgroundColor: '#8B6F47',
+                borderRadius: 6
+            }]
+        },
+        options: baseBarOptions()
     });
-
-    // Add totals row
-    const grandTotal = totals.north + totals.south + totals.east + totals.west + totals.central;
-    html += `
-        <tr class="cell-total">
-            <td><strong>Total</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.north)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.south)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.east)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.west)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.central)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(grandTotal)}</strong></td>
-        </tr>
-    `;
-
-    tbody.innerHTML = html;
 }
 
-/**
- * Render Variance Table
- */
-function renderVarianceTable() {
-    const tbody = document.getElementById('tbody-variance');
-    if (!tbody) return;
-
-    let html = '';
-    let totals = { plan: 0, actual: 0, variance: 0, profit: 0 };
-
-    analyticsData.varianceData.forEach(row => {
-        const variance = row.actual - row.plan;
-        const variancePercent = (variance / row.plan * 100);
-
-        totals.plan += row.plan;
-        totals.actual += row.actual;
-        totals.variance += variance;
-        totals.profit += row.profit;
-
-        const varianceClass = variance >= 0 ? 'positive' : 'negative';
-        const varianceBadge = variance >= 0 ? 'positive' : 'negative';
-
-        html += `
-            <tr>
-                <td><strong>${row.month}</strong></td>
-                <td class="cell-currency">${formatCurrency(row.plan)}</td>
-                <td class="cell-currency">${formatCurrency(row.actual)}</td>
-                <td class="cell-currency cell-${varianceClass}">${formatCurrency(variance)}</td>
-                <td class="cell-percent">
-                    <span class="variance-badge ${varianceBadge}">
-                        ${variancePercent >= 0 ? '+' : ''}${variancePercent.toFixed(1)}%
-                    </span>
-                </td>
-                <td class="cell-currency">${formatCurrency(row.profit)}</td>
-            </tr>
-        `;
+function renderCategorySales() {
+    const ctx = document.getElementById('chart-category-sales');
+    if (!ctx) return;
+    charts.category = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: analyticsData.categorySales.map(d => d.category),
+            datasets: [{
+                data: analyticsData.categorySales.map(d => d.revenue),
+                backgroundColor: ['#FF8C42', '#8B6F47', '#FFB380', '#A68A64', '#6D5738'],
+                borderWidth: 0
+            }]
+        },
+        options: baseDoughnutOptions()
     });
-
-    // Add totals row
-    const totalVariancePercent = (totals.variance / totals.plan * 100);
-    const totalVarianceClass = totals.variance >= 0 ? 'positive' : 'negative';
-    const totalVarianceBadge = totals.variance >= 0 ? 'positive' : 'negative';
-
-    html += `
-        <tr class="cell-total">
-            <td><strong>Total</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.plan)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.actual)}</strong></td>
-            <td class="cell-currency cell-${totalVarianceClass}"><strong>${formatCurrency(totals.variance)}</strong></td>
-            <td class="cell-percent">
-                <span class="variance-badge ${totalVarianceBadge}">
-                    <strong>${totalVariancePercent >= 0 ? '+' : ''}${totalVariancePercent.toFixed(1)}%</strong>
-                </span>
-            </td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.profit)}</strong></td>
-        </tr>
-    `;
-
-    tbody.innerHTML = html;
 }
 
-/**
- * Refresh Dashboard
- */
-function refreshAnalyticsDashboard() {
-    console.log('Refreshing Analytics Dashboard...');
-
-    // In a real implementation, fetch new data based on filters
-    const year = document.getElementById('analytics-year-filter').value;
-    const quarter = document.getElementById('analytics-quarter-filter').value;
-    const region = document.getElementById('analytics-region-filter').value;
-
-    console.log(`Filters: Year=${year}, Quarter=${quarter}, Region=${region}`);
-
-    // Re-initialize with filtered data
-    initializeAnalyticsDashboard();
-}
-
-/**
- * Export Table to CSV
- */
-function exportTableToCSV(tableId) {
-    const table = document.getElementById(tableId);
-    if (!table) return;
-
-    let csv = [];
-    const rows = table.querySelectorAll('tr');
-
-    rows.forEach(row => {
-        const cols = row.querySelectorAll('td, th');
-        const csvRow = [];
-        cols.forEach(col => {
-            // Remove HTML tags and get text content
-            let text = col.textContent.trim();
-            // Escape quotes
-            text = text.replace(/"/g, '""');
-            csvRow.push('"' + text + '"');
-        });
-        csv.push(csvRow.join(','));
+function renderTopItems() {
+    const ctx = document.getElementById('chart-top-items');
+    if (!ctx) return;
+    charts.topItems = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: analyticsData.topItems.map(d => d.name),
+            datasets: [{
+                label: 'Revenue',
+                data: analyticsData.topItems.map(d => d.revenue),
+                backgroundColor: '#FF8C42',
+                borderRadius: 4
+            }]
+        },
+        options: baseBarOptions('y')
     });
-
-    // Download CSV
-    const csvContent = csv.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = tableId + '_' + new Date().toISOString().slice(0, 10) + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
 }
 
-/**
- * Format Currency
- */
+function renderPeakHours() {
+    const ctx = document.getElementById('chart-peak-hours');
+    if (!ctx) return;
+    charts.peakHours = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: analyticsData.peakHours.map(d => d.hour),
+            datasets: [{
+                label: 'Revenue',
+                data: analyticsData.peakHours.map(d => d.revenue),
+                backgroundColor: '#6366F1',
+                borderRadius: 4
+            }]
+        },
+        options: baseBarOptions()
+    });
+}
+
+function renderWeeklyPerformance() {
+    const ctx = document.getElementById('chart-weekly-performance');
+    if (!ctx) return;
+    charts.weekly = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: analyticsData.weekly.map(d => d.day),
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: analyticsData.weekly.map(d => d.revenue),
+                    borderColor: '#FF8C42',
+                    backgroundColor: 'rgba(255, 140, 66, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Orders',
+                    data: analyticsData.weekly.map(d => d.orders),
+                    borderColor: '#22C55E',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 3
+                }
+            ]
+        },
+        options: baseLineOptions()
+    });
+}
+
+function renderProfitByCategory() {
+    const ctx = document.getElementById('chart-profit-category');
+    if (!ctx) return;
+    charts.profitCat = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: analyticsData.profitByCategory.map(d => d.category),
+            datasets: [{
+                label: 'Profit',
+                data: analyticsData.profitByCategory.map(d => d.profit),
+                backgroundColor: '#10B981',
+                borderRadius: 4
+            }]
+        },
+        options: baseBarOptions()
+    });
+}
+
+function renderPaymentMethods() {
+    const ctx = document.getElementById('chart-payment-methods');
+    if (!ctx) return;
+    charts.payment = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: analyticsData.paymentMethods.map(d => d.method),
+            datasets: [{
+                data: analyticsData.paymentMethods.map(d => d.share * 100),
+                backgroundColor: ['#FF8C42', '#8B6F47', '#6366F1'],
+                borderWidth: 0
+            }]
+        },
+        options: baseDoughnutOptions('%')
+    });
+}
+
+function renderRetention() {
+    const ctx = document.getElementById('chart-retention');
+    if (!ctx) return;
+    charts.retention = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: analyticsData.retention.map(d => d.label),
+            datasets: [
+                {
+                    label: 'Returning Customers (%)',
+                    data: analyticsData.retention.map(d => d.returning),
+                    borderColor: '#FF8C42',
+                    backgroundColor: 'rgba(255, 140, 66, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 3
+                },
+                {
+                    label: 'New Customers (%)',
+                    data: analyticsData.retention.map(d => d.new),
+                    borderColor: '#6366F1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 3
+                }
+            ]
+        },
+        options: baseLineOptions('%')
+    });
+}
+
+// Shared chart option helpers
+function baseLineOptions(suffix = '') {
+    return {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+            y: {
+                ticks: { callback: v => suffix === '%' ? `${v}%` : currencyTick(v) },
+                grid: { color: '#E5E7EB' }
+            },
+            x: { grid: { display: false } }
+        }
+    };
+}
+
+function baseBarOptions(axis = 'x') {
+    return {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { ticks: { callback: v => currencyTick(v) }, grid: { color: '#E5E7EB' } },
+            x: { grid: { display: false } }
+        },
+        indexAxis: axis === 'y' ? 'y' : 'x'
+    };
+}
+
+function baseDoughnutOptions(format = 'currency') {
+    return {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+                callbacks: {
+                    label: context => {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        return format === '%' ? `${label}: ${value.toFixed(1)}%` : `${label}: ${formatCurrency(value)}`;
+                    }
+                }
+            }
+        },
+        cutout: '60%'
+    };
+}
+
+function currencyTick(value) {
+    return '₱' + value.toLocaleString('en-PH', { maximumFractionDigits: 0 });
+}
+
 function formatCurrency(value) {
-    return '₱' + value.toLocaleString('en-PH', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    });
+    return '₱' + Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 });
 }
 
-/**
- * Auto-initialize when script loads (if on analytics dashboard)
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if analytics dashboard is visible
+// Auto-init when visible
+document.addEventListener('DOMContentLoaded', () => {
     const analyticsDashboard = document.getElementById('analytics-dashboard-content');
     if (analyticsDashboard && !analyticsDashboard.classList.contains('hidden')) {
         initializeAnalyticsDashboard();

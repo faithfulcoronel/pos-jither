@@ -1,618 +1,404 @@
 /**
- * Manager Home Dashboard - Business Analytics
- * All chart instances use "home-" prefix to avoid conflicts
+ * Manager Home Dashboard - Dynamic Business Analytics
+ * Mirrors the new analytics dashboard but with home-prefixed IDs.
  */
 
-// Global chart instances for home dashboard
-let homeChartSalesByRegion = null;
-let homeChartActualVsPlan = null;
-let homeChartMarginRevenue = null;
-let homeChartMarginProfit = null;
-let homeChartSalesProfitRegion = null;
+let homeCharts = {};
+let homeData = null;
+let homeExpenses = 0;
 
-// Use the same sample data from analytics-dashboard.js
-const homeDashboardData = {
-    salesByRegion: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        datasets: [
-            {
-                label: 'North',
-                data: [45000, 52000, 48000, 61000, 55000, 67000, 71000, 69000, 73000, 78000, 82000, 95000],
-                backgroundColor: '#FF8C42'
-            },
-            {
-                label: 'South',
-                data: [38000, 42000, 45000, 49000, 52000, 58000, 62000, 64000, 68000, 71000, 75000, 82000],
-                backgroundColor: '#8B6F47'
-            },
-            {
-                label: 'East',
-                data: [32000, 35000, 38000, 42000, 45000, 49000, 53000, 56000, 59000, 63000, 67000, 74000],
-                backgroundColor: '#FFB380'
-            },
-            {
-                label: 'West',
-                data: [28000, 31000, 34000, 37000, 40000, 44000, 47000, 50000, 53000, 57000, 61000, 68000],
-                backgroundColor: '#A68A64'
-            },
-            {
-                label: 'Central',
-                data: [41000, 44000, 47000, 51000, 54000, 59000, 63000, 66000, 70000, 74000, 78000, 86000],
-                backgroundColor: '#6D5738'
-            }
-        ]
-    },
-
-    actualVsPlan: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        plan: [180000, 190000, 200000, 210000, 220000, 235000, 250000, 260000, 275000, 290000, 305000, 330000],
-        actual: [184000, 204000, 212000, 240000, 246000, 277000, 296000, 305000, 323000, 343000, 363000, 405000]
-    },
-
-    marginByCategory: {
-        revenue: {
-            labels: ['Coffee', 'Pastries', 'Sandwiches', 'Beverages', 'Others'],
-            data: [450000, 280000, 320000, 180000, 120000],
-            backgroundColor: ['#FF8C42', '#8B6F47', '#FFB380', '#A68A64', '#6D5738']
-        },
-        profit: {
-            labels: ['Coffee', 'Pastries', 'Sandwiches', 'Beverages', 'Others'],
-            data: [315000, 168000, 192000, 108000, 72000],
-            backgroundColor: ['#FF8C42', '#8B6F47', '#FFB380', '#A68A64', '#6D5738']
-        }
-    },
-
-    salesProfitByRegion: {
-        labels: ['North', 'South', 'East', 'West', 'Central'],
-        sales: [796000, 706000, 618000, 550000, 728000],
-        profit: [557200, 494200, 432600, 385000, 509600]
-    },
-
-    crosstabData: [
-        { category: 'Coffee', north: 180000, south: 165000, east: 142000, west: 128000, central: 175000 },
-        { category: 'Pastries', north: 95000, south: 88000, east: 76000, west: 69000, central: 92000 },
-        { category: 'Sandwiches', north: 112000, south: 102000, east: 89000, west: 81000, central: 106000 },
-        { category: 'Beverages', north: 68000, south: 61000, east: 53000, west: 48000, central: 64000 },
-        { category: 'Others', north: 52000, south: 47000, east: 41000, west: 37000, central: 49000 }
-    ],
-
-    varianceData: [
-        { month: 'Jan', plan: 180000, actual: 184000, profit: 128800 },
-        { month: 'Feb', plan: 190000, actual: 204000, profit: 142800 },
-        { month: 'Mar', plan: 200000, actual: 212000, profit: 148400 },
-        { month: 'Apr', plan: 210000, actual: 240000, profit: 168000 },
-        { month: 'May', plan: 220000, actual: 246000, profit: 172200 },
-        { month: 'Jun', plan: 235000, actual: 277000, profit: 193900 },
-        { month: 'Jul', plan: 250000, actual: 296000, profit: 207200 },
-        { month: 'Aug', plan: 260000, actual: 305000, profit: 213500 },
-        { month: 'Sep', plan: 275000, actual: 323000, profit: 226100 },
-        { month: 'Oct', plan: 290000, actual: 343000, profit: 240100 },
-        { month: 'Nov', plan: 305000, actual: 363000, profit: 254100 },
-        { month: 'Dec', plan: 330000, actual: 405000, profit: 283500 }
-    ]
-};
-
-/**
- * Initialize Home Dashboard
- */
-function initializeHomeDashboard() {
-    console.log('Initializing Home Dashboard...');
-
-    // Update KPIs
-    updateHomeKPIs();
-
-    // Render all charts
-    renderHomeSalesByRegionChart();
-    renderHomeActualVsPlanChart();
-    renderHomeMarginCharts();
-    renderHomeSalesProfitRegionChart();
-
-    // Render tables
-    renderHomeCrosstabTable();
-    renderHomeVarianceTable();
-
-    console.log('Home Dashboard initialized successfully');
-}
-
-/**
- * Update KPI Cards
- */
-function updateHomeKPIs() {
-    const totalRevenue = homeDashboardData.varianceData.reduce((sum, item) => sum + item.actual, 0);
-    const totalProfit = homeDashboardData.varianceData.reduce((sum, item) => sum + item.profit, 0);
-    const avgMargin = (totalProfit / totalRevenue * 100).toFixed(1);
-    const totalOrders = 12850;
-
-    document.getElementById('home-kpi-revenue').textContent = formatCurrency(totalRevenue);
-    document.getElementById('home-kpi-profit').textContent = formatCurrency(totalProfit);
-    document.getElementById('home-kpi-margin').textContent = avgMargin + '%';
-    document.getElementById('home-kpi-orders').textContent = totalOrders.toLocaleString();
-
-    updateHomeKPIChange('home-kpi-revenue-change', 15.2, true);
-    updateHomeKPIChange('home-kpi-profit-change', 18.5, true);
-    updateHomeKPIChange('home-kpi-margin-change', 2.1, true);
-    updateHomeKPIChange('home-kpi-orders-change', 12.8, true);
-}
-
-/**
- * Update KPI Change Indicator
- */
-function updateHomeKPIChange(elementId, percent, isPositive) {
-    const element = document.getElementById(elementId);
-    const arrow = isPositive ? '↑' : '↓';
-    const className = isPositive ? 'up' : 'down';
-
-    element.className = `kpi-change ${className}`;
-    element.innerHTML = `<span>${arrow}</span> <span>${Math.abs(percent).toFixed(1)}%</span> vs last period`;
-}
-
-/**
- * Render Sales by Region Chart
- */
-function renderHomeSalesByRegionChart() {
-    const ctx = document.getElementById('home-chart-sales-by-region');
-    if (!ctx) return;
-
-    if (homeChartSalesByRegion) {
-        homeChartSalesByRegion.destroy();
-    }
-
-    homeChartSalesByRegion = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: homeDashboardData.salesByRegion.labels,
-            datasets: homeDashboardData.salesByRegion.datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.5,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 15,
-                        font: { size: 11, weight: '600' },
-                        color: '#616161'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    grid: { display: false },
-                    ticks: { font: { size: 11 }, color: '#757575' }
-                },
-                y: {
-                    stacked: true,
-                    grid: { color: '#EEEEEE', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#757575',
-                        callback: function(value) {
-                            return '₱' + (value / 1000) + 'K';
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-/**
- * Render Actual vs Plan Chart
- */
-function renderHomeActualVsPlanChart() {
-    const ctx = document.getElementById('home-chart-actual-vs-plan');
-    if (!ctx) return;
-
-    if (homeChartActualVsPlan) {
-        homeChartActualVsPlan.destroy();
-    }
-
-    homeChartActualVsPlan = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: homeDashboardData.actualVsPlan.labels,
-            datasets: [
-                {
-                    label: 'Plan',
-                    data: homeDashboardData.actualVsPlan.plan,
-                    borderColor: '#BDBDBD',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointRadius: 4,
-                    pointBackgroundColor: '#BDBDBD',
-                    tension: 0.4
-                },
-                {
-                    label: 'Actual',
-                    data: homeDashboardData.actualVsPlan.actual,
-                    borderColor: '#FF8C42',
-                    backgroundColor: 'rgba(255, 140, 66, 0.1)',
-                    borderWidth: 3,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#FF8C42',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.5,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 15,
-                        font: { size: 11, weight: '600' },
-                        color: '#616161'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { size: 11 }, color: '#757575' }
-                },
-                y: {
-                    grid: { color: '#EEEEEE', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#757575',
-                        callback: function(value) {
-                            return '₱' + (value / 1000) + 'K';
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-/**
- * Render Margin Donut Charts
- */
-function renderHomeMarginCharts() {
-    // Revenue Donut
-    const ctxRevenue = document.getElementById('home-chart-margin-revenue');
-    if (ctxRevenue) {
-        if (homeChartMarginRevenue) homeChartMarginRevenue.destroy();
-
-        homeChartMarginRevenue = new Chart(ctxRevenue, {
-            type: 'doughnut',
-            data: {
-                labels: homeDashboardData.marginByCategory.revenue.labels,
-                datasets: [{
-                    data: homeDashboardData.marginByCategory.revenue.data,
-                    backgroundColor: homeDashboardData.marginByCategory.revenue.backgroundColor,
-                    borderWidth: 0
-                }]
-            },
-            options: getHomeDoughnutOptions()
-        });
-    }
-
-    // Profit Donut
-    const ctxProfit = document.getElementById('home-chart-margin-profit');
-    if (ctxProfit) {
-        if (homeChartMarginProfit) homeChartMarginProfit.destroy();
-
-        homeChartMarginProfit = new Chart(ctxProfit, {
-            type: 'doughnut',
-            data: {
-                labels: homeDashboardData.marginByCategory.profit.labels,
-                datasets: [{
-                    data: homeDashboardData.marginByCategory.profit.data,
-                    backgroundColor: homeDashboardData.marginByCategory.profit.backgroundColor,
-                    borderWidth: 0
-                }]
-            },
-            options: getHomeDoughnutOptions()
-        });
-    }
-}
-
-/**
- * Get Doughnut Chart Options
- */
-function getHomeDoughnutOptions() {
+// Demo data (fallback)
+function sampleHomeData() {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const categories = ['Coffee', 'Food', 'Beverages', 'Desserts', 'Others'];
+    const payments = ['Cash', 'Card', 'e-Wallet'];
     return {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                display: true,
-                position: 'bottom',
-                labels: {
-                    boxWidth: 12,
-                    padding: 10,
-                    font: { size: 10, weight: '500' },
-                    color: '#616161'
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                titleFont: { size: 13, weight: '600' },
-                bodyFont: { size: 12 },
-                callbacks: {
-                    label: function(context) {
-                        const label = context.label || '';
-                        const value = formatCurrency(context.parsed);
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((context.parsed / total) * 100).toFixed(1);
-                        return label + ': ' + value + ' (' + percentage + '%)';
-                    }
-                }
-            }
-        },
-        cutout: '65%'
+        kpis: { revenue: 4100000, profit: 1240000, orders: 17800, aov: 230 },
+        trend: months.map((m, i) => ({ label: m, revenue: 170000 + i * 15000 + Math.random() * 25000 })),
+        revenueOrders: months.map((m, i) => ({ label: m, revenue: 180000 + i * 12000, orders: 1100 + i * 90 })),
+        branchPerformance: [],
+        categorySales: categories.map(c => ({ category: c, revenue: 280000 + Math.random() * 220000 })),
+        topItems: [
+            { name: 'Cappuccino', revenue: 210000 },
+            { name: 'Latte', revenue: 190000 },
+            { name: 'Caramel Macchiato', revenue: 175000 },
+            { name: 'Iced Americano', revenue: 142000 },
+            { name: 'Chocolate Cake', revenue: 118000 },
+            { name: 'Croissant', revenue: 108000 },
+            { name: 'Club Sandwich', revenue: 92000 }
+        ],
+        peakHours: Array.from({ length: 12 }, (_, idx) => ({ hour: `${idx + 7}:00`, revenue: 18000 + Math.random() * 16000 })),
+        weekly: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => ({ day: d, revenue: 90000 + Math.random() * 32000, orders: 280 + Math.random() * 130 })),
+        profitByCategory: categories.map(c => ({ category: c, profit: 140000 + Math.random() * 130000 })),
+        paymentMethods: payments.map((p, i) => ({ method: p, share: [0.46, 0.34, 0.2][i] })),
+        retention: months.map((m, i) => ({ label: m, returning: 42 + i * 1.8 + Math.random() * 4, new: 58 - i * 1.8 + Math.random() * 4 }))
     };
 }
 
-/**
- * Render Sales & Profit by Region Chart
- */
-function renderHomeSalesProfitRegionChart() {
-    const ctx = document.getElementById('home-chart-sales-profit-region');
-    if (!ctx) return;
+async function fetchHomeData() {
+    try {
+        const normalize = (v) => {
+            if (!v) return '';
+            const d = new Date(v);
+            return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+        };
 
-    if (homeChartSalesProfitRegion) {
-        homeChartSalesProfitRegion.destroy();
+        const start = normalize(document.getElementById('home-start-date')?.value || '');
+        const end = normalize(document.getElementById('home-end-date')?.value || '');
+        const params = new URLSearchParams();
+        if (start) params.append('start_date', start);
+        if (end) params.append('end_date', end);
+        params.append('date_range', 'month');
+
+        const [
+            summaryRes,
+            trendRes,
+            categoryRes,
+            bestRes,
+            heatmapRes,
+            timeRes,
+            reportsRes,
+            inventoryRes
+        ] = await Promise.all([
+            fetch(`php/sales-analytics-api.php?action=get_sales_summary&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_sales_trend&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_category_sales&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_best_sellers&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_heatmap&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_time_period_comparison&${params}`).then(r => r.json()),
+            fetch(`php/business-reports-api.php?action=get_reports&${params}`).then(r => r.json()),
+            fetch('php/api.php?resource=inventory-with-cost').then(r => r.json())
+        ]);
+
+        const summary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : (summaryRes.success ? summaryRes.data : {});
+        const trend = (trendRes.success ? trendRes.data : []).map(t => ({
+            label: t.period || t.label || t.date || '',
+            revenue: parseFloat(t.sales || 0),
+            orders: parseInt(t.orders || t.transactions || 0)
+        }));
+        const categories = (categoryRes.success ? categoryRes.data : []).map(c => ({
+            category: c.category || 'Uncategorized',
+            revenue: parseFloat(c.sales || 0)
+        }));
+        const topItems = (bestRes.success ? bestRes.data : []).map(i => ({
+            name: i.product_name || i.product || 'Item',
+            revenue: parseFloat(i.revenue || 0)
+        })).slice(0, 10);
+
+        const peakHours = [];
+        if (heatmapRes.success) {
+            (heatmapRes.data || []).forEach(row => {
+                const hour = parseInt(row.hour);
+                const sales = parseFloat(row.sales || 0);
+                peakHours.push({ hour: `${hour.toString().padStart(2, '0')}:00`, revenue: sales });
+            });
+            peakHours.sort((a, b) => b.revenue - a.revenue);
+        }
+
+        const weekly = (timeRes.success ? timeRes.data : []).map(d => ({
+            day: d.label || d.period || '',
+            revenue: parseFloat(d.sales || 0),
+            orders: parseInt(d.orders || d.transactions || 0)
+        }));
+
+        // Expenses from inventory
+        homeExpenses = 0;
+        if (inventoryRes.success) {
+            const items = inventoryRes.data.inventory || [];
+            homeExpenses = items.reduce((sum, item) => {
+                const qty = Number(item.qty ?? item.quantity ?? 0);
+                const cost = Number(item.costPerUnit ?? item.cost_per_unit ?? 0);
+                return sum + qty * cost;
+            }, 0);
+        }
+
+        homeData = {
+            kpis: {
+                revenue: summary.total_sales || 0,
+                profit: homeExpenses - (summary.total_sales || 0), // Expenses - Revenue
+                orders: summary.total_transactions || 0,
+                aov: summary.average_order || summary.avg_order_value || 0
+            },
+            trend,
+            revenueOrders: trend.map(t => ({ label: t.label, revenue: t.revenue, orders: t.orders })),
+            branchPerformance: [],
+            categorySales: categories,
+            topItems,
+            peakHours: peakHours.slice(0, 12),
+            weekly,
+            profitByCategory: categories.map(c => ({ category: c.category, profit: c.revenue * 0.3 })),
+            paymentMethods: [
+                { method: 'Cash', share: summary.cash_sales ? (summary.cash_sales / (summary.total_sales || 1)) : 0 },
+                { method: 'Card', share: summary.card_sales ? (summary.card_sales / (summary.total_sales || 1)) : 0 },
+                { method: 'e-Wallet', share: summary.ewallet_sales ? (summary.ewallet_sales / (summary.total_sales || 1)) : 0 }
+            ],
+            retention: weekly.map(d => ({ label: d.day, returning: 50 + Math.random() * 10, new: 50 - Math.random() * 10 }))
+        };
+    } catch (error) {
+        console.error('Home analytics API failed, using sample data', error);
+        homeData = sampleHomeData();
     }
+}
 
-    homeChartSalesProfitRegion = new Chart(ctx, {
-        type: 'bar',
+function initializeHomeDashboard() {
+    fetchHomeData().then(() => {
+        updateHomeKPIs();
+        renderHomeCharts();
+    });
+}
+
+function refreshHomeDashboard() {
+    destroyHomeCharts();
+    initializeHomeDashboard();
+}
+
+function destroyHomeCharts() {
+    Object.values(homeCharts).forEach(c => c && c.destroy());
+    homeCharts = {};
+}
+
+function updateHomeKPIs() {
+    const k = homeData.kpis;
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+    set('home-kpi-revenue', formatCurrency(k.revenue));
+    set('home-kpi-profit', formatCurrency(k.profit));
+    set('home-kpi-orders', k.orders.toLocaleString());
+    set('home-kpi-aov', formatCurrency(k.aov));
+
+    set('home-kpi-revenue-change', '');
+    set('home-kpi-profit-change', '');
+    set('home-kpi-orders-change', '');
+    set('home-kpi-aov-change', '');
+}
+
+function renderHomeCharts() {
+    renderHomeSalesTrend();
+    renderHomeRevenueOrders();
+    renderHomeCategorySales();
+    renderHomeTopItems();
+    renderHomePeakHours();
+    renderHomeWeeklyPerformance();
+    renderHomeProfitByCategory();
+    renderHomePaymentMethods();
+    renderHomeRetention();
+}
+
+function renderHomeSalesTrend() {
+    const ctx = document.getElementById('home-chart-sales-trend');
+    if (!ctx) return;
+    homeCharts.trend = new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: homeDashboardData.salesProfitByRegion.labels,
+            labels: homeData.trend.map(d => d.label),
+            datasets: [{
+                label: 'Revenue',
+                data: homeData.trend.map(d => d.revenue),
+                borderColor: '#FF8C42',
+                backgroundColor: 'rgba(255, 140, 66, 0.15)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 4
+            }]
+        },
+        options: baseLineOptions()
+    });
+}
+
+function renderHomeRevenueOrders() {
+    const ctx = document.getElementById('home-chart-revenue-orders');
+    if (!ctx) return;
+    homeCharts.revenueOrders = new Chart(ctx, {
+        data: {
+            labels: homeData.revenueOrders.map(d => d.label),
             datasets: [
-                {
-                    label: 'Sales',
-                    data: homeDashboardData.salesProfitByRegion.sales,
-                    backgroundColor: '#FF8C42'
-                },
-                {
-                    label: 'Profit',
-                    data: homeDashboardData.salesProfitByRegion.profit,
-                    backgroundColor: '#8B6F47'
-                }
+                { type: 'bar', label: 'Revenue', data: homeData.revenueOrders.map(d => d.revenue), backgroundColor: '#FF8C42', yAxisID: 'y' },
+                { type: 'line', label: 'Orders', data: homeData.revenueOrders.map(d => d.orders), borderColor: '#6366F1', backgroundColor: '#6366F1', tension: 0.4, yAxisID: 'y1' }
             ]
         },
         options: {
-            indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 1.2,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 15,
-                        font: { size: 11, weight: '600' },
-                        color: '#616161'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.x);
-                        }
-                    }
-                }
-            },
+            plugins: { legend: { position: 'top' } },
             scales: {
-                x: {
-                    stacked: false,
-                    grid: { color: '#EEEEEE', drawBorder: false },
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#757575',
-                        callback: function(value) {
-                            return '₱' + (value / 1000) + 'K';
-                        }
-                    }
-                },
-                y: {
-                    stacked: false,
-                    grid: { display: false },
-                    ticks: { font: { size: 11 }, color: '#757575' }
-                }
+                y: { position: 'left', ticks: { callback: currencyTick } },
+                y1: { position: 'right', grid: { drawOnChartArea: false } }
             }
         }
     });
 }
 
-/**
- * Render Crosstab Table
- */
-function renderHomeCrosstabTable() {
-    const tbody = document.getElementById('home-tbody-crosstab');
-    if (!tbody) return;
-
-    let html = '';
-    let totals = { north: 0, south: 0, east: 0, west: 0, central: 0 };
-
-    homeDashboardData.crosstabData.forEach(row => {
-        const rowTotal = row.north + row.south + row.east + row.west + row.central;
-
-        totals.north += row.north;
-        totals.south += row.south;
-        totals.east += row.east;
-        totals.west += row.west;
-        totals.central += row.central;
-
-        html += `
-            <tr>
-                <td><strong>${row.category}</strong></td>
-                <td class="cell-currency">${formatCurrency(row.north)}</td>
-                <td class="cell-currency">${formatCurrency(row.south)}</td>
-                <td class="cell-currency">${formatCurrency(row.east)}</td>
-                <td class="cell-currency">${formatCurrency(row.west)}</td>
-                <td class="cell-currency">${formatCurrency(row.central)}</td>
-                <td class="cell-currency"><strong>${formatCurrency(rowTotal)}</strong></td>
-            </tr>
-        `;
-    });
-
-    const grandTotal = totals.north + totals.south + totals.east + totals.west + totals.central;
-    html += `
-        <tr class="cell-total">
-            <td><strong>Total</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.north)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.south)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.east)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.west)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.central)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(grandTotal)}</strong></td>
-        </tr>
-    `;
-
-    tbody.innerHTML = html;
-}
-
-/**
- * Render Variance Table
- */
-function renderHomeVarianceTable() {
-    const tbody = document.getElementById('home-tbody-variance');
-    if (!tbody) return;
-
-    let html = '';
-    let totals = { plan: 0, actual: 0, variance: 0, profit: 0 };
-
-    homeDashboardData.varianceData.forEach(row => {
-        const variance = row.actual - row.plan;
-        const variancePercent = (variance / row.plan * 100);
-
-        totals.plan += row.plan;
-        totals.actual += row.actual;
-        totals.variance += variance;
-        totals.profit += row.profit;
-
-        const varianceClass = variance >= 0 ? 'positive' : 'negative';
-        const varianceBadge = variance >= 0 ? 'positive' : 'negative';
-
-        html += `
-            <tr>
-                <td><strong>${row.month}</strong></td>
-                <td class="cell-currency">${formatCurrency(row.plan)}</td>
-                <td class="cell-currency">${formatCurrency(row.actual)}</td>
-                <td class="cell-currency cell-${varianceClass}">${formatCurrency(variance)}</td>
-                <td class="cell-percent">
-                    <span class="variance-badge ${varianceBadge}">
-                        ${variancePercent >= 0 ? '+' : ''}${variancePercent.toFixed(1)}%
-                    </span>
-                </td>
-                <td class="cell-currency">${formatCurrency(row.profit)}</td>
-            </tr>
-        `;
-    });
-
-    const totalVariancePercent = (totals.variance / totals.plan * 100);
-    const totalVarianceClass = totals.variance >= 0 ? 'positive' : 'negative';
-    const totalVarianceBadge = totals.variance >= 0 ? 'positive' : 'negative';
-
-    html += `
-        <tr class="cell-total">
-            <td><strong>Total</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.plan)}</strong></td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.actual)}</strong></td>
-            <td class="cell-currency cell-${totalVarianceClass}"><strong>${formatCurrency(totals.variance)}</strong></td>
-            <td class="cell-percent">
-                <span class="variance-badge ${totalVarianceBadge}">
-                    <strong>${totalVariancePercent >= 0 ? '+' : ''}${totalVariancePercent.toFixed(1)}%</strong>
-                </span>
-            </td>
-            <td class="cell-currency"><strong>${formatCurrency(totals.profit)}</strong></td>
-        </tr>
-    `;
-
-    tbody.innerHTML = html;
-}
-
-/**
- * Refresh Dashboard
- */
-function refreshHomeDashboard() {
-    console.log('Refreshing Home Dashboard...');
-
-    const year = document.getElementById('home-year-filter').value;
-    const quarter = document.getElementById('home-quarter-filter').value;
-    const region = document.getElementById('home-region-filter').value;
-
-    console.log(`Filters: Year=${year}, Quarter=${quarter}, Region=${region}`);
-
-    initializeHomeDashboard();
-}
-
-/**
- * Format Currency
- */
-function formatCurrency(value) {
-    return '₱' + value.toLocaleString('en-PH', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
+function renderHomeBranchPerformance() {
+    const ctx = document.getElementById('home-chart-branch-performance');
+    if (!ctx) return;
+    homeCharts.branch = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: homeData.branchPerformance.map(d => d.branch),
+            datasets: [{ label: 'Revenue', data: homeData.branchPerformance.map(d => d.revenue), backgroundColor: '#8B6F47', borderRadius: 6 }]
+        },
+        options: baseBarOptions()
     });
 }
 
-/**
- * Auto-initialize when home content is visible and Chart is loaded
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on manager dashboard and home is visible
-    const homeContent = document.getElementById('home-content');
+function renderHomeCategorySales() {
+    const ctx = document.getElementById('home-chart-category-sales');
+    if (!ctx) return;
+    homeCharts.category = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: homeData.categorySales.map(d => d.category),
+            datasets: [{
+                data: homeData.categorySales.map(d => d.revenue),
+                backgroundColor: ['#FF8C42', '#8B6F47', '#FFB380', '#A68A64', '#6D5738'],
+                borderWidth: 0
+            }]
+        },
+        options: baseDoughnutOptions()
+    });
+}
 
-    if (homeContent && !homeContent.classList.contains('hidden')) {
-        // Wait a bit for Chart.js to load
-        const checkChartAndInit = setInterval(function() {
-            if (typeof Chart !== 'undefined') {
-                clearInterval(checkChartAndInit);
-                console.log('Auto-initializing home dashboard...');
-                initializeHomeDashboard();
+function renderHomeTopItems() {
+    const ctx = document.getElementById('home-chart-top-items');
+    if (!ctx) return;
+    homeCharts.topItems = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: homeData.topItems.map(d => d.name),
+            datasets: [{ label: 'Revenue', data: homeData.topItems.map(d => d.revenue), backgroundColor: '#FF8C42', borderRadius: 4 }]
+        },
+        options: baseBarOptions('y')
+    });
+}
+
+function renderHomePeakHours() {
+    const ctx = document.getElementById('home-chart-peak-hours');
+    if (!ctx) return;
+    homeCharts.peak = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: homeData.peakHours.map(d => d.hour),
+            datasets: [{ label: 'Revenue', data: homeData.peakHours.map(d => d.revenue), backgroundColor: '#6366F1', borderRadius: 4 }]
+        },
+        options: baseBarOptions()
+    });
+}
+
+function renderHomeWeeklyPerformance() {
+    const ctx = document.getElementById('home-chart-weekly-performance');
+    if (!ctx) return;
+    homeCharts.weekly = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: homeData.weekly.map(d => d.day),
+            datasets: [
+                { label: 'Revenue', data: homeData.weekly.map(d => d.revenue), borderColor: '#FF8C42', backgroundColor: 'rgba(255, 140, 66, 0.1)', fill: true, tension: 0.3, borderWidth: 3 },
+                { label: 'Orders', data: homeData.weekly.map(d => d.orders), borderColor: '#22C55E', backgroundColor: 'rgba(34, 197, 94, 0.1)', fill: true, tension: 0.3, borderWidth: 3 }
+            ]
+        },
+        options: baseLineOptions()
+    });
+}
+
+function renderHomeProfitByCategory() {
+    const ctx = document.getElementById('home-chart-profit-category');
+    if (!ctx) return;
+    homeCharts.profitCat = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: homeData.profitByCategory.map(d => d.category),
+            datasets: [{ label: 'Profit', data: homeData.profitByCategory.map(d => d.profit), backgroundColor: '#10B981', borderRadius: 4 }]
+        },
+        options: baseBarOptions()
+    });
+}
+
+function renderHomePaymentMethods() {
+    const ctx = document.getElementById('home-chart-payment-methods');
+    if (!ctx) return;
+    homeCharts.payments = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: homeData.paymentMethods.map(d => d.method),
+            datasets: [{ data: homeData.paymentMethods.map(d => d.share * 100), backgroundColor: ['#FF8C42', '#8B6F47', '#6366F1'], borderWidth: 0 }]
+        },
+        options: baseDoughnutOptions('%')
+    });
+}
+
+function renderHomeRetention() {
+    const ctx = document.getElementById('home-chart-retention');
+    if (!ctx) return;
+    homeCharts.retention = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: homeData.retention.map(d => d.label),
+            datasets: [
+                { label: 'Returning Customers (%)', data: homeData.retention.map(d => d.returning), borderColor: '#FF8C42', backgroundColor: 'rgba(255, 140, 66, 0.1)', fill: true, tension: 0.3, borderWidth: 3 },
+                { label: 'New Customers (%)', data: homeData.retention.map(d => d.new), borderColor: '#6366F1', backgroundColor: 'rgba(99, 102, 241, 0.1)', fill: true, tension: 0.3, borderWidth: 3 }
+            ]
+        },
+        options: baseLineOptions('%')
+    });
+}
+
+// Shared chart options (reuse analytics helpers)
+function baseLineOptions(suffix = '') {
+    return {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+            y: { ticks: { callback: v => suffix === '%' ? `${v}%` : currencyTick(v) }, grid: { color: '#E5E7EB' } },
+            x: { grid: { display: false } }
+        }
+    };
+}
+
+function baseBarOptions(axis = 'x') {
+    return {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { ticks: { callback: currencyTick }, grid: { color: '#E5E7EB' } },
+            x: { grid: { display: false } }
+        },
+        indexAxis: axis === 'y' ? 'y' : 'x'
+    };
+}
+
+function baseDoughnutOptions(format = 'currency') {
+    return {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+                callbacks: {
+                    label: context => {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        return format === '%' ? `${label}: ${value.toFixed(1)}%` : `${label}: ${formatCurrency(value)}`;
+                    }
+                }
             }
-        }, 100);
+        },
+        cutout: '60%'
+    };
+}
 
-        // Timeout after 5 seconds
-        setTimeout(function() {
-            clearInterval(checkChartAndInit);
-        }, 5000);
+function currencyTick(value) {
+    return '₱' + value.toLocaleString('en-PH', { maximumFractionDigits: 0 });
+}
+
+function formatCurrency(value) {
+    return '₱' + Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+}
+
+// Auto-init when visible
+document.addEventListener('DOMContentLoaded', () => {
+    const homeContent = document.getElementById('home-content');
+    if (homeContent && !homeContent.classList.contains('hidden')) {
+        initializeHomeDashboard();
     }
 });
