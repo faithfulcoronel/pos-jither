@@ -216,6 +216,17 @@ window.addMenuItem = async function() {
         return;
     }
 
+    if (!Number.isInteger(price)) {
+        alert('Selling Price must be a whole number.');
+        return;
+    }
+
+    // Require at least one ingredient before allowing save
+    if (!productIngredients || productIngredients.length === 0) {
+        alert('Please add at least one ingredient to the recipe before saving the product.');
+        return;
+    }
+
     try {
         // First, create the product using the original function
         let imageName = '';

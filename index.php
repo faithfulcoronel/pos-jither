@@ -354,159 +354,108 @@ $currentUsername = $_SESSION['username'] ?? '';
                     </aside>
                     <main id="manager-main-content" class="main-content">
                         <!-- Business Analytics Dashboard for Manager Home -->
-                        <div id="home-content" class="content-section">
-                            <div class="analytics-dashboard">
-
-                                <!-- Dashboard Header -->
-                                <div class="analytics-header">
-                                    <h1>Business Analytics Dashboard</h1>
-                                    <p class="subtitle">Dynamic filters for categories</p>
-                                </div>
-
-                                <!-- Filters -->
-                                <div class="analytics-filters">
-                                    <div class="filter-group">
-                                        <label>Date Range</label>
-                                        <input type="date" id="home-start-date" class="filter-select" onchange="refreshHomeDashboard()">
-                                        <input type="date" id="home-end-date" class="filter-select" onchange="refreshHomeDashboard()">
+                                                <div id="home-content" class="content-section">
+                            <div class="home-dashboard">
+                                <div class="home-hero">
+                                    <div>
+                                        <p class="home-eyebrow">Welcome Admin</p>
+                                        <h1 class="home-title">Manager Overview</h1>
+                                        <p class="home-subtitle">Track revenue, returns, cash flow, and top products at a glance.</p>
                                     </div>
-                                    <div class="filter-group">
-                                        <label>Category</label>
-                                        <select id="home-category-filter" class="filter-select" onchange="refreshHomeDashboard()">
-                                            <option value="all">All Categories</option>
-                                            <option value="coffee">Coffee</option>
-                                            <option value="food">Food</option>
-                                            <option value="beverages">Beverages</option>
-                                        </select>
-                                    </div>
-                                    <button class="refresh-btn" onclick="refreshHomeDashboard()">
-                                        🔄 Refresh
-                                    </button>
-                                </div>
-
-                                <!-- KPI Cards -->
-                                <div class="kpi-cards">
-                                    <div class="kpi-card">
-                                        <div class="kpi-label">Revenue</div>
-                                        <div class="kpi-value" id="home-kpi-revenue">₱0</div>
-                                        <div class="kpi-change up" id="home-kpi-revenue-change"></div>
-                                    </div>
-                                    <div class="kpi-card">
-                                        <div class="kpi-label">Profit</div>
-                                        <div class="kpi-value" id="home-kpi-profit">₱0</div>
-                                        <div class="kpi-change up" id="home-kpi-profit-change"></div>
-                                    </div>
-                                    <div class="kpi-card">
-                                        <div class="kpi-label">Orders</div>
-                                        <div class="kpi-value" id="home-kpi-orders">0</div>
-                                        <div class="kpi-change up" id="home-kpi-orders-change"></div>
-                                    </div>
-                                    <div class="kpi-card">
-                                        <div class="kpi-label">Avg Order Value</div>
-                                        <div class="kpi-value" id="home-kpi-aov">₱0</div>
-                                        <div class="kpi-change up" id="home-kpi-aov-change"></div>
+                                    <div class="home-filters">
+                                        <div class="home-filter">
+                                            <label>From</label>
+                                            <input type="date" id="home-start-date" onchange="refreshHomeDashboard()">
+                                        </div>
+                                        <div class="home-filter">
+                                            <label>To</label>
+                                            <input type="date" id="home-end-date" onchange="refreshHomeDashboard()">
+                                        </div>
+                                        <button class="home-refresh" onclick="refreshHomeDashboard()">Refresh</button>
                                     </div>
                                 </div>
 
-                                <!-- Charts Grid -->
-                                <div class="analytics-grid">
-
-                                    <div class="chart-card span-8">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Sales Trend</h3>
-                                            <span class="chart-card-icon">📈</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-sales-trend"></canvas>
-                                        </div>
+                                <div class="home-kpi-row">
+                                    <div class="home-kpi-card">
+                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-label">Revenue</div>
+                                        <div class="home-kpi-value" id="home-kpi-revenue">?0</div>
                                     </div>
-
-                                    <div class="chart-card span-4">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Revenue vs Orders</h3>
-                                            <span class="chart-card-icon">📊</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-revenue-orders"></canvas>
-                                        </div>
+                                    <div class="home-kpi-card">
+                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-label">Returns</div>
+                                        <div class="home-kpi-value" id="home-kpi-orders">0</div>
                                     </div>
-
-                                    <div class="chart-card span-6">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Sales by Category</h3>
-                                            <span class="chart-card-icon">🛒</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-category-sales"></canvas>
-                                        </div>
+                                    <div class="home-kpi-card">
+                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-label">Cash Flow</div>
+                                        <div class="home-kpi-value" id="home-kpi-profit">?0</div>
                                     </div>
-
-                                    <div class="chart-card span-6">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Top Items</h3>
-                                            <span class="chart-card-icon">⭐</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-top-items"></canvas>
-                                        </div>
+                                    <div class="home-kpi-card">
+                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-label">Avg Order</div>
+                                        <div class="home-kpi-value" id="home-kpi-aov">?0</div>
                                     </div>
-
-                                    <div class="chart-card span-6">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Peak Hours</h3>
-                                            <span class="chart-card-icon">⏰</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-peak-hours"></canvas>
-                                        </div>
-                                    </div>
-
-                                    <div class="chart-card span-6">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Weekly Performance</h3>
-                                            <span class="chart-card-icon">📅</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-weekly-performance"></canvas>
-                                        </div>
-                                    </div>
-
-                                    <div class="chart-card span-6">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Profit by Category</h3>
-                                            <span class="chart-card-icon">💹</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-profit-category"></canvas>
-                                        </div>
-                                    </div>
-
-                                    <div class="chart-card span-6">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Payment Methods</h3>
-                                            <span class="chart-card-icon">💳</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-payment-methods"></canvas>
-                                        </div>
-                                    </div>
-
-                                    <div class="chart-card span-6">
-                                        <div class="chart-card-header">
-                                            <h3 class="chart-card-title">Customer Retention</h3>
-                                            <span class="chart-card-icon">🔁</span>
-                                        </div>
-                                        <div class="chart-card-body">
-                                            <canvas id="home-chart-retention"></canvas>
-                                        </div>
-                                    </div>
-
                                 </div>
 
+                                <div class="home-grid">
+                                    <div class="home-card wide">
+                                        <div class="home-card-header">
+                                            <div>
+                                                <p class="home-card-kicker">Yearly Report</p>
+                                                <h3>Purchased vs Sold</h3>
+                                            </div>
+                                            <div class="home-legend">
+                                                <span class="legend-dot purple-light"></span> Purchased
+                                                <span class="legend-dot purple"></span> Sold
+                                            </div>
+                                        </div>
+                                        <canvas id="home-chart-revenue-orders"></canvas>
+                                    </div>
+                                    <div class="home-card">
+                                        <div class="home-card-header">
+                                            <div>
+                                                <p class="home-card-kicker">Current Period</p>
+                                                <h3>Mix</h3>
+                                            </div>
+                                        </div>
+                                        <canvas id="home-chart-payment-methods"></canvas>
+                                    </div>
+                                </div>
+
+                                <div class="home-grid">
+                                    <div class="home-card">
+                                        <div class="home-card-header">
+                                            <div>
+                                                <p class="home-card-kicker">Cash Flow</p>
+                                                <h3>Revenue Over Time</h3>
+                                            </div>
+                                        </div>
+                                        <canvas id="home-chart-sales-trend"></canvas>
+                                    </div>
+                                    <div class="home-card">
+                                        <div class="home-card-header">
+                                            <div>
+                                                <p class="home-card-kicker">Top Selling Products</p>
+                                                <h3>Current Period</h3>
+                                            </div>
+                                        </div>
+                                        <table class="home-top-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th>Qty</th>
+                                                    <th>Grand Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="home-top-table-body">
+                                                <tr><td colspan="3">Loading...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-
-                        <div id="menu-content" class="content-section hidden">
+                        </div><div id="menu-content" class="content-section hidden">
                             <div class="dashboard-header"><h1>Menu Items</h1></div>
                             <h3>Menu Management</h3>
                             <div class="menu-actions">
@@ -1583,7 +1532,7 @@ $currentUsername = $_SESSION['username'] ?? '';
                                                 <select id="newItemCategory" required>
                                                     <option value="">Select Category *</option>
                                                 </select>
-                                                <input type="number" id="newItemPrice" placeholder="Selling Price *" step="0.01" min="0" required>
+                                                <input type="number" id="newItemPrice" placeholder="Selling Price *" step="1" min="0" inputmode="numeric" required>
                                                 <input type="file" id="newItemImage" accept="image/*">
                                             </div>
 
@@ -1914,3 +1863,4 @@ $currentUsername = $_SESSION['username'] ?? '';
     <script defer src="js/business-reports.js"></script>
 </body>
 </html>
+

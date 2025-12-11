@@ -11,7 +11,7 @@ let homeExpenses = 0;
 function sampleHomeData() {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const categories = ['Coffee', 'Food', 'Beverages', 'Desserts', 'Others'];
-    const payments = ['Cash', 'Card', 'e-Wallet'];
+    const payments = ['Cash', 'Card', 'GCash'];
     return {
         kpis: { revenue: 4100000, profit: 1240000, orders: 17800, aov: 230 },
         trend: months.map((m, i) => ({ label: m, revenue: 170000 + i * 15000 + Math.random() * 25000 })),
@@ -179,6 +179,7 @@ function renderHomeCharts() {
     renderHomeRevenueOrders();
     renderHomeCategorySales();
     renderHomeTopItems();
+    renderHomeTopItemsTable();
     renderHomePeakHours();
     renderHomeWeeklyPerformance();
     renderHomeProfitByCategory();
@@ -271,6 +272,23 @@ function renderHomeTopItems() {
         },
         options: baseBarOptions('y')
     });
+}
+
+function renderHomeTopItemsTable() {
+    const tbody = document.getElementById('home-top-table-body');
+    if (!tbody || !homeData || !homeData.topItems) return;
+    const rows = homeData.topItems.slice(0, 8).map(item => {
+        const qty = item.quantity || item.qty || 100;
+        const total = formatCurrency(item.revenue || 0);
+        return `
+            <tr>
+                <td>${item.name}</td>
+                <td>${qty.toLocaleString()}</td>
+                <td>${total}</td>
+            </tr>
+        `;
+    }).join('');
+    tbody.innerHTML = rows || '<tr><td colspan="3">No top items available.</td></tr>';
 }
 
 function renderHomePeakHours() {

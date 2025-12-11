@@ -13,7 +13,7 @@ const randomSeries = (len, min = 1000, max = 8000) =>
 function sampleAnalyticsData() {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const categories = ['Coffee', 'Food', 'Beverages', 'Desserts', 'Others'];
-    const paymentLabels = ['Cash', 'Card', 'e-Wallet'];
+    const paymentLabels = ['Cash', 'Card', 'GCash'];
     return {
         kpis: { revenue: 4200000, profit: 1280000, orders: 18500, aov: 226 },
         trend: months.map((m, i) => ({ label: m, revenue: 180000 + i * 12000 + Math.random() * 30000 })),
@@ -39,6 +39,7 @@ function sampleAnalyticsData() {
 
 async function fetchAnalyticsData() {
     try {
+        // Normalize and prefer explicit date range from calendar inputs
         const normalize = (v) => {
             if (!v) return '';
             const d = new Date(v);
@@ -46,10 +47,11 @@ async function fetchAnalyticsData() {
         };
         const start = normalize(document.getElementById('analytics-start-date')?.value || '');
         const end = normalize(document.getElementById('analytics-end-date')?.value || '');
+        const dateRangeParam = (start || end) ? 'custom' : 'month';
         const params = new URLSearchParams();
         if (start) params.append('start_date', start);
         if (end) params.append('end_date', end);
-        params.append('date_range', 'month');
+        params.append('date_range', dateRangeParam);
 
         const [
             summaryRes,
@@ -115,6 +117,14 @@ async function fetchAnalyticsData() {
             }, 0);
         }
 
+        const cashSales = Number(summary.cash_sales || 0);
+        const cardSales = Number(summary.card_sales || 0);
+        const gcashSales = Number(summary.gcash_sales || summary.ewallet_sales || 0);
+        const paymentTotalFromSummary = Number(summary.total_sales || 0);
+        const fallbackPaymentTotal = cashSales + cardSales + gcashSales;
+        const paymentTotal = paymentTotalFromSummary > 0 ? paymentTotalFromSummary : fallbackPaymentTotal;
+        const paymentDenominator = paymentTotal > 0 ? paymentTotal : 1;
+
         analyticsData = {
             kpis: {
                 revenue: summary.total_sales || 0,
@@ -131,9 +141,9 @@ async function fetchAnalyticsData() {
             weekly,
             profitByCategory: categories.map(c => ({ category: c.category, profit: c.revenue * 0.3 })),
             paymentMethods: [
-                { method: 'Cash', share: summary.cash_sales ? (summary.cash_sales / (summary.total_sales || 1)) : 0 },
-                { method: 'Card', share: summary.card_sales ? (summary.card_sales / (summary.total_sales || 1)) : 0 },
-                { method: 'e-Wallet', share: summary.ewallet_sales ? (summary.ewallet_sales / (summary.total_sales || 1)) : 0 }
+                { method: 'Cash', share: paymentTotal > 0 ? (cashSales / paymentDenominator) : 0 },
+                { method: 'Card', share: paymentTotal > 0 ? (cardSales / paymentDenominator) : 0 },
+                { method: 'GCash', share: paymentTotal > 0 ? (gcashSales / paymentDenominator) : 0 }
             ],
             retention: weekly.map(d => ({ label: d.day, returning: 50 + Math.random() * 10, new: 50 - Math.random() * 10 }))
         };
@@ -144,6 +154,18 @@ async function fetchAnalyticsData() {
 }
 
 function initializeAnalyticsDashboard() {
+    // If no dates are selected, default to the last 7 days so charts (including Sales Trend) honor a real range
+    const startInput = document.getElementById('analytics-start-date');
+    const endInput = document.getElementById('analytics-end-date');
+    if (startInput && endInput && !startInput.value && !endInput.value) {
+        const today = new Date();
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 6);
+        const toISO = d => d.toISOString().split('T')[0];
+        startInput.value = toISO(sevenDaysAgo);
+        endInput.value = toISO(today);
+    }
+
     fetchAnalyticsData().then(() => {
         updateKPIValues();
         renderCharts();

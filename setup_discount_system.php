@@ -1,7 +1,7 @@
 <?php
 /**
  * Setup Discount System - Add discount fields to database
- * Run this once to add discount_type and VAT fields
+ * Run this once to add discount_type
  *
  * URL: http://localhost/pos-jither-main/setup_discount_system.php
  */
@@ -113,7 +113,7 @@ error_reporting(E_ALL);
 <body>
     <div class="container">
         <h1>💳 Setup Discount System</h1>
-        <p class="subtitle">Adding discount type and VAT fields to your database</p>
+        <p class="subtitle">Adding discount type fields to your database</p>
 
 <?php
 try {
@@ -121,13 +121,11 @@ try {
     $stmt = $pdo->query("SHOW COLUMNS FROM sales_transactions LIKE 'discount_type'");
     $discountTypeExists = $stmt->rowCount() > 0;
 
-    $stmt = $pdo->query("SHOW COLUMNS FROM sales_transactions LIKE 'vat_amount'");
-    $vatFieldsExist = $stmt->rowCount() > 0;
 
-    if ($discountTypeExists && $vatFieldsExist) {
+    if ($discountTypeExists) {
         echo '<div class="status info">';
         echo '<span class="icon">ℹ️</span>';
-        echo 'Discount system is already set up! All required fields exist.';
+        echo 'Discount system is already set up! Discount field exists.';
         echo '</div>';
     } else {
         // Add discount_type column
@@ -148,26 +146,6 @@ try {
             echo '</div>';
         }
 
-        // Add VAT fields
-        if (!$vatFieldsExist) {
-            echo '<div class="status info">';
-            echo '<span class="icon">⚙️</span>';
-            echo 'Adding VAT calculation fields...';
-            echo '</div>';
-
-            $pdo->exec("
-                ALTER TABLE sales_transactions
-                ADD COLUMN vat_exempt_amount DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT 'Amount exempt from VAT' AFTER tax_amount,
-                ADD COLUMN vatable_amount DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT 'Amount subject to VAT' AFTER vat_exempt_amount,
-                ADD COLUMN vat_amount DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '12% VAT amount' AFTER vatable_amount
-            ");
-
-            echo '<div class="status success">';
-            echo '<span class="icon">✅</span>';
-            echo 'VAT fields added successfully!';
-            echo '</div>';
-        }
-
         echo '<div class="status success">';
         echo '<span class="icon">🎉</span>';
         echo '<strong>Discount system setup complete!</strong>';
@@ -181,7 +159,7 @@ try {
     echo '<div class="details">';
     echo '<h3>📊 sales_transactions Table Structure</h3>';
 
-    $discountFields = ['discount_amount', 'discount_type', 'tax_amount', 'vat_exempt_amount', 'vatable_amount', 'vat_amount'];
+    $discountFields = ['discount_amount', 'discount_type', 'tax_amount'];
 
     foreach ($columns as $col) {
         if (in_array($col['Field'], $discountFields)) {
@@ -196,9 +174,9 @@ try {
 
     echo '<div class="details">';
     echo '<h3>🏷️ Available Discount Types</h3>';
-    echo '<div class="field"><span class="field-icon">👵</span> <strong>Senior Citizen:</strong> 20% discount + VAT exempt</div>';
-    echo '<div class="field"><span class="field-icon">♿</span> <strong>PWD:</strong> 20% discount + VAT exempt</div>';
-    echo '<div class="field"><span class="field-icon">👤</span> <strong>No Discount:</strong> Regular price with 12% VAT</div>';
+    echo '<div class="field"><span class="field-icon">👵</span> <strong>Senior Citizen:</strong> 20% discount</div>';
+    echo '<div class="field"><span class="field-icon">♿</span> <strong>PWD:</strong> 20% discount</div>';
+    echo '<div class="field"><span class="field-icon">👤</span> <strong>No Discount:</strong> Regular price</div>';
     echo '</div>';
 
     echo '<div class="status info">';
@@ -224,3 +202,8 @@ try {
     </div>
 </body>
 </html>
+
+
+
+
+

@@ -12,10 +12,18 @@
 
         <!-- Filters -->
         <div class="analytics-filters">
-            <div class="filter-group">
+            <div class="filter-group date-range-group">
                 <label>Date Range</label>
-                <input type="date" id="analytics-start-date" class="filter-select" onchange="refreshAnalyticsDashboard()">
-                <input type="date" id="analytics-end-date" class="filter-select" onchange="refreshAnalyticsDashboard()">
+                <div class="date-range-inputs">
+                    <div class="date-range-field">
+                        <span class="date-range-label">From</span>
+                        <input type="date" id="analytics-start-date" class="filter-select" onchange="refreshAnalyticsDashboard()">
+                    </div>
+                    <div class="date-range-field">
+                        <span class="date-range-label">To</span>
+                        <input type="date" id="analytics-end-date" class="filter-select" onchange="refreshAnalyticsDashboard()">
+                    </div>
+                </div>
             </div>
             <div class="filter-group">
                 <label>Category</label>

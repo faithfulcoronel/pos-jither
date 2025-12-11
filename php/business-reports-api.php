@@ -95,6 +95,9 @@ function getBusinessReports($pdo) {
             'total_transactions' => 0,
             'total_items' => 0,
             'average_order' => 0,
+            'cash_sales' => 0,
+            'card_sales' => 0,
+            'gcash_sales' => 0,
             'sales_change' => 0,
             'transactions_change' => 0,
             'items_change' => 0,
@@ -105,11 +108,17 @@ function getBusinessReports($pdo) {
             $summary['total_sales'] += floatval($report['total_sales']);
             $summary['total_transactions'] += intval($report['total_transactions']);
             $summary['total_items'] += intval($report['total_items_sold']);
+            $summary['cash_sales'] += floatval($report['cash_sales']);
+            $summary['card_sales'] += floatval($report['card_sales']);
+            $summary['gcash_sales'] += floatval($report['gcash_sales']);
         }
 
         if ($summary['total_transactions'] > 0) {
             $summary['average_order'] = $summary['total_sales'] / $summary['total_transactions'];
         }
+
+        // Provide e-wallet alias for consumers expecting that key
+        $summary['ewallet_sales'] = $summary['gcash_sales'];
 
         // Calculate change percentages (compare with previous period)
         $previousPeriodSummary = getPreviousPeriodSummary($pdo, $fromDate, $toDate, $days);

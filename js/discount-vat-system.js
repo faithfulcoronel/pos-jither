@@ -3,7 +3,7 @@
  * Handles discount types, VAT calculations, and receipt formatting
  */
 
-// Global state for current discount
+// Global state for current discount (VAT handling disabled)
 let currentDiscount = {
     type: 'none',
     rate: 0,
@@ -64,18 +64,10 @@ function calculateOrderTotal() {
     const discountAmount = (subtotal * currentDiscount.rate) / 100;
     const afterDiscount = subtotal - discountAmount;
 
-    // Calculate VAT
-    let vatableAmount = 0;
-    let vatExemptAmount = 0;
-    let vatAmount = 0;
-
-    if (currentDiscount.isVatExempt) {
-        // For SC/PWD: All sales are VAT-exempt
-        vatExemptAmount = afterDiscount;
-        vatableAmount = 0;
-        vatAmount = 0;
-    }
-
+    // VAT disabled: treat everything as non-vatable
+    const vatableAmount = 0;
+    const vatExemptAmount = afterDiscount;
+    const vatAmount = 0;
     const total = afterDiscount;
 
     // Update UI
@@ -98,7 +90,7 @@ function updateOrderSummaryUI(subtotal, discountAmount, vatableAmount, vatExempt
         document.getElementById('discountLine').style.display = 'none';
     }
 
-    // Update VAT breakdown
+    // Update VAT breakdown (now always zero VAT)
     document.getElementById('orderVatableSales').textContent = vatableAmount.toFixed(2);
     document.getElementById('orderVatExempt').textContent = vatExemptAmount.toFixed(2);
     document.getElementById('orderVAT').textContent = vatAmount.toFixed(2);
@@ -139,9 +131,68 @@ function showDiscountNotification(label, rate, isVatExempt) {
  * @param {object} transaction - Transaction data
  */
 function updateReceiptDisplay(transaction) {
+    // Rebuild receipt markup to match desired slip format (once)
+    const receiptRoot = document.getElementById('receipt');
+    if (receiptRoot && !receiptRoot.dataset.customized) {
+        receiptRoot.dataset.customized = 'true';
+        receiptRoot.innerHTML = `
+            <div class="receipt-header">
+                <h4>Jowen's Kitchen Cafe</h4>
+                <p class="receipt-subtitle">Pantay Cawong, Calaca City</p>
+                <p class="receipt-subtitle">09620517657</p>
+                <p class="receipt-subtitle">ORDER SLIP</p>
+            </div>
+            <div class="receipt-divider"></div>
+            <p class="receipt-info">Date: <span id="receipt-date"></span></p>
+            <p class="receipt-info">Receipt #: <span id="receipt-ordernumber"></span></p>
+            <p class="receipt-info">Cashier: <span id="receipt-cashier"></span></p>
+            <div class="receipt-divider"></div>
+            <div id="receipt-items"></div>
+            <div class="receipt-divider"></div>
+            <div class="receipt-summary">
+                <div class="receipt-line">
+                    <span>Subtotal:</span>
+                    <span>₱<span id="receipt-subtotal">0.00</span></span>
+                </div>
+                <div class="receipt-line" id="receipt-discount-line" style="display: none;">
+                    <span>Discount (<span id="receipt-discount-label"></span>):</span>
+                    <span class="discount-text">-₱<span id="receipt-discount">0.00</span></span>
+                </div>
+            </div>
+            <div class="receipt-divider"></div>
+            <div class="receipt-total-line">
+                <span class="receipt-total-label">TOTAL:</span>
+                <span class="receipt-total-amount">₱<span id="receipt-total">0.00</span></span>
+            </div>
+            <div class="receipt-divider"></div>
+            <div class="receipt-payment" id="receipt-payment-section" style="display: none;">
+                <div class="receipt-line">
+                    <span>Payment:</span>
+                    <span id="receipt-payment-method">Cash</span>
+                </div>
+                <div class="receipt-line">
+                    <span>Tendered:</span>
+                    <span>₱<span id="receipt-tendered">0.00</span></span>
+                </div>
+                <div class="receipt-line">
+                    <span>Change:</span>
+                    <span>₱<span id="receipt-change">0.00</span></span>
+                </div>
+            </div>
+            <div class="receipt-divider"></div>
+            <div class="receipt-footer">
+                <p>Thank you for your purchase!</p>
+            </div>
+        `;
+    }
+
     // Update basic info
     document.getElementById('receipt-date').textContent = new Date(transaction.occurred_at).toLocaleString();
     document.getElementById('receipt-ordernumber').textContent = transaction.reference || 'N/A';
+    const cashierEl = document.getElementById('receipt-cashier');
+    if (cashierEl) {
+        cashierEl.textContent = transaction.cashier || (window.currentUsername || 'Cashier');
+    }
 
     // Update items
     const itemsContainer = document.getElementById('receipt-items');
@@ -163,9 +214,9 @@ function updateReceiptDisplay(transaction) {
     const subtotal = parseFloat(transaction.subtotal || 0);
     const discountAmount = parseFloat(transaction.discount_amount || 0);
     const discountType = transaction.discount_type;
-    const vatableAmount = parseFloat(transaction.vatable_amount || 0);
-    const vatExemptAmount = parseFloat(transaction.vat_exempt_amount || 0);
-    const vatAmount = parseFloat(transaction.vat_amount || 0);
+    const vatableAmount = 0;
+    const vatExemptAmount = parseFloat(transaction.total || transaction.subtotal || 0);
+    const vatAmount = 0;
     const total = parseFloat(transaction.total || 0);
 
     document.getElementById('receipt-subtotal').textContent = subtotal.toFixed(2);
@@ -185,12 +236,8 @@ function updateReceiptDisplay(transaction) {
     }
 
     // Update VAT breakdown
-    document.getElementById('receipt-vatable').textContent = vatableAmount.toFixed(2);
-    document.getElementById('receipt-vat-exempt').textContent = vatExemptAmount.toFixed(2);
-    document.getElementById('receipt-vat').textContent = vatAmount.toFixed(2);
-
-    // Update total
-    document.getElementById('receipt-total').textContent = total.toFixed(2);
+    const totalEl = document.getElementById('receipt-total');
+    if (totalEl) totalEl.textContent = total.toFixed(2);
 
     // Update payment info if available
     if (transaction.payment_method) {
@@ -229,17 +276,10 @@ function prepareTransactionData(items, paymentInfo) {
     const discountAmount = (subtotal * currentDiscount.rate) / 100;
     const afterDiscount = subtotal - discountAmount;
 
-    // Calculate VAT
-    let vatableAmount = 0;
-    let vatExemptAmount = 0;
-    let vatAmount = 0;
-
-    if (currentDiscount.isVatExempt) {
-        vatExemptAmount = afterDiscount;
-    } else {
-        vatableAmount = afterDiscount / 1.12;
-        vatAmount = vatableAmount * 0.12;
-    }
+    // VAT disabled: classify all as VAT-exempt, set VAT to zero
+    const vatableAmount = 0;
+    const vatExemptAmount = afterDiscount;
+    const vatAmount = 0;
 
     return {
         subtotal: subtotal,

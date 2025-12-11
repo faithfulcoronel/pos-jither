@@ -20,6 +20,22 @@ let currentSummary = {};
 
 function normalizeDateInput(value) {
     if (!value) return null;
+
+    // Support yyyy-mm-dd (native), mm/dd/yyyy, dd/mm/yyyy
+    const slashMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slashMatch) {
+        let month = parseInt(slashMatch[1], 10);
+        let day = parseInt(slashMatch[2], 10);
+        const year = parseInt(slashMatch[3], 10);
+
+        // If first part > 12, treat as dd/mm/yyyy
+        if (month > 12) {
+            [day, month] = [month, day];
+        }
+        const isoString = new Date(year, month - 1, day).toISOString();
+        return isoString.split('T')[0];
+    }
+
     const parsed = new Date(value);
     if (isNaN(parsed.getTime())) return null;
     return parsed.toISOString().split('T')[0];
@@ -72,8 +88,8 @@ async function loadBusinessReports() {
         const normalizedTo = normalizeDateInput(toDateInput ? toDateInput.value : null);
 
         // Update inputs to normalized format to ensure API receives yyyy-mm-dd
-        if (fromDateInput && normalizedFrom) fromDateInput.value = normalizedFrom;
-        if (toDateInput && normalizedTo) toDateInput.value = normalizedTo;
+        if (fromDateInput) fromDateInput.value = normalizedFrom || '';
+        if (toDateInput) toDateInput.value = normalizedTo || '';
 
         // If both dates are set and reversed, swap them
         if (normalizedFrom && normalizedTo && new Date(normalizedFrom) > new Date(normalizedTo)) {

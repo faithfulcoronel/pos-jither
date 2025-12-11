@@ -347,6 +347,7 @@ async function addMenuItem() {
     const priceInput = document.getElementById('newItemPrice');
     const imageInput = document.getElementById('newItemImage');
     const categorySelect = document.getElementById('newItemCategory');
+    const ingredients = (typeof productIngredients !== 'undefined') ? productIngredients : (window.productIngredients || []);
 
     const name = nameInput ? nameInput.value.trim() : '';
     const price = priceInput ? parseFloat(priceInput.value) : NaN;
@@ -354,6 +355,11 @@ async function addMenuItem() {
 
     if (!name || isNaN(price) || price < 0) {
         alert('Fill all fields correctly.');
+        return;
+    }
+
+    if (!Number.isInteger(price)) {
+        alert('Selling Price must be a whole number.');
         return;
     }
 
@@ -367,6 +373,11 @@ async function addMenuItem() {
     // Validate file type
     if (!file.type.startsWith('image/')) {
         alert('Please select a valid image file.');
+        return;
+    }
+
+    if (!ingredients || ingredients.length === 0) {
+        alert('Please add at least one recipe ingredient before saving the product.');
         return;
     }
 
@@ -391,13 +402,34 @@ async function addMenuItem() {
 
         const imageFilename = uploadResult.filename;
 
+        // Generate a predictable product ID so we can attach ingredients immediately
+        const productId = `PRD-${Date.now()}`;
+
         // Now create the product with the uploaded image filename
         await apiRequest('products', 'create', {
+            id: productId,
             name,
             price,
             image: imageFilename,
             categoryId: selectedCategory
         });
+
+        // Attach recipe ingredients to the new product
+        for (const ingredient of ingredients) {
+            await apiRequest('recipes', 'add-ingredient', {
+                product_id: productId,
+                inventory_item_id: ingredient.inventoryItemId,
+                quantity: ingredient.quantity,
+                unit: ingredient.unit,
+                notes: null
+            });
+
+            // Update inventory cost reference
+            await apiRequest('inventory-cost', 'update', {
+                inventory_item_id: ingredient.inventoryItemId,
+                cost_per_unit: ingredient.costPerUnit
+            });
+        }
 
         if (nameInput) nameInput.value = '';
         if (priceInput) priceInput.value = '';
@@ -409,6 +441,15 @@ async function addMenuItem() {
 
         displayMenuItems();
         displayMenuGallery();
+
+        // Clear ingredients after successful save
+        window.productIngredients = [];
+        if (typeof displayIngredientsList === 'function') {
+            displayIngredientsList();
+        }
+        if (typeof updateProfitabilityPreview === 'function') {
+            updateProfitabilityPreview();
+        }
     } catch (error) {
         alert(error.message || 'Unable to add the product.');
     }
@@ -719,13 +760,32 @@ function displayStaff() {
 
 function updateStaffCounts() {
     const totalCount = staffAccounts.length;
-    const activeCount = staffAccounts.filter(s => s.status === 'Active').length;
-
     const totalCountEl = document.getElementById('total-staff-count');
     const activeCountEl = document.getElementById('active-staff-count');
 
     if (totalCountEl) totalCountEl.textContent = totalCount;
-    if (activeCountEl) activeCountEl.textContent = activeCount;
+    refreshClockedInTodayCount();
+}
+
+async function refreshClockedInTodayCount() {
+    const activeCountEl = document.getElementById('active-staff-count');
+    if (!activeCountEl) return;
+
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`php/staff-timekeeping-api.php?action=get_all_records&date=${today}`);
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.records)) {
+            const count = result.records.filter(r => r.time_in).length;
+            activeCountEl.textContent = count;
+        } else {
+            activeCountEl.textContent = '0';
+        }
+    } catch (error) {
+        console.error('Failed to refresh clocked-in count:', error);
+        activeCountEl.textContent = '0';
+    }
 }
 
 async function addStaff() {
@@ -1665,23 +1725,12 @@ async function updateReceipt() {
     const discountAmount = (subtotal * discountRate) / 100;
     const afterDiscount = subtotal - discountAmount;
 
-    // Calculate VAT based on discount type
-    let vatableSales = 0;
-    let vatExemptSales = 0;
-    let vat = 0;
-    const vatRate = 0.12;
-
-    if (isVatExempt) {
-        // Senior Citizen or PWD: VAT-exempt
-        vatExemptSales = afterDiscount;
-        vatableSales = 0;
-        vat = 0;
-    } else {
-        // Regular or Athlete: 12% VAT (inclusive)
-        vatableSales = afterDiscount / (1 + vatRate);
-        vat = afterDiscount - vatableSales;
-        vatExemptSales = 0;
-    }
+    // VAT display disabled: treat all as VAT-exempt and hide breakdown
+    const vatableSales = 0;
+    const vatExemptSales = afterDiscount;
+    const vat = 0;
+    const receiptVatBlock = document.querySelector('.receipt-vat-breakdown');
+    if (receiptVatBlock) receiptVatBlock.style.display = 'none';
 
     // Show/hide discount on receipt
     const discountLine = document.getElementById('receipt-discount-line');
@@ -2334,19 +2383,21 @@ function printTransactionReceipt(transaction) {
         }
 
         const items = transaction.items || [];
+        const subtotal = parseFloat(transaction.total) || 0;
+        const tendered = parseFloat(transaction.amount_tendered || subtotal);
+        const change = parseFloat(transaction.change_amount || (tendered - subtotal));
+        const ref = transaction.reference || transaction.id || 'N/A';
+        const cashier = window.currentUsername || 'Cashier';
+        const paymentMethod = (transaction.payment_method || 'Cash').toString().toUpperCase();
+        const orderType = transaction.order_type || 'Takeout';
 
-        // Calculate totals
-        let subtotal = parseFloat(transaction.total) || 0;
-        const vatRate = 0.12;
-        const vatableSales = subtotal / (1 + vatRate);
-        const vat = subtotal - vatableSales;
+        const formatPeso = (val) => `₱${(Number(val) || 0).toFixed(2)}`;
 
-        // Create PDF
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [80, 200]
+            format: [80, 220]
         });
 
         doc.setFont('courier', 'normal');
@@ -2357,31 +2408,40 @@ function printTransactionReceipt(transaction) {
         // Header
         doc.setFontSize(12);
         doc.setFont('courier', 'bold');
-        doc.text("Jowen's Kitchen & Cafe", pageWidth / 2, y, { align: 'center' });
+        doc.text("Jowen's Kitchen Cafe", pageWidth / 2, y, { align: 'center' });
         y += lineHeight;
 
-        doc.setFontSize(8);
+        doc.setFontSize(9);
         doc.setFont('courier', 'normal');
-        doc.text('Tax Invoice / Official Receipt', pageWidth / 2, y, { align: 'center' });
+        doc.text('Pantay Cawong, Calaca City', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight;
+        doc.text('09620517657', pageWidth / 2, y, { align: 'center' });
         y += lineHeight + 2;
 
-        doc.text('================================', pageWidth / 2, y, { align: 'center' });
-        y += lineHeight;
+        doc.setFont('courier', 'bold');
+        doc.text('ORDER SLIP', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight + 2;
 
         // Receipt info
-        doc.text(`Date: ${new Date(transaction.created_at).toLocaleString()}`, 5, y);
+        doc.setFont('courier', 'normal');
+        doc.text(`Employee: ${cashier}`, 5, y);
         y += lineHeight;
-        doc.text(`Receipt #: ${transaction.reference}`, 5, y);
-        y += lineHeight;
-        doc.text(`Cashier: ${window.currentUsername || 'cashier'}`, 5, y);
+        doc.text(`POS: POS 1`, 5, y);
+        y += lineHeight + 2;
+
+        doc.text('------------------------------', pageWidth / 2, y, { align: 'center' });
         y += lineHeight;
 
-        doc.text('================================', pageWidth / 2, y, { align: 'center' });
+        doc.setFont('courier', 'bold');
+        doc.text(orderType, 5, y);
+        y += lineHeight;
+        doc.setFont('courier', 'normal');
+
+        doc.text('------------------------------', pageWidth / 2, y, { align: 'center' });
         y += lineHeight;
 
         // Items
         items.forEach(item => {
-            // Handle both API formats (name/qty/price from get-daily, product_name/quantity/unit_price from create)
             const itemName = item.name || item.product_name || 'Item';
             const itemQty = item.qty || item.quantity || 0;
             const itemPrice = item.price || item.unit_price || 0;
@@ -2397,52 +2457,39 @@ function printTransactionReceipt(transaction) {
             y += lineHeight;
         });
 
-        doc.text('--------------------------------', pageWidth / 2, y, { align: 'center' });
+        doc.text('------------------------------', pageWidth / 2, y, { align: 'center' });
         y += lineHeight;
 
         // Summary
-        doc.text('Subtotal:', 5, y);
-        doc.text(`${subtotal.toFixed(2)}`, 75, y, { align: 'right' });
-        y += lineHeight;
-
-        doc.text('================================', pageWidth / 2, y, { align: 'center' });
-        y += lineHeight;
-        doc.text('VAT Breakdown:', 5, y);
-        y += lineHeight;
-
-        doc.text('  Vatable Sales:', 5, y);
-        doc.text(`${vatableSales.toFixed(2)}`, 75, y, { align: 'right' });
-        y += lineHeight;
-
-        doc.text('  VAT-Exempt Sales:', 5, y);
-        doc.text('0.00', 75, y, { align: 'right' });
-        y += lineHeight;
-
-        doc.text('  VAT (12%):', 5, y);
-        doc.text(`${vat.toFixed(2)}`, 75, y, { align: 'right' });
-        y += lineHeight;
-
-        doc.text('================================', pageWidth / 2, y, { align: 'center' });
-        y += lineHeight;
         doc.setFont('courier', 'bold');
-        doc.setFontSize(10);
-        doc.text('TOTAL:', 5, y);
-        doc.text(`${subtotal.toFixed(2)}`, 75, y, { align: 'right' });
+        doc.setFontSize(12);
+        doc.text('Total', 5, y);
+        doc.text(formatPeso(subtotal), 75, y, { align: 'right' });
         y += lineHeight + 2;
+
+        doc.setFontSize(10);
+        doc.setFont('courier', 'normal');
+        doc.text(`Cash (${paymentMethod}):`, 5, y);
+        doc.text(formatPeso(tendered), 75, y, { align: 'right' });
+        y += lineHeight;
+        doc.text('Change:', 5, y);
+        doc.text(formatPeso(change), 75, y, { align: 'right' });
+        y += lineHeight + 4;
 
         // Footer
         doc.setFont('courier', 'normal');
-        doc.setFontSize(8);
-        doc.text('================================', pageWidth / 2, y, { align: 'center' });
-        y += lineHeight;
-        doc.text('Thank you for your purchase!', pageWidth / 2, y, { align: 'center' });
-        y += lineHeight;
-        doc.text('VAT Reg TIN: 123-456-789-000', pageWidth / 2, y, { align: 'center' });
-        y += lineHeight;
-        doc.text('Powered by Jowen\'s POS', pageWidth / 2, y, { align: 'center' });
+        doc.setFontSize(9);
+        doc.text('Thank you!!!', pageWidth / 2, y, { align: 'center' });
+        y += lineHeight + 2;
+
+        const dateStr = transaction.created_at
+            ? new Date(transaction.created_at).toLocaleString()
+            : new Date().toLocaleString();
+        doc.text(dateStr, 5, y);
+        doc.text(`#${ref}`, 75, y, { align: 'right' });
 
         // Save PDF
-        doc.save(`Receipt_${transaction.reference}_Reprint.pdf`);
+        doc.save(`Receipt_${ref}_Reprint.pdf`);
 
     } catch (error) {
         console.error('Error printing transaction receipt:', error);
@@ -2719,17 +2766,6 @@ async function generateZRead() {
         alert('Z-Read report generated successfully!\n\nNote: In a production system, daily counters would be reset after this report.');
     } catch (error) {
         alert('Failed to generate Z-Read report: ' + error.message);
-    }
-}
-
-// Add to cashier navigation
-function addReturnRefundButton() {
-    const orderContent = document.getElementById('order-content');
-    if (orderContent && !document.getElementById('refund-btn')) {
-        const buttonDiv = document.createElement('div');
-        buttonDiv.style.marginTop = '20px';
-        buttonDiv.innerHTML = '<button id="refund-btn" onclick="showReturnRefundDialog()" style="background: #d94841;">🔄 Return/Refund</button>';
-        orderContent.appendChild(buttonDiv);
     }
 }
 
@@ -3588,7 +3624,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initAutomation();
     } else if (currentUserRole === 'cashier') {
         showCashierContent('order');
-        addReturnRefundButton();
+
     }
 });
 
@@ -4381,6 +4417,11 @@ async function updateProduct() {
         return;
     }
 
+    if (!Number.isInteger(price)) {
+        alert('Selling Price must be a whole number.');
+        return;
+    }
+
     try {
         let imageFilename = product.image;
 
@@ -4498,3 +4539,4 @@ async function updateProduct() {
         alert('Failed to update product: ' + error.message);
     }
 }
+

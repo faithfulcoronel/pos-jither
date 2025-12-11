@@ -1120,6 +1120,11 @@ textarea:focus {
   justify-content: center;
 }
 
+/* Hide VAT breakdown on receipt */
+.receipt-vat-breakdown {
+  display: none !important;
+}
+
 /* Lists & receipts */
 #orderList,
 #transactionList {
@@ -2023,3 +2028,201 @@ textarea:focus {
     border: none;
   }
 }
+
+/* ============================================
+   Manager Home Dashboard (purple theme)
+   ============================================ */
+.home-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.home-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(135deg, #f4f3ff, #ffffff);
+  border: 1px solid #ede9fe;
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.12);
+}
+
+.home-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  margin: 0 0 6px;
+}
+
+.home-title {
+  margin: 0;
+  font-size: 28px;
+  color: #1f2937;
+}
+
+.home-subtitle {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.home-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.home-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.home-filter label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.home-filter input {
+  min-width: 180px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.home-refresh {
+  padding: 11px 18px;
+  background: linear-gradient(135deg, #6b5bff, #8a7bff);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  box-shadow: 0 10px 20px rgba(107, 91, 255, 0.2);
+  cursor: pointer;
+}
+
+.home-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.home-kpi-card {
+  background: #fff;
+  border: 1px solid #ede9fe;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
+  display: grid;
+  gap: 4px;
+}
+
+.home-kpi-icon {
+  font-size: 18px;
+}
+
+.home-kpi-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.02em;
+}
+
+.home-kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.home-card {
+  background: #fff;
+  border: 1px solid #ede9fe;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.05);
+}
+
+.home-card.wide {
+  grid-column: span 2;
+}
+
+.home-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.home-card-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.home-card h3 {
+  margin: 2px 0 0;
+  color: #1f2937;
+}
+
+.home-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.legend-dot.purple {
+  background: #5b4bff;
+}
+
+.legend-dot.purple-light {
+  background: #9aa6ff;
+}
+
+.home-top-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+}
+
+.home-top-table th,
+.home-top-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+}
+
+.home-top-table th {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.home-top-table td {
+  color: #1f2937;
+}
+
