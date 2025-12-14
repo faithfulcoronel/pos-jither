@@ -13,7 +13,7 @@ function sampleHomeData() {
     const categories = ['Coffee', 'Food', 'Beverages', 'Desserts', 'Others'];
     const payments = ['Cash', 'Card', 'GCash'];
     return {
-        kpis: { revenue: 4100000, profit: 1240000, orders: 17800, aov: 230 },
+        kpis: { revenue: 4100000, profit: 1240000, cashFlow: 1500000, aov: 230 },
         trend: months.map((m, i) => ({ label: m, revenue: 170000 + i * 15000 + Math.random() * 25000 })),
         revenueOrders: months.map((m, i) => ({ label: m, revenue: 180000 + i * 12000, orders: 1100 + i * 90 })),
         branchPerformance: [],
@@ -46,9 +46,13 @@ async function fetchHomeData() {
         const start = normalize(document.getElementById('home-start-date')?.value || '');
         const end = normalize(document.getElementById('home-end-date')?.value || '');
         const params = new URLSearchParams();
-        if (start) params.append('start_date', start);
-        if (end) params.append('end_date', end);
-        params.append('date_range', 'month');
+        // If either date is provided, respect the explicit range (dup whichever is missing)
+        if (start || end) {
+            params.append('start_date', start || end);
+            params.append('end_date', end || start);
+        } else {
+            params.append('date_range', 'month');
+        }
 
         const [
             summaryRes,
@@ -67,10 +71,12 @@ async function fetchHomeData() {
             fetch(`php/sales-analytics-api.php?action=get_heatmap&${params}`).then(r => r.json()),
             fetch(`php/sales-analytics-api.php?action=get_time_period_comparison&${params}`).then(r => r.json()),
             fetch(`php/business-reports-api.php?action=get_reports&${params}`).then(r => r.json()),
-            fetch('php/api.php?resource=inventory-with-cost').then(r => r.json())
+            fetch(`php/api.php?resource=inventory-expenses&${params}`).then(r => r.json())
         ]);
 
         const summary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : (summaryRes.success ? summaryRes.data : {});
+        const revenue = Number(summary.total_sales || 0);
+        const netSales = Number(summary.net_sales ?? (revenue - Number(summary.total_discount || 0)));
         const trend = (trendRes.success ? trendRes.data : []).map(t => ({
             label: t.period || t.label || t.date || '',
             revenue: parseFloat(t.sales || 0),
@@ -101,22 +107,18 @@ async function fetchHomeData() {
             orders: parseInt(d.orders || d.transactions || 0)
         }));
 
-        // Expenses from inventory
-        homeExpenses = 0;
-        if (inventoryRes.success) {
-            const items = inventoryRes.data.inventory || [];
-            homeExpenses = items.reduce((sum, item) => {
-                const qty = Number(item.qty ?? item.quantity ?? 0);
-                const cost = Number(item.costPerUnit ?? item.cost_per_unit ?? 0);
-                return sum + qty * cost;
-            }, 0);
-        }
+        // Expenses based on stock deductions
+        homeExpenses = inventoryRes.success ? Number(inventoryRes.data.total_expense || 0) : 0;
+
+        // Profit = Revenue - Total Expenses
+        const profit = revenue - homeExpenses;
+        const cashFlow = netSales; // keep cash flow as net sales for now
 
         homeData = {
             kpis: {
-                revenue: summary.total_sales || 0,
-                profit: homeExpenses - (summary.total_sales || 0), // Expenses - Revenue
-                orders: summary.total_transactions || 0,
+                revenue,
+                profit,
+                cashFlow,
                 aov: summary.average_order || summary.avg_order_value || 0
             },
             trend,
@@ -165,12 +167,12 @@ function updateHomeKPIs() {
     };
     set('home-kpi-revenue', formatCurrency(k.revenue));
     set('home-kpi-profit', formatCurrency(k.profit));
-    set('home-kpi-orders', k.orders.toLocaleString());
+    set('home-kpi-cashflow', formatCurrency(k.cashFlow));
     set('home-kpi-aov', formatCurrency(k.aov));
 
     set('home-kpi-revenue-change', '');
     set('home-kpi-profit-change', '');
-    set('home-kpi-orders-change', '');
+    set('home-kpi-cashflow-change', '');
     set('home-kpi-aov-change', '');
 }
 

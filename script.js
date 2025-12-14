@@ -1236,6 +1236,12 @@ function showManagerContent(id) {
             initializeSalesDashboard();
         }
     }
+    if (id === 'reports') {
+        // Initialize Business Reports (charts, table, narrative)
+        if (typeof initializeBusinessReports === 'function') {
+            initializeBusinessReports();
+        }
+    }
     if (id === 'recipe-management') {
         // Initialize recipe management
         if (typeof showRecipeManagement === 'function') {
@@ -4539,4 +4545,3 @@ async function updateProduct() {
         alert('Failed to update product: ' + error.message);
     }
 }
-

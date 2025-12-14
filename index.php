@@ -360,7 +360,7 @@ $currentUsername = $_SESSION['username'] ?? '';
                                     <div>
                                         <p class="home-eyebrow">Welcome Admin</p>
                                         <h1 class="home-title">Manager Overview</h1>
-                                        <p class="home-subtitle">Track revenue, returns, cash flow, and top products at a glance.</p>
+                                        <p class="home-subtitle">Track revenue, profit, cash flow, and top products at a glance.</p>
                                     </div>
                                     <div class="home-filters">
                                         <div class="home-filter">
@@ -383,13 +383,13 @@ $currentUsername = $_SESSION['username'] ?? '';
                                     </div>
                                     <div class="home-kpi-card">
                                         <div class="home-kpi-icon">??</div>
-                                        <div class="home-kpi-label">Returns</div>
-                                        <div class="home-kpi-value" id="home-kpi-orders">0</div>
+                                        <div class="home-kpi-label">Profit</div>
+                                        <div class="home-kpi-value" id="home-kpi-profit">?0</div>
                                     </div>
                                     <div class="home-kpi-card">
                                         <div class="home-kpi-icon">??</div>
                                         <div class="home-kpi-label">Cash Flow</div>
-                                        <div class="home-kpi-value" id="home-kpi-profit">?0</div>
+                                        <div class="home-kpi-value" id="home-kpi-cashflow">?0</div>
                                     </div>
                                     <div class="home-kpi-card">
                                         <div class="home-kpi-icon">??</div>
@@ -1863,4 +1863,3 @@ $currentUsername = $_SESSION['username'] ?? '';
     <script defer src="js/business-reports.js"></script>
 </body>
 </html>
-

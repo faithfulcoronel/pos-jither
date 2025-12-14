@@ -107,9 +107,12 @@ async function loadBusinessReports() {
         // Build query parameters
         const params = new URLSearchParams();
 
-        if (currentReportsFilter.fromDate && currentReportsFilter.toDate) {
-            params.append('from_date', currentReportsFilter.fromDate);
-            params.append('to_date', currentReportsFilter.toDate);
+        // Always honor user-selected range; if only one date is provided, use it for both ends
+        if (currentReportsFilter.fromDate || currentReportsFilter.toDate) {
+            const from = currentReportsFilter.fromDate || currentReportsFilter.toDate;
+            const to = currentReportsFilter.toDate || currentReportsFilter.fromDate;
+            params.append('from_date', from);
+            params.append('to_date', to);
         } else {
             params.append('days', currentReportsFilter.period);
         }
@@ -177,7 +180,7 @@ function renderDetailedReportNarrative() {
     const s = detailedInsights.salesSummary || {};
     const d = detailedInsights.todaySummary || {};
     const expenses = currentExpenses || 0;
-    const profit = expenses - (s.total_sales || 0);
+    const profit = (s.total_sales || 0) - expenses;
 
     const sections = [
         `Executive Summary\nRevenue ${formatCurrency(s.total_sales || 0)}; Net Sales ${formatCurrency(s.net_sales || s.total_sales || 0)}; Orders ${formatNumber(s.total_transactions || 0)}; AOV ${formatCurrency(s.avg_order_value || 0)}; Profit ${formatCurrency(profit)}.`,
@@ -220,7 +223,7 @@ function updateReportsSummary(summary) {
     const expensesEl = document.getElementById('reports-total-expenses');
     const profitEl = document.getElementById('reports-total-profit');
     if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
-    if (profitEl) profitEl.textContent = formatCurrency(currentExpenses - (summary.total_sales || 0));
+    if (profitEl) profitEl.textContent = formatCurrency((summary.total_sales || 0) - currentExpenses);
 }
 
 /**
@@ -309,18 +312,17 @@ function downloadDetailedReport() {
  */
 async function loadInventoryExpensesAndProfit() {
     try {
-        const response = await fetch('php/api.php?resource=inventory-with-cost');
-        const result = await response.json();
-        if (result.success) {
-            const items = result.data.inventory || [];
-            currentExpenses = items.reduce((sum, item) => {
-                const qty = Number(item.qty ?? item.quantity ?? 0);
-                const cost = Number(item.costPerUnit ?? item.cost_per_unit ?? 0);
-                return sum + qty * cost;
-            }, 0);
+        const params = new URLSearchParams();
+        if (currentReportsFilter.fromDate && currentReportsFilter.toDate) {
+            params.append('start_date', currentReportsFilter.fromDate);
+            params.append('end_date', currentReportsFilter.toDate);
         } else {
-            currentExpenses = 0;
+            params.append('days', currentReportsFilter.period || 30);
         }
+
+        const response = await fetch(`php/api.php?resource=inventory-expenses&${params}`);
+        const result = await response.json();
+        currentExpenses = result.success ? Number(result.data.total_expense || 0) : 0;
     } catch (error) {
         console.error('Error loading inventory expenses:', error);
         currentExpenses = 0;
@@ -329,7 +331,7 @@ async function loadInventoryExpensesAndProfit() {
     const expensesEl = document.getElementById('reports-total-expenses');
     const profitEl = document.getElementById('reports-total-profit');
     const totalSales = currentSummary.total_sales || (businessReportsData || []).reduce((sum, r) => sum + (parseFloat(r.total_sales) || 0), 0);
-    const profit = currentExpenses - totalSales;
+    const profit = totalSales - currentExpenses;
     if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
     if (profitEl) profitEl.textContent = formatCurrency(profit);
 }
@@ -879,17 +881,18 @@ function renderAverageOrderValueChart() {
     });
 }
 
-// Auto-initialize when in business reports section
+// Auto-initialize when in business reports section (correct container id: reports-content)
 document.addEventListener('DOMContentLoaded', function() {
-    const reportContent = document.getElementById('report-content');
-    if (reportContent && !reportContent.classList.contains('hidden')) {
+    const reportsContent = document.getElementById('reports-content');
+    if (reportsContent && !reportsContent.classList.contains('hidden')) {
         initializeBusinessReports();
     }
 });
 
 // Also initialize when switching to reports tab
 document.addEventListener('click', function(e) {
-    if (e.target.closest('[onclick*="report"]')) {
+    const button = e.target.closest('[onclick*="report"]');
+    if (button) {
         setTimeout(initializeBusinessReports, 100);
     }
 });

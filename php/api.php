@@ -199,6 +199,24 @@ try {
                     sendSuccess(['inventory' => $inventory]);
                     break;
 
+                case 'inventory-expenses':
+                    $start = $_GET['start_date'] ?? ($_GET['from_date'] ?? null);
+                    $end = $_GET['end_date'] ?? ($_GET['to_date'] ?? null);
+                    $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
+                    $expenses = calculateInventoryExpenses($pdo, $start ?: null, $end ?: null, $days);
+                    sendSuccess(['total_expense' => $expenses]);
+                    break;
+
+                case 'stock-movements':
+                    if ($action === 'get-all' || $action === '') {
+                        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 200;
+                        $movements = fetchStockMovements($pdo, $limit);
+                        sendSuccess($movements);
+                    } else {
+                        sendError('Unsupported action for stock-movements.', 400);
+                    }
+                    break;
+
                 case 'products-with-profitability':
                     $products = fetchProductsWithProfitability($pdo);
                     sendSuccess(['products' => $products]);

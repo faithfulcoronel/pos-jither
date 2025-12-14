@@ -581,6 +581,132 @@ function fetchInventoryItemsWithCost(PDO $pdo): array
     return $inventory;
 }
 
+/**
+ * Calculate inventory expenses based on stock deductions within a date range
+ *
+ * Expenses are computed from outbound movements (sales/adjustments/waste/transfer),
+ * multiplying deducted quantity by the item's cost per unit.
+ */
+function calculateInventoryExpenses(PDO $pdo, ?string $startDate = null, ?string $endDate = null, int $days = 30): float
+{
+    $where = [];
+    $params = [];
+
+    if ($startDate && $endDate) {
+        $where[] = 'DATE(sm.created_at) BETWEEN ? AND ?';
+        $params[] = $startDate;
+        $params[] = $endDate;
+    } else {
+        $where[] = 'sm.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)';
+        $params[] = max(1, $days);
+    }
+
+    // Outbound movements only
+    $where[] = "sm.movement_type IN ('sale', 'adjustment', 'waste', 'transfer')";
+
+    $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    $sql = "
+        SELECT
+            SUM(
+                (
+                    CASE
+                        WHEN sm.previous_quantity IS NOT NULL
+                             AND sm.new_quantity IS NOT NULL
+                             AND sm.new_quantity < sm.previous_quantity
+                        THEN sm.previous_quantity - sm.new_quantity
+                        WHEN sm.quantity IS NOT NULL AND sm.quantity > 0
+                        THEN sm.quantity
+                        ELSE 0
+                    END
+                ) * COALESCE(ii.cost_per_unit, 0)
+            ) AS total_expense
+        FROM stock_movements sm
+        JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        $whereClause
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return (float)($row['total_expense'] ?? 0);
+}
+
+/**
+ * Fetch recent stock movements with signed quantity change
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function fetchStockMovements(PDO $pdo, int $limit = 200): array
+{
+    // Keep sensible bounds to avoid returning an excessive payload
+    $limit = max(1, min($limit, 500));
+
+    $statement = $pdo->prepare('
+        SELECT
+            sm.id,
+            sm.inventory_item_id,
+            ii.item AS inventory_item_name,
+            ii.unit AS inventory_unit,
+            sm.movement_type,
+            sm.quantity,
+            sm.previous_quantity,
+            sm.new_quantity,
+            sm.reference_type,
+            sm.reference_id,
+            sm.notes,
+            sm.created_by,
+            sm.created_at
+        FROM stock_movements sm
+        LEFT JOIN inventory_items ii ON sm.inventory_item_id = ii.id
+        ORDER BY sm.created_at DESC, sm.id DESC
+        LIMIT :limit
+    ');
+    $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+
+    $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+    $movements = [];
+
+    foreach ($rows as $row) {
+        $previousQty = isset($row['previous_quantity']) && is_numeric($row['previous_quantity'])
+            ? (float)$row['previous_quantity']
+            : null;
+        $newQty = isset($row['new_quantity']) && is_numeric($row['new_quantity'])
+            ? (float)$row['new_quantity']
+            : null;
+        $loggedQty = isset($row['quantity']) && is_numeric($row['quantity'])
+            ? (float)$row['quantity']
+            : 0.0;
+
+        // Prefer the actual delta between the before/after quantities so outflows show as negative
+        $netChange = ($previousQty !== null && $newQty !== null)
+            ? $newQty - $previousQty
+            : $loggedQty;
+
+        $movements[] = [
+            'id' => isset($row['id']) ? (int)$row['id'] : null,
+            'inventoryItemId' => isset($row['inventory_item_id']) ? (int)$row['inventory_item_id'] : null,
+            'inventoryItemName' => $row['inventory_item_name'] ?? 'Item',
+            'unit' => $row['inventory_unit'] ?? '',
+            'movementType' => $row['movement_type'] ?? 'adjustment',
+            'quantity' => $netChange,
+            'absoluteQuantity' => $loggedQty,
+            'previousQuantity' => $previousQty ?? 0.0,
+            'currentQuantity' => $newQty ?? ($previousQty !== null ? $previousQty + $loggedQty : $loggedQty),
+            'referenceType' => $row['reference_type'] ?? '',
+            'referenceId' => isset($row['reference_id']) ? (int)$row['reference_id'] : null,
+            'notes' => $row['notes'] ?? '',
+            'createdBy' => isset($row['created_by']) ? (int)$row['created_by'] : null,
+            'createdAt' => $row['created_at'] ?? null,
+            'direction' => $netChange >= 0 ? 'inflow' : 'outflow',
+        ];
+    }
+
+    return $movements;
+}
+
 // ============================================================================
 // ENHANCED PRODUCT FETCH WITH COST DATA
 // ============================================================================
