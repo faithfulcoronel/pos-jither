@@ -4,7 +4,7 @@
  * Optimized for tablets and desktop
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
 :root {
     /* Color Palette - Coffee Shop Theme */
@@ -69,7 +69,7 @@
     background: var(--staff-bg);
     min-height: 100vh;
     padding: var(--staff-space-xl);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Poppins', sans-serif;
 }
 
 /* Header */
@@ -276,7 +276,7 @@
     color: var(--staff-gray-800);
     background: var(--staff-white);
     transition: all var(--staff-transition-base);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
 }
 
 .staff-input:focus {
@@ -333,7 +333,7 @@
     transition: all var(--staff-transition-base);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
 }
 
 .staff-btn-primary {
@@ -463,7 +463,7 @@
     color: var(--staff-gray-800);
     cursor: pointer;
     transition: all var(--staff-transition-base);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
     box-shadow: var(--staff-shadow-sm);
 }
 
@@ -601,7 +601,7 @@
     font-weight: 800;
     color: var(--staff-gold-dark);
     letter-spacing: 1.5px;
-    font-family: 'Courier New', monospace;
+    font-family: 'Poppins', sans-serif;
     text-transform: uppercase;
 }
 
@@ -716,7 +716,7 @@
     background: var(--staff-gray-50);
     border: 1px solid var(--staff-gray-200);
     border-radius: 6px;
-    font-family: 'Courier New', monospace;
+    font-family: 'Poppins', sans-serif;
     font-size: 13px;
     font-weight: 600;
     color: var(--staff-gray-700);

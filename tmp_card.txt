@@ -1,0 +1,7 @@
+<div class="sales-kpi-card">
+                                            <div class="sales-kpi-header">
+                                                <span class="sales-kpi-title">Total Sales</span>
+                                                <span class="sales-kpi-icon">&bull;</span>
+                                            </div>
+                                            <h2 class="sales-kpi-value" id="total-sales-value">ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â±0.00</h2>
+                    

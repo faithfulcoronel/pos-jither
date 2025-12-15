@@ -4,7 +4,7 @@
  * Optimized for charts, graphs, and data visualization
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
 :root {
     /* Color Palette - Coffee Shop Sales Theme */
@@ -62,7 +62,7 @@
 .sales-dashboard {
     background: var(--sales-bg);
     padding: var(--sales-space-xl);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Poppins', sans-serif;
     min-height: calc(100vh - 60px);
 }
 
@@ -222,7 +222,7 @@
     color: var(--sales-gray-800);
     background: var(--sales-white);
     transition: all 0.2s;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
 }
 
 .sales-filter-select:focus,

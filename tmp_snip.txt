@@ -1,0 +1,6 @@
+sales-filter-group">
+                                            <label class="sales-filter-label">📅 Select Date</label>
+                                            <input type="date" id="sales-date-filter" class="sales-filter-input sales-date-picker" onchange="updateFiltersFromDate()">
+                                        </div>
+
+                                        <div class="sales-fil

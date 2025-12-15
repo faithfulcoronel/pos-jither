@@ -4,47 +4,47 @@
  * Optimized for Tablets and Touchscreens
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
 :root {
-    /* Modern POS Color Palette - Coffee Shop Theme */
-    --pos-espresso: #2C1810;
-    --pos-dark-brown: #3E2723;
-    --pos-brown: #5D4037;
-    --pos-caramel: #A67C52;
-    --pos-latte: #C8B5A0;
-    --pos-cream: #F5F1ED;
-    --pos-white: #FFFFFF;
-    --pos-black: #1A1A1A;
+    /* Coffee Shop Theme - Fixed Palette */
+    --pos-espresso: #A67B5B;   /* Primary */
+    --pos-dark-brown: #8B5A2B; /* Accent / Active */
+    --pos-brown: #C8A165;      /* Secondary (Latte Gold) */
+    --pos-caramel: #C8A165;
+    --pos-latte: #F7F3EE;      /* Background */
+    --pos-cream: #F7F3EE;
+    --pos-white: #FFFFFF;      /* Card / Panel */
+    --pos-black: #2E2E2E;      /* Text primary */
 
-    /* Accent Colors */
-    --pos-gold: #D4A574;
-    --pos-copper: #B87333;
-    --pos-amber: #FFB74D;
+    /* Accent Colors (kept within palette) */
+    --pos-gold: #C8A165;
+    --pos-copper: #8B5A2B;
+    --pos-amber: #A67B5B;
 
     /* Functional Colors - Modern & Vibrant */
-    --pos-success: #10B981;
-    --pos-success-light: #D1FAE5;
-    --pos-success-dark: #059669;
-    --pos-danger: #EF4444;
-    --pos-danger-light: #FEE2E2;
-    --pos-danger-dark: #DC2626;
-    --pos-warning: #F59E0B;
-    --pos-warning-light: #FEF3C7;
-    --pos-info: #3B82F6;
-    --pos-info-light: #DBEAFE;
+    --pos-success: #4CAF50;
+    --pos-success-light: #E3F4E4;
+    --pos-success-dark: #3D8C41;
+    --pos-danger: #E53935;
+    --pos-danger-light: #F9D6D5;
+    --pos-danger-dark: #C62828;
+    --pos-warning: #C8A165;
+    --pos-warning-light: #F1E3CF;
+    --pos-info: #8B5A2B;
+    --pos-info-light: #E9DFD4;
 
     /* Neutral Grays */
-    --pos-gray-50: #F9FAFB;
-    --pos-gray-100: #F3F4F6;
-    --pos-gray-200: #E5E7EB;
-    --pos-gray-300: #D1D5DB;
-    --pos-gray-400: #9CA3AF;
-    --pos-gray-500: #6B7280;
-    --pos-gray-600: #4B5563;
-    --pos-gray-700: #374151;
-    --pos-gray-800: #1F2937;
-    --pos-gray-900: #111827;
+    --pos-gray-50: #F7F3EE;
+    --pos-gray-100: #F0E8DF;
+    --pos-gray-200: #E5DACF;
+    --pos-gray-300: #D8C8B8;
+    --pos-gray-400: #CBB8A6;
+    --pos-gray-500: #B39B82;
+    --pos-gray-600: #8B5A2B;
+    --pos-gray-700: #6B4A32;
+    --pos-gray-800: #4A3B2C;
+    --pos-gray-900: #2E2E2E;
 
     /* POS-Specific Shadows - Crisp & Modern */
     --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -85,7 +85,7 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Poppins', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }

@@ -818,10 +818,16 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         <div class="reports-filter-group">
                                             <label class="reports-filter-label">📅 Date Range</label>
                                             <select id="reports-period-filter" class="reports-filter-select" onchange="loadBusinessReports()">
+                                                <option value="day">Today</option>
+                                                <option value="week">This Week</option>
+                                                <option value="month" selected>This Month</option>
+                                                <option value="quarter">This Quarter</option>
+                                                <option value="year">This Year</option>
                                                 <option value="7">Last 7 Days</option>
-                                                <option value="30" selected>Last 30 Days</option>
+                                                <option value="30">Last 30 Days</option>
                                                 <option value="90">Last 90 Days</option>
                                                 <option value="365">Last Year</option>
+                                                <option value="custom">Custom Range</option>
                                             </select>
                                         </div>
 
@@ -1179,17 +1185,6 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         <div class="sales-filter-group">
                                             <label class="sales-filter-label">📅 Select Date</label>
                                             <input type="date" id="sales-date-filter" class="sales-filter-input sales-date-picker" onchange="updateFiltersFromDate()">
-                                        </div>
-
-                                        <div class="sales-filter-group">
-                                            <label class="sales-filter-label">Date Range</label>
-                                            <select id="sales-range-filter" class="sales-filter-select" onchange="updateDateRange()">
-                                                <option value="day">Single Day</option>
-                                                <option value="week">Week</option>
-                                                <option value="month" selected>Month</option>
-                                                <option value="quarter">Quarter</option>
-                                                <option value="year">Year</option>
-                                            </select>
                                         </div>
 
                                         <div class="sales-filter-group">

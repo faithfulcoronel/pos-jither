@@ -13,6 +13,26 @@ let currentFilters = {
 };
 
 /**
+ * Helpers to work with local dates (avoid timezone shifts from toISOString/new Date(string))
+ */
+function formatDateForInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseInputDate(value) {
+    const [year, month, day] = value.split('-').map(Number);
+    if ([year, month, day].some(num => Number.isNaN(num))) return null;
+    return new Date(year, month - 1, day);
+}
+
+function normalizeDate(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/**
  * Initialize Sales Dashboard
  */
 function initializeSalesDashboard() {
@@ -28,8 +48,8 @@ function setupEventListeners() {
     // Initialize date picker with current date
     const datePicker = document.getElementById('sales-date-filter');
     if (datePicker) {
-        const today = new Date();
-        datePicker.value = today.toISOString().split('T')[0];
+        const today = normalizeDate(new Date());
+        datePicker.value = formatDateForInput(today);
         currentFilters.selectedDate = today;
 
         // Apply "This Month" as default
@@ -45,7 +65,12 @@ function updateFiltersFromDate() {
     const rangeFilter = document.getElementById('sales-range-filter');
 
     if (datePicker && datePicker.value) {
-        currentFilters.selectedDate = new Date(datePicker.value);
+        const parsedDate = parseInputDate(datePicker.value);
+        if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+            return;
+        }
+
+        currentFilters.selectedDate = parsedDate;
         currentFilters.dateRange = rangeFilter ? rangeFilter.value : 'month';
 
         // Calculate date range based on selected date and range type
@@ -86,8 +111,8 @@ function applyQuickFilter(value) {
 
     if (!filterValue) return;
 
-    const today = new Date();
-    let targetDate = new Date();
+    const today = normalizeDate(new Date());
+    let targetDate = normalizeDate(new Date());
     let range = 'month';
 
     switch(filterValue) {
@@ -96,7 +121,7 @@ function applyQuickFilter(value) {
             range = 'day';
             break;
         case 'yesterday':
-            targetDate = new Date(today);
+            targetDate = normalizeDate(new Date(today));
             targetDate.setDate(today.getDate() - 1);
             range = 'day';
             break;
@@ -129,7 +154,7 @@ function applyQuickFilter(value) {
 
     // Update UI
     if (datePicker) {
-        datePicker.value = targetDate.toISOString().split('T')[0];
+        datePicker.value = formatDateForInput(targetDate);
     }
     if (rangeFilter) {
         rangeFilter.value = range;
@@ -202,7 +227,7 @@ async function loadSalesData() {
 
         // Format dates for API
         const formatDate = (date) => {
-            return date.toISOString().split('T')[0];
+            return formatDateForInput(date);
         };
 
         // Fetch real data from API with date range

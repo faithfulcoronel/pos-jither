@@ -46,13 +46,30 @@ async function fetchHomeData() {
         const start = normalize(document.getElementById('home-start-date')?.value || '');
         const end = normalize(document.getElementById('home-end-date')?.value || '');
         const params = new URLSearchParams();
-        // If either date is provided, respect the explicit range (dup whichever is missing)
-        if (start || end) {
-            params.append('start_date', start || end);
-            params.append('end_date', end || start);
+        const todayISO = new Date().toISOString().split('T')[0];
+
+        // Prefer explicit dates; default to today if none provided. Mirror single date to both ends.
+        let startDate = start;
+        let endDate = end;
+        if (!startDate && !endDate) {
+            startDate = todayISO;
+            endDate = todayISO;
+        } else if (startDate && !endDate) {
+            endDate = startDate;
+        } else if (!startDate && endDate) {
+            startDate = endDate;
+        }
+
+        if (startDate && endDate) {
+            params.append('start_date', startDate);
+            params.append('end_date', endDate);
+            params.append('from_date', startDate);
+            params.append('to_date', endDate);
         } else {
             params.append('date_range', 'month');
         }
+
+        const usingCustomRange = !!(startDate || endDate);
 
         const [
             summaryRes,
@@ -74,19 +91,20 @@ async function fetchHomeData() {
             fetch(`php/api.php?resource=inventory-expenses&${params}`).then(r => r.json())
         ]);
 
-        const summary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : (summaryRes.success ? summaryRes.data : {});
+        const summary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : {};
+        const reportRows = (reportsRes.success && Array.isArray(reportsRes.reports)) ? reportsRes.reports : [];
         const revenue = Number(summary.total_sales || 0);
         const netSales = Number(summary.net_sales ?? (revenue - Number(summary.total_discount || 0)));
-        const trend = (trendRes.success ? trendRes.data : []).map(t => ({
+        let trend = (trendRes.success ? trendRes.data : []).map(t => ({
             label: t.period || t.label || t.date || '',
             revenue: parseFloat(t.sales || 0),
             orders: parseInt(t.orders || t.transactions || 0)
         }));
-        const categories = (categoryRes.success ? categoryRes.data : []).map(c => ({
+        let categories = (categoryRes.success ? categoryRes.data : []).map(c => ({
             category: c.category || 'Uncategorized',
             revenue: parseFloat(c.sales || 0)
         }));
-        const topItems = (bestRes.success ? bestRes.data : []).map(i => ({
+        let topItems = (bestRes.success ? bestRes.data : []).map(i => ({
             name: i.product_name || i.product || 'Item',
             revenue: parseFloat(i.revenue || 0)
         })).slice(0, 10);
@@ -101,17 +119,34 @@ async function fetchHomeData() {
             peakHours.sort((a, b) => b.revenue - a.revenue);
         }
 
-        const weekly = (timeRes.success ? timeRes.data : []).map(d => ({
+        let weekly = (timeRes.success ? timeRes.data : []).map(d => ({
             day: d.label || d.period || '',
             revenue: parseFloat(d.sales || 0),
             orders: parseInt(d.orders || d.transactions || 0)
         }));
 
+        // If business reports are available but trend is empty, aggregate report rows to keep charts aligned
+        if (!trend.length && reportRows.length) {
+            const monthAgg = {};
+            reportRows.forEach(r => {
+                if (!r.report_date) return;
+                const d = new Date(r.report_date);
+                if (isNaN(d.getTime())) return;
+                const key = d.toLocaleString('en-US', { month: 'short' });
+                if (!monthAgg[key]) monthAgg[key] = { revenue: 0, orders: 0, idx: d.getMonth() };
+                monthAgg[key].revenue += parseFloat(r.total_sales || 0);
+                monthAgg[key].orders += parseInt(r.total_transactions || 0);
+            });
+            trend = Object.entries(monthAgg)
+                .sort((a, b) => a[1].idx - b[1].idx)
+                .map(([label, val]) => ({ label, revenue: val.revenue, orders: val.orders }));
+        }
+
         // Expenses based on stock deductions
         homeExpenses = inventoryRes.success ? Number(inventoryRes.data.total_expense || 0) : 0;
 
-        // Profit = Revenue - Total Expenses
-        const profit = revenue - homeExpenses;
+        // Profit = Expenses - Total Sales (per latest requirement)
+        const profit = homeExpenses - revenue;
         const cashFlow = netSales; // keep cash flow as net sales for now
 
         homeData = {
@@ -132,7 +167,7 @@ async function fetchHomeData() {
             paymentMethods: [
                 { method: 'Cash', share: summary.cash_sales ? (summary.cash_sales / (summary.total_sales || 1)) : 0 },
                 { method: 'Card', share: summary.card_sales ? (summary.card_sales / (summary.total_sales || 1)) : 0 },
-                { method: 'e-Wallet', share: summary.ewallet_sales ? (summary.ewallet_sales / (summary.total_sales || 1)) : 0 }
+                { method: 'GCash', share: summary.ewallet_sales ? (summary.ewallet_sales / (summary.total_sales || 1)) : 0 }
             ],
             retention: weekly.map(d => ({ label: d.day, returning: 50 + Math.random() * 10, new: 50 - Math.random() * 10 }))
         };
@@ -143,6 +178,12 @@ async function fetchHomeData() {
 }
 
 function initializeHomeDashboard() {
+    const todayISO = new Date().toISOString().split('T')[0];
+    const fromInput = document.getElementById('home-start-date');
+    const toInput = document.getElementById('home-end-date');
+    if (fromInput && !fromInput.value) fromInput.value = todayISO;
+    if (toInput && !toInput.value) toInput.value = todayISO;
+
     fetchHomeData().then(() => {
         updateHomeKPIs();
         renderHomeCharts();
@@ -408,17 +449,9 @@ function baseDoughnutOptions(format = 'currency') {
 }
 
 function currencyTick(value) {
-    return '₱' + value.toLocaleString('en-PH', { maximumFractionDigits: 0 });
+    return '\u20B1' + value.toLocaleString('en-PH', { maximumFractionDigits: 0 });
 }
 
 function formatCurrency(value) {
-    return '₱' + Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+    return '\u20B1' + Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 });
 }
-
-// Auto-init when visible
-document.addEventListener('DOMContentLoaded', () => {
-    const homeContent = document.getElementById('home-content');
-    if (homeContent && !homeContent.classList.contains('hidden')) {
-        initializeHomeDashboard();
-    }
-});

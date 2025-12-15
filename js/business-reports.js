@@ -6,7 +6,7 @@
 let businessReportsData = [];
 let businessReportsCharts = {};
 let currentReportsFilter = {
-    period: 30,
+    period: 'month', // day, week, month, quarter, year, or numeric days
     fromDate: null,
     toDate: null,
     status: 'all'
@@ -17,6 +17,19 @@ let detailedInsights = {
 };
 let currentExpenses = 0;
 let currentSummary = {};
+
+function toISODate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function toLocalDateFromISO(iso) {
+    if (!iso) return new Date();
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+}
 
 function normalizeDateInput(value) {
     if (!value) return null;
@@ -54,15 +67,42 @@ function initializeBusinessReports() {
 
     const toDateInput = document.getElementById('reports-to-date');
     const fromDateInput = document.getElementById('reports-from-date');
+    const periodSelect = document.getElementById('reports-period-filter');
 
     if (toDateInput) {
-        toDateInput.value = today.toISOString().split('T')[0];
-        toDateInput.max = today.toISOString().split('T')[0];
+        toDateInput.value = toISODate(today);
+        toDateInput.max = toISODate(today);
     }
 
     if (fromDateInput) {
-        fromDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
-        fromDateInput.max = today.toISOString().split('T')[0];
+        fromDateInput.max = toISODate(today);
+    }
+
+    // Default period = this month
+    const defaultRange = getPeriodRange('month', today);
+    if (fromDateInput) fromDateInput.value = defaultRange.from;
+    if (toDateInput) toDateInput.value = defaultRange.to;
+    if (periodSelect) periodSelect.value = 'month';
+
+    // Ensure manual date picks are treated as custom ranges
+    const markManualAndReload = (inputEl) => {
+        if (!inputEl) return;
+        inputEl.dataset.userChanged = 'true';
+        loadBusinessReports();
+    };
+
+    if (fromDateInput) {
+        fromDateInput.onchange = () => markManualAndReload(fromDateInput);
+    }
+    if (toDateInput) {
+        toDateInput.onchange = () => markManualAndReload(toDateInput);
+    }
+    if (periodSelect) {
+        periodSelect.onchange = () => {
+            if (fromDateInput) delete fromDateInput.dataset.userChanged;
+            if (toDateInput) delete toDateInput.dataset.userChanged;
+            loadBusinessReports();
+        };
     }
 
     // Load reports
@@ -82,25 +122,68 @@ async function loadBusinessReports() {
         const toDateInput = document.getElementById('reports-to-date');
         const statusSelect = document.getElementById('reports-status-filter');
 
-        currentReportsFilter.period = periodSelect ? parseInt(periodSelect.value) : 30;
+        currentReportsFilter.period = periodSelect ? periodSelect.value : 'month';
 
-        const normalizedFrom = normalizeDateInput(fromDateInput ? fromDateInput.value : null);
-        const normalizedTo = normalizeDateInput(toDateInput ? toDateInput.value : null);
+        let normalizedFrom = normalizeDateInput(fromDateInput ? fromDateInput.value : null);
+        let normalizedTo = normalizeDateInput(toDateInput ? toDateInput.value : null);
+        const anchorISO = normalizedFrom || normalizedTo || toISODate(new Date());
+        const anchorDate = toLocalDateFromISO(anchorISO);
 
-        // Update inputs to normalized format to ensure API receives yyyy-mm-dd
-        if (fromDateInput) fromDateInput.value = normalizedFrom || '';
-        if (toDateInput) toDateInput.value = normalizedTo || '';
+        // If user manually selected dates (especially To Date), treat as custom range
+        const fromUserChanged = fromDateInput && fromDateInput.dataset.userChanged === 'true';
+        const toUserChanged = toDateInput && toDateInput.dataset.userChanged === 'true';
+
+        let period = currentReportsFilter.period;
+        if (period !== 'custom' && (toUserChanged || (fromUserChanged && normalizedTo))) {
+            period = 'custom';
+            if (periodSelect) periodSelect.value = 'custom';
+        }
+        currentReportsFilter.period = period;
+
+        if (period !== 'custom') {
+            // For single-day view, honor the chosen date if provided; otherwise default to today
+            if (period === 'day') {
+                const singleDay = anchorISO;
+                normalizedFrom = singleDay;
+                normalizedTo = singleDay;
+                if (fromDateInput) fromDateInput.value = normalizedFrom;
+                if (toDateInput) toDateInput.value = normalizedTo;
+            } else {
+                // Override dates based on period selection
+                const { from, to } = getPeriodRange(period, anchorDate);
+                normalizedFrom = from;
+                normalizedTo = to;
+                if (fromDateInput) fromDateInput.value = normalizedFrom;
+                if (toDateInput) toDateInput.value = normalizedTo;
+            }
+
+            // Reset manual flags since the range is driven by the preset
+            if (fromDateInput) delete fromDateInput.dataset.userChanged;
+            if (toDateInput) delete toDateInput.dataset.userChanged;
+        } else {
+            // Custom: if only one date provided, mirror it; default to today if both missing
+            if (normalizedFrom && !normalizedTo) normalizedTo = normalizedFrom;
+            if (!normalizedFrom && normalizedTo) normalizedFrom = normalizedTo;
+            if (!normalizedFrom && !normalizedTo) {
+                const today = new Date().toISOString().split('T')[0];
+                normalizedFrom = today;
+                normalizedTo = today;
+            }
+            // Update inputs to normalized format to ensure API receives yyyy-mm-dd
+            if (fromDateInput) fromDateInput.value = normalizedFrom || '';
+            if (toDateInput) toDateInput.value = normalizedTo || '';
+        }
 
         // If both dates are set and reversed, swap them
         if (normalizedFrom && normalizedTo && new Date(normalizedFrom) > new Date(normalizedTo)) {
-            currentReportsFilter.fromDate = normalizedTo;
-            currentReportsFilter.toDate = normalizedFrom;
-            if (fromDateInput) fromDateInput.value = currentReportsFilter.fromDate;
-            if (toDateInput) toDateInput.value = currentReportsFilter.toDate;
-        } else {
-            currentReportsFilter.fromDate = normalizedFrom;
-            currentReportsFilter.toDate = normalizedTo;
+            [normalizedFrom, normalizedTo] = [normalizedTo, normalizedFrom];
+            if (fromDateInput) fromDateInput.value = normalizedFrom;
+            if (toDateInput) toDateInput.value = normalizedTo;
         }
+
+        currentReportsFilter.period = period;
+        currentReportsFilter.fromDate = normalizedFrom;
+        currentReportsFilter.toDate = normalizedTo;
 
         currentReportsFilter.status = statusSelect ? statusSelect.value : 'all';
 
@@ -113,6 +196,7 @@ async function loadBusinessReports() {
             const to = currentReportsFilter.toDate || currentReportsFilter.fromDate;
             params.append('from_date', from);
             params.append('to_date', to);
+            params.append('date_range', currentReportsFilter.period || 'custom');
         } else {
             params.append('days', currentReportsFilter.period);
         }
@@ -121,25 +205,136 @@ async function loadBusinessReports() {
             params.append('status', currentReportsFilter.status);
         }
 
-        // Fetch data
-        const response = await fetch(`php/business-reports-api.php?action=get_reports&${params}`);
-        const data = await response.json();
+        // Fetch business reports plus view-sales (sales-analytics) summary/trend in parallel
+        const [reportsResp, salesSummaryResp, salesTrendResp, todaySummaryResp] = await Promise.all([
+            fetch(`php/business-reports-api.php?action=get_reports&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_sales_summary&${params}`).then(r => r.json()),
+            fetch(`php/sales-analytics-api.php?action=get_sales_trend&${params}`).then(r => r.json()),
+            fetch('php/daily-summary-api.php?action=get_today_summary').then(r => r.json())
+        ]);
 
-        if (data.success) {
-            businessReportsData = data.reports || [];
-            updateReportsSummary(data.summary || {});
+        const hasBusinessReports = reportsResp.success && Array.isArray(reportsResp.reports) && reportsResp.reports.length > 0;
+
+        // Prefer Business Reports summary; fallback to View Sales summary only when Business Reports has no data
+        let summaryData = (reportsResp.success && reportsResp.summary)
+            ? reportsResp.summary
+            : {};
+
+        // Base rows from business reports; if empty, synthesize from sales trend
+        let rows = (reportsResp.success && Array.isArray(reportsResp.reports)) ? reportsResp.reports : [];
+        if ((!rows || rows.length === 0) && salesTrendResp.success) {
+            const trendRows = (salesTrendResp.data || []).map(t => ({
+                report_date: t.period || t.label || t.date || '',
+                total_sales: parseFloat(t.sales || 0),
+                total_transactions: parseInt(t.orders || t.transactions || 0),
+                total_items_sold: 0,
+                average_transaction: parseFloat(t.avg_order_value || 0),
+                cash_sales: 0,
+                card_sales: 0,
+                gcash_sales: 0,
+                is_finalized: false
+            })).filter(r => r.report_date !== '');
+            rows = trendRows;
+        }
+
+        // If report rows are empty but sales summary exists (e.g., today has sales but no daily report yet), prefer sales summary
+        if ((!rows || rows.length === 0) && salesSummaryResp.success && salesSummaryResp.data) {
+            summaryData = salesSummaryResp.data;
+        }
+
+        // If summary still empty, aggregate from rows as a fallback
+        if (!summaryData || Object.keys(summaryData).length === 0) {
+            const totalSales = rows.reduce((sum, r) => sum + (parseFloat(r.total_sales) || 0), 0);
+            const totalTx = rows.reduce((sum, r) => sum + (parseInt(r.total_transactions) || 0), 0);
+            const totalItems = rows.reduce((sum, r) => sum + (parseInt(r.total_items_sold) || 0), 0);
+            summaryData = {
+                total_sales: totalSales,
+                total_transactions: totalTx,
+                total_items: totalItems,
+                average_order: totalTx > 0 ? totalSales / totalTx : 0,
+                total_discount: 0,
+                net_sales: totalSales
+            };
+        }
+
+        // If the selected range includes today and we have NO business report rows, use live daily sales as a temporary fallback
+        const today = toISODate(new Date());
+        const inRange = currentReportsFilter.fromDate && currentReportsFilter.toDate
+            ? (today >= currentReportsFilter.fromDate && today <= currentReportsFilter.toDate)
+            : false;
+        if (!hasBusinessReports && inRange && todaySummaryResp.success && todaySummaryResp.summary) {
+            const live = todaySummaryResp.summary;
+            const todaySales = Number(live.total_sales || 0);
+            const todayTx = Number(live.transaction_count || 0);
+            const todayItems = Number(live.total_items_sold || 0);
+            const todayAov = Number(live.average_transaction || 0);
+
+            // Override with live values only when Business Reports data is not available
+            summaryData.total_sales = todaySales;
+            summaryData.total_transactions = todayTx;
+            summaryData.total_items = todayItems;
+            if (todayAov > 0) summaryData.average_order = todayAov;
+        }
+
+        if (reportsResp.success || salesSummaryResp.success) {
+            businessReportsData = rows || [];
+            updateReportsSummary(summaryData || {});
             renderReportsTable();
             renderBusinessReportsCharts();
             await loadDetailedInsights();
             await loadInventoryExpensesAndProfit();
         } else {
-            console.error('Failed to load business reports:', data.message);
-            showReportsError(data.message);
+            console.error('Failed to load business reports:', reportsResp.message || salesSummaryResp.message);
+            showReportsError(reportsResp.message || 'Unable to load reports');
         }
     } catch (error) {
         console.error('Error loading business reports:', error);
         showReportsError('Failed to load reports');
     }
+}
+
+// Compute start/end based on period selection using the anchor date (from date if provided)
+function getPeriodRange(period, anchorDate) {
+    const today = anchorDate instanceof Date ? new Date(anchorDate) : new Date();
+    const toISO = (d) => toISODate(d);
+
+    let start, end;
+    switch (period) {
+        case 'day':
+            start = new Date(today);
+            end = new Date(today);
+            break;
+        case 'week':
+            start = new Date(today);
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
+            start.setDate(diff);
+            end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            break;
+        case 'month':
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            break;
+        case 'quarter':
+            const q = Math.floor(today.getMonth() / 3);
+            start = new Date(today.getFullYear(), q * 3, 1);
+            end = new Date(today.getFullYear(), q * 3 + 3, 0);
+            break;
+        case 'year':
+            start = new Date(today.getFullYear(), 0, 1);
+            end = new Date(today.getFullYear(), 11, 31);
+            break;
+        default:
+            // Numeric days (e.g., 7, 30, 90, 365)
+            const days = parseInt(period, 10) || 30;
+            end = new Date(today);
+            start = new Date(today);
+            start.setDate(start.getDate() - (days - 1));
+            break;
+    }
+
+    return { from: toISO(start), to: toISO(end) };
 }
 
 /**
@@ -180,7 +375,7 @@ function renderDetailedReportNarrative() {
     const s = detailedInsights.salesSummary || {};
     const d = detailedInsights.todaySummary || {};
     const expenses = currentExpenses || 0;
-    const profit = (s.total_sales || 0) - expenses;
+    const profit = expenses - (s.total_sales || 0);
 
     const sections = [
         `Executive Summary\nRevenue ${formatCurrency(s.total_sales || 0)}; Net Sales ${formatCurrency(s.net_sales || s.total_sales || 0)}; Orders ${formatNumber(s.total_transactions || 0)}; AOV ${formatCurrency(s.avg_order_value || 0)}; Profit ${formatCurrency(profit)}.`,
@@ -188,7 +383,7 @@ function renderDetailedReportNarrative() {
         `Product Performance\nTop categories and best sellers available in View Sales. Discounts applied: ${formatCurrency((s.total_sales || 0) - (s.net_sales || s.total_sales || 0))}.`,
         `Time-Based Analysis\nDaily summary today: sales ${formatCurrency(d.total_sales || 0)}, transactions ${formatNumber(d.transaction_count || 0)}, first sale ${d.opening_time || 'N/A'}, last sale ${d.closing_time || 'N/A'}.`,
         `Financial Metrics\nGross sales ${formatCurrency(s.total_sales || 0)}, net ${formatCurrency(s.net_sales || s.total_sales || 0)}, discounts ${formatCurrency(s.total_discount || 0)}, expenses (inventory) ${formatCurrency(expenses)}, profit ${formatCurrency(profit)}.`,
-        `Payment Methods\nCash ${formatCurrency(s.cash_sales || 0)}, Card ${formatCurrency(s.card_sales || 0)}, e-Wallet ${formatCurrency(s.ewallet_sales || 0)}.`,
+        `Payment Methods\nCash ${formatCurrency(s.cash_sales || 0)}, Card ${formatCurrency(s.card_sales || 0)}, GCash ${formatCurrency(s.ewallet_sales || 0)}.`,
         `Customer Insights\nRetention and repeat behavior available via View Sales time-period comparison.`,
         `Inventory Status\nInventory value used as expenses: ${formatCurrency(expenses)}. Check Inventory module for low/out-of-stock items.`,
         `Staff Performance\nLink receipts/discounts to cashier/timekeeping logs for accountability.`,
@@ -223,7 +418,7 @@ function updateReportsSummary(summary) {
     const expensesEl = document.getElementById('reports-total-expenses');
     const profitEl = document.getElementById('reports-total-profit');
     if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
-    if (profitEl) profitEl.textContent = formatCurrency((summary.total_sales || 0) - currentExpenses);
+    if (profitEl) profitEl.textContent = formatCurrency(currentExpenses - (summary.total_sales || 0));
 }
 
 /**
@@ -331,7 +526,7 @@ async function loadInventoryExpensesAndProfit() {
     const expensesEl = document.getElementById('reports-total-expenses');
     const profitEl = document.getElementById('reports-total-profit');
     const totalSales = currentSummary.total_sales || (businessReportsData || []).reduce((sum, r) => sum + (parseFloat(r.total_sales) || 0), 0);
-    const profit = totalSales - currentExpenses;
+    const profit = currentExpenses - totalSales;
     if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
     if (profitEl) profitEl.textContent = formatCurrency(profit);
 }
@@ -434,7 +629,7 @@ function generateReportPDF() {
         <head>
             <title>Business Reports</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
+                body { font-family: 'Poppins', sans-serif; padding: 24px; color: #111827; }
                 h1 { margin-bottom: 8px; }
                 h2 { margin: 4px 0 16px; font-size: 14px; color: #6B7280; }
                 table { width: 100%; border-collapse: collapse; margin-top: 12px; }

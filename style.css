@@ -2,33 +2,33 @@
    COFFEE SHOP POS SYSTEM - MODERN REDESIGN
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Coffee Shop Color Palette */
-  --primary-brown: #8B4513;
-  --primary-dark: #5D4037;
-  --accent-brown: #A0522D;
-  --accent-brown-light: #D7CCC8;
-  --accent-cream: #F5F1E8;
-  --accent-gold: #D4AF37;
-  --accent-dark: #3E2723;
-  
+  /* Coffee Shop Theme (fixed palette) */
+  --primary-brown: #A67B5B;      /* Primary */
+  --primary-dark: #8B5A2B;       /* Accent / Active */
+  --accent-brown: #C8A165;       /* Secondary (Latte Gold) */
+  --accent-brown-light: #F7F3EE; /* Background cream */
+  --accent-cream: #F7F3EE;
+  --accent-gold: #C8A165;
+  --accent-dark: #8B5A2B;
+
   /* Neutral Colors */
-  --text-dark: #3E2723;
-  --text-medium: #5D4037;
-  --text-light: #8D6E63;
-  --bg-primary: #FAF9F7;
-  --bg-secondary: #F5F1E8;
+  --text-dark: #2E2E2E;
+  --text-medium: #4A4036;
+  --text-light: #6B5C52;
+  --bg-primary: #F7F3EE;
+  --bg-secondary: #F7F3EE;
   --bg-surface: #FFFFFF;
-  --border-light: #D7CCC8;
-  --border-medium: #BCAAA4;
-  
+  --border-light: #E5DACF;
+  --border-medium: #D8C8B8;
+
   /* Functional Colors */
   --success: #4CAF50;
-  --warning: #FF9800;
-  --error: #F44336;
-  --info: #2196F3;
+  --warning: #C8A165;
+  --error: #E53935;
+  --info: #8B5A2B;
   
   /* Shadows & Effects */
   --shadow-soft: 0 4px 12px rgba(139, 69, 19, 0.08);
@@ -68,12 +68,9 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Poppins', sans-serif;
   color: var(--text-dark);
-  background: 
-    radial-gradient(circle at 10% 20%, rgba(245, 241, 232, 0.8), transparent 30%),
-    radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.1), transparent 30%),
-    linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+  background: var(--bg-primary);
   background-attachment: fixed;
   line-height: 1.6;
   transition: background var(--transition-normal);
@@ -311,7 +308,7 @@ textarea:focus {
 }
 
 .login-container h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 2.5rem;
   margin-bottom: 32px;
   color: var(--primary-dark);
@@ -525,7 +522,7 @@ textarea:focus {
 }
 
 .dashboard-header h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 2.4rem;
   color: var(--primary-dark);
   margin: 0;
@@ -577,7 +574,7 @@ textarea:focus {
 }
 
 .content-section-header h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 1.8rem;
   color: var(--primary-dark);
   margin: 0;
@@ -1230,7 +1227,7 @@ textarea:focus {
   font-size: 2rem;
   font-weight: 700;
   color: var(--primary-dark);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 /* Stock Warning Badge */
@@ -1379,7 +1376,7 @@ textarea:focus {
   margin-top: 0;
   width: 100%;
   max-width: 420px;
-  font-family: 'Courier New', monospace;
+  font-family: 'Poppins', sans-serif;
   box-shadow: var(--shadow-soft);
 }
 
@@ -1613,7 +1610,7 @@ textarea:focus {
 }
 
 .payment-modal-content h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Poppins', sans-serif;
   color: var(--primary-dark);
   margin-bottom: 20px;
   font-size: 1.8rem;
@@ -2225,4 +2222,3 @@ textarea:focus {
 .home-top-table td {
   color: #1f2937;
 }
-

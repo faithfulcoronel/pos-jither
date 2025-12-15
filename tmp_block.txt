@@ -1,0 +1,653 @@
+
+                                <div class="sales-kpi-grid">
+                                    <div class="sales-kpi-card">
+                                        <div class="sales-kpi-header">
+                                            <span class="sales-kpi-title">Total Sales</span>
+                                            <span class="sales-kpi-icon">Ã°Å¸â€™Â°</span>
+                                        </div>
+                                        <h2 class="sales-kpi-value" id="total-sales-value">?0.00</h2>
+                                        <div class="sales-kpi-change positive" id="total-sales-change">\n                                            <span>0% vs last period</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="sales-kpi-card success">
+                                        <div class="sales-kpi-header">
+                                            <span class="sales-kpi-title">Total Orders</span>
+                                            <span class="sales-kpi-icon">??</span>
+                                        </div>
+                                        <h2 class="sales-kpi-value" id="total-orders-value">0</h2>
+                                        <div class="sales-kpi-change positive" id="total-orders-change">\n                                            <span>0% vs last period</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="sales-kpi-card info">
+                                        <div class="sales-kpi-header">
+                                            <span class="sales-kpi-title">Quantity Sold</span>
+                                            <span class="sales-kpi-icon">??</span>
+                                        </div>
+                                        <h2 class="sales-kpi-value" id="quantity-sold-value">0</h2>
+                                        <div class="sales-kpi-change positive" id="quantity-sold-change">\n                                            <span>0% vs last period</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="sales-kpi-card warning">
+                                        <div class="sales-kpi-header">
+                                            <span class="sales-kpi-title">Avg Order Value</span>
+                                            <span class="sales-kpi-icon">??</span>
+                                        </div>
+                                        <h2 class="sales-kpi-value" id="avg-order-value-value">?0.00</h2>
+                                        <div class="sales-kpi-change neutral" id="avg-order-value-change">
+                                            <span>Average per transaction</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Charts Grid Row 1 -->
+                                <div class="sales-chart-grid">
+                                    <!-- Sales Trends Over Time -->
+                                    <div class="sales-chart-card span-8">
+                                        <div class="sales-chart-header">
+                                            <div>
+                                                <h3 class="sales-chart-title">Sales Trends Over Time</h3>
+                                                <p class="sales-chart-subtitle">Actual vs Planned Sales</p>
+                                            </div>
+                                        </div>
+                                        <div class="sales-chart-container">
+                                            <canvas id="sales-trend-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Quarterly Performance -->
+                                    <div class="sales-chart-card span-4">
+                                        <div class="sales-chart-header">
+                                            <div>
+                                                <h3 class="sales-chart-title">Quarterly Sales</h3>
+                                                <p class="sales-chart-subtitle">Year 2025 Performance</p>
+                                            </div>
+                                        </div>
+                                        <div class="sales-chart-container">
+                                            <canvas id="quarterly-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Charts Grid Row 2 -->
+                                <div class="sales-chart-grid">
+                                    <!-- Sales by Category -->
+                                    <div class="sales-chart-card span-4">
+                                        <div class="sales-chart-header">
+                                            <div>
+                                                <h3 class="sales-chart-title">Sales by Product Category</h3>
+                                                <p class="sales-chart-subtitle">Revenue Distribution</p>
+                                            </div>
+                                        </div>
+                                        <div class="sales-chart-container">
+                                            <canvas id="category-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Weekday vs Weekend -->
+                                    <div class="sales-chart-card span-4">
+                                        <div class="sales-chart-header">
+                                            <div>
+                                                <h3 class="sales-chart-title">Weekday vs Weekend</h3>
+                                                <p class="sales-chart-subtitle">Sales Comparison</p>
+                                            </div>
+                                        </div>
+                                        <div class="sales-chart-container">
+                                            <canvas id="weekday-weekend-chart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Product Range Analysis -->
+                                    <div class="sales-chart-card span-4">
+                                        <div class="sales-chart-header">
+                                            <div>
+                                                <h3 class="sales-chart-title">Product Range Analysis</h3>
+                                                <p class="sales-chart-subtitle">Sales by Price Range</p>
+                                            </div>
+                                        </div>
+                                        <div class="sales-chart-container">
+                                            <canvas id="location-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Charts Grid Row 3 -->
+                                <div class="sales-chart-grid">
+                                    <!-- Best Sellers Table -->
+                                    <div class="sales-chart-card span-6">
+                                        <div class="sales-chart-header">
+                                            <div>
+                                                <h3 class="sales-chart-title">Top 10 Best Sellers</h3>
+                                                <p class="sales-chart-subtitle">Ranked by Revenue</p>
+                                            </div>
+                                        </div>
+                                        <div class="sales-table-container">
+                                            <table class="sales-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Product</th>
+                                                        <th>Category</th>
+                                                        <th>Qty</th>
+                                                        <th>Revenue</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="best-sellers-tbody">
+                                                    <tr>
+                                                        <td colspan="5" class="sales-empty">
+                                                            <div class="sales-empty-icon">Ã°Å¸â€œÅ </div>
+                                                            <div class="sales-empty-text">Loading data...</div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Heatmap -->
+                                    <div class="sales-chart-card span-6">
+                                        <div class="sales-chart-header">
+                                            <div>
+                                                <h3 class="sales-chart-title">Sales Heatmap by Day & Hour</h3>
+                                                <p class="sales-chart-subtitle">Peak hours visualization</p>
+                                            </div>
+                                        </div>
+                                        <div id="heatmap-container" style="padding-top: 20px;">
+                                            <div class="sales-empty">
+                                                <div class="sales-empty-icon">Ã°Å¸â€Â¥</div>
+                                                <div class="sales-empty-text">Loading heatmap...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div id="report-content" class="content-section hidden">
+                            <!-- Modern Business Reports Dashboard -->
+                            <div class="business-reports-dashboard">
+                                <!-- Header -->
+                                <div class="reports-header">
+                                    <div class="reports-header-content">
+                                        <div>
+                                            <h1 class="reports-title">Ã°Å¸â€œÅ  <strong>Business</strong> Reports</h1>
+                                            <p class="reports-subtitle">Historical sales data and performance metrics</p>
+                                        </div>
+                                        <div class="reports-actions">
+                                            <button class="reports-btn reports-btn-primary" onclick="generateReportPDF()">
+                                                <span>Ã°Å¸â€œâ€ž</span> Export PDF
+                                            </button>
+                                            <button class="reports-btn reports-btn-secondary" onclick="generateReportExcel()">
+                                                <span>Ã°Å¸â€œÅ </span> Export Excel
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Filters -->
+                                    <div class="reports-filters">
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">Ã°Å¸â€œâ€¦ Date Range</label>
+                                            <select id="reports-period-filter" class="reports-filter-select" onchange="loadBusinessReports()">
+                                                <option value="7">Last 7 Days</option>
+                                                <option value="30" selected>Last 30 Days</option>
+                                                <option value="90">Last 90 Days</option>
+                                                <option value="365">Last Year</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">From Date</label>
+                                            <input type="date" id="reports-from-date" class="reports-filter-input" onchange="loadBusinessReports()">
+                                        </div>
+
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">To Date</label>
+                                            <input type="date" id="reports-to-date" class="reports-filter-input" onchange="loadBusinessReports()">
+                                        </div>
+
+                                        <div class="reports-filter-group">
+                                            <label class="reports-filter-label">Status</label>
+                                            <select id="reports-status-filter" class="reports-filter-select" onchange="loadBusinessReports()">
+                                                <option value="all">All Reports</option>
+                                                <option value="finalized">Finalized (Z-Read)</option>
+                                                <option value="open">Open (X-Read)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Cards -->
+                                <div class="reports-summary-grid">
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">Ã°Å¸â€™Â°</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Total Sales</h3>
+                                            <p class="reports-card-value" id="reports-total-sales">Ã¢â€šÂ±0.00</p>
+                                            <p class="reports-card-change positive" id="reports-sales-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">Ã°Å¸â€ºâ€™</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Total Transactions</h3>
+                                            <p class="reports-card-value" id="reports-total-transactions">0</p>
+                                            <p class="reports-card-change positive" id="reports-transactions-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">Ã°Å¸â€œÂ¦</div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Items Sold</h3>
+                                            <p class="reports-card-value" id="reports-total-items">0</p>
+                                            <p class="reports-card-change positive" id="reports-items-change">+0%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="reports-summary-card">
+                                        <div class="reports-card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">Ã°Å¸â€œÅ </div>
+                                        <div class="reports-card-content">
+                                            <h3 class="reports-card-label">Average Order</h3>
+                                            <p class="reports-card-value" id="reports-avg-order">Ã¢â€šÂ±0.00</p>
+                                            <p class="reports-card-change positive" id="reports-avg-change">+0%</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reports Table -->
+                                <div class="reports-table-section">
+                                    <div class="reports-section-header">
+                                        <h2 class="reports-section-title">Ã°Å¸â€œâ€¦ Daily Reports History</h2>
+                                        <button class="reports-btn reports-btn-outline" onclick="loadBusinessReports()">
+                                            <span>Ã°Å¸â€â€ž</span> Refresh
+                                        </button>
+                                    </div>
+
+                                    <div class="reports-table-container">
+                                        <table id="businessReportsTable" class="reports-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Ã°Å¸â€œâ€¦ Date</th>
+                                                    <th>Ã°Å¸â€™Â° Total Sales</th>
+                                                    <th>Ã°Å¸â€ºâ€™ Transactions</th>
+                                                    <th>Ã°Å¸â€œÂ¦ Items Sold</th>
+                                                    <th>Ã°Å¸â€œÅ  Avg Order</th>
+                                                    <th>Ã°Å¸â€™Â³ Cash</th>
+                                                    <th>Ã°Å¸â€™Â³ Card/GCash</th>
+                                                    <th>Ã°Å¸ÂÂ·Ã¯Â¸Â Status</th>
+                                                    <th>Ã¢Å¡â„¢Ã¯Â¸Â Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr class="reports-empty-row">
+                                                    <td colspan="9">
+                                                        <div class="reports-empty-state">
+                                                            <div class="reports-empty-icon">Ã°Å¸â€œÅ </div>
+                                                            <h3>No Reports Found</h3>
+                                                            <p>Business reports will appear here once daily summaries are saved</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    <!-- Product Form Modal -->
+                    <div id="productModalOverlay" class="product-modal-overlay" onclick="closeProductModalOnOverlay(event)">
+                        <div class="product-modal" onclick="event.stopPropagation()">
+                            <div class="product-modal-header">
+                                <h2 id="productModalTitle">Add New Product</h2>
+                                <button class="product-modal-close" onclick="closeProductModal()">&times;</button>
+                            </div>
+                            <div class="product-modal-body">
+                                <div id="menuFormContainer" class="menu-form">
+                                    <div class="menu-form-layout">
+                                        <!-- Left Column: Product Info & Recipe -->
+                                        <div class="menu-form-left">
+                                            <h4>Ã°Å¸â€œÂ Product Information</h4>
+                                            <div class="form-grid">
+                                                <input type="text" id="newItemName" placeholder="Product Name *" required>
+                                                <select id="newItemCategory" required>
+                                                    <option value="">Select Category *</option>
+                                                </select>
+                                                <input type="number" id="newItemPrice" placeholder="Selling Price *" step="1" min="0" inputmode="numeric" required>
+                                                <input type="file" id="newItemImage" accept="image/*">
+                                            </div>
+
+                                            <h4>Ã°Å¸Â§Â¾ Recipe / Ingredients</h4>
+                                            <div id="recipeIngredientsContainer" class="recipe-ingredients-section">
+                                                <div class="ingredients-list" id="ingredientsList">
+                                                    <p class="ingredients-empty">No ingredients added yet. Add ingredients using the form below.</p>
+                                                </div>
+                                                <div class="add-ingredient-form">
+                                                    <select id="ingredientSelect">
+                                                        <option value="">-- Select Ingredient --</option>
+                                                    </select>
+                                                    <input type="number" id="ingredientQuantity" placeholder="Qty" step="0.01" min="0">
+                                                    <input type="text" id="ingredientUnit" placeholder="Unit (g, ml, pcs)">
+                                                    <input type="number" id="ingredientCost" placeholder="Cost/Unit" step="0.0001" min="0">
+                                                    <button type="button" onclick="addIngredientToProduct()" class="btn-add-ingredient">+ Add Ingredient</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Right Column: Cost & Profitability -->
+                                        <div class="menu-form-right">
+                                            <h4>Ã°Å¸â€™Â° Cost & Profitability (Auto-calculated)</h4>
+                                            <div class="profitability-preview">
+                                                <div class="profit-row">
+                                                    <label>Total Cost:</label>
+                                                    <span id="previewCost" class="profit-value">Ã¢â€šÂ±0.00</span>
+                                                </div>
+                                                <div class="profit-row">
+                                                    <label>Selling Price:</label>
+                                                    <span id="previewPrice" class="profit-value">Ã¢â€šÂ±0.00</span>
+                                                </div>
+                                                <div class="profit-row">
+                                                    <label>Gross Profit:</label>
+                                                    <span id="previewProfit" class="profit-value">Ã¢â€šÂ±0.00</span>
+                                                </div>
+                                                <div class="profit-row">
+                                                    <label>Profit Margin:</label>
+                                                    <span id="previewMargin" class="profit-value">0%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-actions">
+                                        <button onclick="saveProduct()" class="btn-primary" id="saveProductBtn">Add Product</button>
+                                        <button onclick="closeProductModal()" class="btn-secondary">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($currentRole === 'cashier'): ?>
+            <section id="cashier-dashboard" class="dashboard-section full-screen-section">
+                <div class="dashboard-container">
+                    <aside class="sidebar">
+                        <div class="sidebar-logo">
+                            <img src="images/jowens.png" alt="Jowen's Kitchen & Cafe Logo">
+                        </div>
+                        <nav>
+                            <a href="#" class="sidebar-item active" onclick="showCashierContent('order')">Take Order</a>
+                            <a href="#" class="sidebar-item" onclick="showCashierContent('transaction')">Transactions</a>
+                            <a href="#" class="sidebar-item" onclick="showCashierContent('daily')">Daily Summary</a>
+                        </nav>
+                        <form method="post" class="logout-form">
+                            <input type="hidden" name="action" value="logout" />
+                            <button type="submit" class="logout-btn">Log out</button>
+                        </form>
+                    </aside>
+                    <main id="cashier-main-content" class="main-content">
+                        <div id="order-content" class="content-section">
+                            <div class="dashboard-header"><h1>Take Order</h1></div>
+                            <h3>New Order</h3>
+                            <div class="search-bar-container">
+                                <input type="text" id="product-search" placeholder="Search product by name or scan barcode..." onkeyup="searchProduct(event)">
+                            </div>
+                            <div class="order-form">
+                                <label>Drink:<input type="text" id="drinkName" placeholder="Select a drink" readonly /></label>
+                                <label>Qty:</label>
+                                <input type="number" id="drinkQty" placeholder="0" min="1" step="1" />
+                                <input type="hidden" id="drinkPrice" />
+                                <input type="hidden" id="drinkProductId" />
+                                <button onclick="addOrder()">Add Order</button>
+                                <button onclick="clearOrder()">Clear All</button>
+                                <button onclick="checkOut()">Checkout</button>
+                            </div>
+                            <ul id="orderList" class="order-list"></ul>
+
+                            <!-- Discount Type Selection - Hidden (shown after payment) -->
+                            <!-- Discount selection now appears after payment confirmation -->
+                            <div class="discount-selector-container" style="display: none;">
+                                <h4 class="discount-section-title">Ã°Å¸â€™Â³ Customer Discount Type</h4>
+                                <div class="discount-buttons-grid">
+                                    <button class="discount-btn active" data-type="none" data-rate="0" onclick="selectDiscountType('none', 0, 'No Discount')">
+                                        <span class="discount-icon">Ã¢Å¡Âª</span>
+                                        <span class="discount-name">No Discount</span>
+                                        <span class="discount-rate">0%</span>
+                                    </button>
+                                    <button class="discount-btn" data-type="senior" data-rate="20" onclick="selectDiscountType('senior', 20, 'Senior Citizen')">
+                                        <span class="discount-icon">Ã°Å¸â€˜Â´</span>
+                                        <span class="discount-name">Senior Citizen</span>
+                                        <span class="discount-rate">20%</span>
+                                    </button>
+                                    <button class="discount-btn" data-type="pwd" data-rate="20" onclick="selectDiscountType('pwd', 20, 'PWD')">
+                                        <span class="discount-icon">Ã¢â„¢Â¿</span>
+                                        <span class="discount-name">PWD</span>
+                                        <span class="discount-rate">20%</span>
+                                    </button>
+                                    <button class="discount-btn" data-type="athlete" data-rate="20" onclick="selectDiscountType('athlete', 20, 'National Athlete')">
+                                        <span class="discount-icon">Ã°Å¸Ââ€¦</span>
+                                        <span class="discount-name">Athlete</span>
+                                        <span class="discount-rate">20%</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Order Summary with VAT Breakdown -->
+                            <div class="order-summary-box">
+                                <div class="summary-line-divider"></div>
+                                <div class="summary-line total-line">
+                                    <span class="order-total-label">TOTAL:</span>
+                                    <span class="order-total-amount">Ã¢â€šÂ±<span id="orderTotal">0.00</span></span>
+                                </div>
+                            </div>
+                            <div class="menu-filter">
+                                <label for="cashierCategoryFilter">Browse by Category:</label>
+                                <select id="cashierCategoryFilter" onchange="displayMenuGallery()"></select>
+                            </div>
+                            <div class="menu-grid" id="menuItemsGallery"></div>
+                        </div>
+
+                        <div id="transaction-content" class="content-section hidden">
+                            <div class="dashboard-header"><h1>Transactions</h1></div>
+                            <h3>Ã°Å¸Â§Â¾ Receipt Transactions</h3>
+                            <div class="transaction-layout">
+                                <div class="transaction-list-panel">
+                                    <ul id="transactionList"></ul>
+                                </div>
+                                <div class="receipt-panel">
+                                    <div id="receipt" class="receipt">
+                                        <div class="receipt-header">
+                                            <h4>Jowen's Kitchen & Cafe</h4>
+                                            <p class="receipt-subtitle">Tax Invoice / Official Receipt</p>
+                                        </div>
+                                        <div class="receipt-divider">Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â</div>
+                                        <p class="receipt-info">Date: <span id="receipt-date"></span></p>
+                                        <p class="receipt-info">Receipt #: <span id="receipt-ordernumber"></span></p>
+                                        <p class="receipt-info">Cashier: <span id="receipt-cashier"><?= htmlspecialchars($currentUsername) ?></span></p>
+                                        <p class="receipt-info" id="receipt-discount-type-line" style="display: none;">Customer Type: <span id="receipt-discount-type" class="receipt-highlight"></span></p>
+                                        <div class="receipt-divider">Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â</div>
+
+                                        <div id="receipt-items"></div>
+
+                                        <div class="receipt-divider">Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬</div>
+                                        <div class="receipt-summary">
+                                            <div class="receipt-line">
+                                                <span>Subtotal:</span>
+                                                <span>Ã¢â€šÂ±<span id="receipt-subtotal">0.00</span></span>
+                                            </div>
+                                            <div class="receipt-line" id="receipt-discount-line" style="display: none;">
+                                                <span>Discount (<span id="receipt-discount-label"></span>):</span>
+                                                <span class="discount-text">-Ã¢â€šÂ±<span id="receipt-discount">0.00</span></span>
+                                            </div>
+                                        </div>
+                                        <div class="receipt-divider">Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬</div>
+
+                                        <div class="receipt-vat-breakdown">
+                                            <p class="vat-breakdown-title">VAT Breakdown:</p>
+                                            <div class="receipt-line vat-line">
+                                                <span>  Vatable Sales:</span>
+                                                <span>Ã¢â€šÂ±<span id="receipt-vatable">0.00</span></span>
+                                            </div>
+                                            <div class="receipt-line vat-line">
+                                                <span>  VAT-Exempt Sales:</span>
+                                                <span>Ã¢â€šÂ±<span id="receipt-vat-exempt">0.00</span></span>
+                                            </div>
+                                            <div class="receipt-line vat-line">
+                                                <span>  VAT (12%):</span>
+                                                <span>Ã¢â€šÂ±<span id="receipt-vat">0.00</span></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="receipt-divider">Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬</div>
+                                        <div class="receipt-total-line">
+                                            <span class="receipt-total-label">TOTAL:</span>
+                                            <span class="receipt-total-amount">Ã¢â€šÂ±<span id="receipt-total">0.00</span></span>
+                                        </div>
+                                        <div class="receipt-divider">Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â</div>
+
+                                        <div class="receipt-payment" id="receipt-payment-section" style="display: none;">
+                                            <div class="receipt-line">
+                                                <span>Payment:</span>
+                                                <span id="receipt-payment-method">Cash</span>
+                                            </div>
+                                            <div class="receipt-line">
+                                                <span>Tendered:</span>
+                                                <span>Ã¢â€šÂ±<span id="receipt-tendered">0.00</span></span>
+                                            </div>
+                                            <div class="receipt-line">
+                                                <span>Change:</span>
+                                                <span>Ã¢â€šÂ±<span id="receipt-change">0.00</span></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="receipt-divider">Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â</div>
+                                        <div class="receipt-footer">
+                                            <p>Thank you for your purchase!</p>
+                                            <p class="receipt-tin">VAT Reg TIN: 123-456-789-000</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="daily-content" class="content-section hidden">
+                            <div class="dashboard-header">
+                                <h1>Daily Summary</h1>
+                                <div class="report-buttons">
+                                    <button onclick="generateXRead()">Ã°Å¸â€œâ€ž X-Read Report</button>
+                                    <button onclick="generateZRead()">Ã°Å¸â€œÅ  Z-Read Report</button>
+                                </div>
+                            </div>
+                            <h3>Ã°Å¸â€œâ€¦ Daily Summary</h3>
+                            <table id="daily-orders-summary" class="summary-table">
+                                <thead>
+                                    <tr><th>Order No</th><th>Items</th><th>Total (Ã¢â€šÂ±)</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="3">No orders for today.</td></tr>
+                                </tbody>
+                            </table>
+                            <div style="font-size: 1.2em; font-weight: bold; text-align: right; margin-top: 10px;">
+                                Total Sales: Ã¢â€šÂ±<span id="dailySalesTotal">0.00</span>
+                            </div>
+                            <br>
+                            <h3>Ã°Å¸â€œË† Item Sales Summary</h3>
+                            <table id="daily-item-summary" class="summary-table">
+                                <thead>
+                                    <tr><th>Item</th><th>Qty Sold</th><th>Total Revenue (Ã¢â€šÂ±)</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="3">No items sold today.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </main>
+                </div>
+            </section>
+        <?php endif; ?>
+    </div>
+
+    <!-- Barcode Scanner Modal -->
+    <div id="barcode-scan-modal" class="modal-overlay hidden">
+        <div class="modal-content barcode-modal">
+            <div class="modal-header">
+                <h3>Ã°Å¸â€œÂ· Scan Barcode</h3>
+                <button onclick="closeBarcodeScanModal()" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="barcode-scanner-container">
+                    <video id="barcode-video" width="100%" autoplay></video>
+                    <canvas id="barcode-canvas" class="hidden"></canvas>
+                </div>
+                <div class="barcode-manual-entry">
+                    <p>Or enter barcode manually:</p>
+                    <input type="text" id="manual-barcode-input" placeholder="Enter barcode number" onkeypress="if(event.key==='Enter') searchByBarcode()">
+                    <button onclick="searchByBarcode()" class="btn-primary">Search</button>
+                </div>
+                <div id="barcode-result" class="barcode-result hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stock Adjustment Modal -->
+    <div id="quick-adjust-modal" class="modal-overlay hidden">
+        <div class="modal-content quick-adjust-modal">
+            <div class="modal-header">
+                <h3>Ã¢Å¡Â¡ Quick Stock Adjustment</h3>
+                <button onclick="closeQuickAdjustModal()" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="quick-adjust-item-info" class="item-info-display"></div>
+                <div class="adjustment-controls">
+                    <button onclick="quickAdjust(-10)" class="adjust-btn large-decrease">-10</button>
+                    <button onclick="quickAdjust(-1)" class="adjust-btn decrease">-1</button>
+                    <input type="number" id="quick-adjust-qty" class="adjust-input" value="0" step="0.01">
+                    <button onclick="quickAdjust(1)" class="adjust-btn increase">+1</button>
+                    <button onclick="quickAdjust(10)" class="adjust-btn large-increase">+10</button>
+                </div>
+                <div class="adjustment-type">
+                    <label>Reason:</label>
+                    <select id="quick-adjust-reason">
+                        <option value="stock-in">Stock In</option>
+                        <option value="stock-out">Stock Out</option>
+                        <option value="adjustment">Adjustment</option>
+                        <option value="damaged">Damaged/Spoiled</option>
+                        <option value="return">Return</option>
+                    </select>
+                </div>
+                <textarea id="quick-adjust-notes" placeholder="Additional notes (optional)"></textarea>
+                <div class="modal-actions">
+                    <button onclick="saveQuickAdjustment()" class="btn-primary">Save Changes</button>
+                    <button onclick="closeQuickAdjustModal()" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.initialData = <?= json_encode($initialData, JSON_UNESCAPED_UNICODE) ?>;
+        window.currentUserRole = <?= json_encode($currentRole) ?>;
+        window.currentUsername = <?= json_encode($_SESSION['username'] ?? '') ?>;
+    </script>
+    <script defer src="script.js?v=3.0"></script>
+    <script defer src="js/discount-vat-system.js"></script>
+    <script defer src="js/recipe-management.js"></script>
+    <script defer src="js/inventify-inventory.js"></script>
+    <script defer src="js/home-dashboard.js"></script>
+    <script defer src="js/sales-dashboard.js"></script>
+    <script defer src="js/timekeeping.js"></script>
+    <script defer src="js/staff-timekeeping.js"></script>
+    <script defer src="js/daily-summary.js"></script>
+    <script defer src="js/business-reports.js"></script>
+</body>
+</html>
+
+
