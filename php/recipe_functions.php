@@ -550,7 +550,8 @@ function updateInventoryItemCost(PDO $pdo, int $inventoryItemId, float $costPerU
  */
 function fetchInventoryItemsWithCost(PDO $pdo): array
 {
-    $statement = $pdo->query('
+    $selectCategory = ensureInventoryCategoryColumn($pdo) ? ', category' : '';
+    $statement = $pdo->query("
         SELECT
             id,
             item,
@@ -560,9 +561,10 @@ function fetchInventoryItemsWithCost(PDO $pdo): array
             min_stock,
             reorder_level,
             ROUND(quantity * cost_per_unit, 2) as total_value
+            {$selectCategory}
         FROM inventory_items
         ORDER BY item
-    ');
+    ");
 
     $inventory = [];
     foreach ($statement as $row) {
@@ -574,7 +576,8 @@ function fetchInventoryItemsWithCost(PDO $pdo): array
             'costPerUnit' => (float)$row['cost_per_unit'],
             'minStock' => (float)$row['min_stock'],
             'reorderLevel' => (float)$row['reorder_level'],
-            'totalValue' => (float)$row['total_value']
+            'totalValue' => (float)$row['total_value'],
+            'category' => isset($row['category']) ? (string)$row['category'] : '',
         ];
     }
 

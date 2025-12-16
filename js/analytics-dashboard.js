@@ -75,6 +75,8 @@ async function fetchAnalyticsData() {
 
         // Prefer business reports summary (daily snapshots) if available; otherwise fall back to live sales summary
         const summary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : (summaryRes.success ? summaryRes.data : {});
+        const revenue = Number(summary.total_sales ?? summary.total_revenue ?? 0);
+        const totalDiscount = Number(summary.total_discount ?? summary.total_discounts ?? 0);
         const trend = (trendRes.success ? trendRes.data : []).map(t => ({
             label: t.period || t.label || t.date || '',
             revenue: parseFloat(t.sales || 0),
@@ -120,15 +122,15 @@ async function fetchAnalyticsData() {
         const cashSales = Number(summary.cash_sales || 0);
         const cardSales = Number(summary.card_sales || 0);
         const gcashSales = Number(summary.gcash_sales || summary.ewallet_sales || 0);
-        const paymentTotalFromSummary = Number(summary.total_sales || 0);
+        const paymentTotalFromSummary = revenue;
         const fallbackPaymentTotal = cashSales + cardSales + gcashSales;
         const paymentTotal = paymentTotalFromSummary > 0 ? paymentTotalFromSummary : fallbackPaymentTotal;
         const paymentDenominator = paymentTotal > 0 ? paymentTotal : 1;
 
         analyticsData = {
             kpis: {
-                revenue: summary.total_sales || 0,
-                profit: analyticsExpenses - (summary.total_sales || 0), // Expenses - Revenue = Profit (per user)
+                revenue: revenue,
+                profit: analyticsExpenses - revenue, // Expenses - Revenue = Profit (per user)
                 orders: summary.total_transactions || 0,
                 aov: summary.average_order || summary.avg_order_value || 0
             },

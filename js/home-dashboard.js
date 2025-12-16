@@ -91,10 +91,24 @@ async function fetchHomeData() {
             fetch(`php/api.php?resource=inventory-expenses&${params}`).then(r => r.json())
         ]);
 
-        const summary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : {};
+        const salesSummary = (summaryRes.success && summaryRes.data) ? summaryRes.data : null;
+        const reportsSummary = (reportsRes.success && reportsRes.summary) ? reportsRes.summary : null;
+
+        // Prefer Business Reports when it has data; otherwise fall back to live sales summary
+        const summaryHasData = (s) => {
+            if (!s) return false;
+            const ts = Number(s.total_sales ?? s.total_revenue ?? 0);
+            const tt = Number(s.total_transactions ?? s.total_orders ?? 0);
+            return ts > 0 || tt > 0;
+        };
+
+        const summary = summaryHasData(reportsSummary)
+            ? reportsSummary
+            : (summaryHasData(salesSummary) ? salesSummary : (reportsSummary || salesSummary || {}));
         const reportRows = (reportsRes.success && Array.isArray(reportsRes.reports)) ? reportsRes.reports : [];
-        const revenue = Number(summary.total_sales || 0);
-        const netSales = Number(summary.net_sales ?? (revenue - Number(summary.total_discount || 0)));
+        const revenue = Number(summary.total_sales ?? summary.total_revenue ?? 0);
+        const totalDiscount = Number(summary.total_discount ?? summary.total_discounts ?? 0);
+        const netSales = Number(summary.net_sales ?? (revenue - totalDiscount));
         let trend = (trendRes.success ? trendRes.data : []).map(t => ({
             label: t.period || t.label || t.date || '',
             revenue: parseFloat(t.sales || 0),
@@ -145,8 +159,8 @@ async function fetchHomeData() {
         // Expenses based on stock deductions
         homeExpenses = inventoryRes.success ? Number(inventoryRes.data.total_expense || 0) : 0;
 
-        // Profit = Expenses - Total Sales (per latest requirement)
-        const profit = homeExpenses - revenue;
+        // Profit = Revenue - Expenses (use gross sales minus inventory expenses)
+        const profit = revenue - homeExpenses;
         const cashFlow = netSales; // keep cash flow as net sales for now
 
         homeData = {

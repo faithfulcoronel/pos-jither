@@ -23,6 +23,10 @@
   --bg-surface: #FFFFFF;
   --border-light: #E5DACF;
   --border-medium: #D8C8B8;
+  /* Shared header gradient (solid warm brown) */
+  --header-gradient-start: #8D6B3C;
+  --header-gradient-end: #8D6B3C;
+  --header-gradient-text: #ffffff;
 
   /* Functional Colors */
   --success: #4CAF50;
@@ -510,23 +514,34 @@ textarea:focus {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .dashboard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 20px;
+  padding: 20px 22px;
   margin-bottom: 28px;
-  border-bottom: 1px solid var(--border-light);
+  border: none;
+  background: linear-gradient(135deg, var(--header-gradient-start), var(--header-gradient-end));
+  color: var(--header-gradient-text);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
 }
 
 .dashboard-header h1 {
   font-family: 'Poppins', sans-serif;
   font-size: 2.4rem;
-  color: var(--primary-dark);
+  color: var(--header-gradient-text);
   margin: 0;
   font-weight: 700;
+}
+
+.dashboard-header .user-info {
+  color: var(--header-gradient-text);
 }
 
 .user-info {
@@ -806,6 +821,16 @@ textarea:focus {
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.menu-actions button {
+  background: linear-gradient(135deg, var(--primary-dark), var(--accent-gold));
+  border: 1px solid rgba(139, 90, 43, 0.25);
+  color: #fff;
+}
+
+.menu-actions button:hover {
+  background: linear-gradient(135deg, #9f6b35, #d8b378);
 }
 
 .menu-filter {
@@ -2040,11 +2065,12 @@ textarea:focus {
   align-items: flex-end;
   justify-content: space-between;
   gap: 20px;
-  background: linear-gradient(135deg, #f4f3ff, #ffffff);
-  border: 1px solid #ede9fe;
+  background: linear-gradient(135deg, var(--header-gradient-start), var(--header-gradient-end));
+  border: none;
   border-radius: 16px;
   padding: 24px 28px;
   box-shadow: 0 10px 30px rgba(102, 126, 234, 0.12);
+  color: var(--header-gradient-text);
 }
 
 .home-eyebrow {
@@ -2052,19 +2078,19 @@ textarea:focus {
   letter-spacing: 0.1em;
   font-size: 12px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--header-gradient-text);
   margin: 0 0 6px;
 }
 
 .home-title {
   margin: 0;
   font-size: 28px;
-  color: #1f2937;
+  color: var(--header-gradient-text);
 }
 
 .home-subtitle {
   margin: 6px 0 0;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
 }
 
@@ -2078,6 +2104,18 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.home-filter label {
+  color: var(--header-gradient-text);
+}
+
+.home-filter input,
+.home-filter button {
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
 .home-filter label {

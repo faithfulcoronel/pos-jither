@@ -6,7 +6,7 @@
 let businessReportsData = [];
 let businessReportsCharts = {};
 let currentReportsFilter = {
-    period: 'month', // day, week, month, quarter, year, or numeric days
+    period: 'day', // day, week, month, quarter, year, or numeric days
     fromDate: null,
     toDate: null,
     status: 'all'
@@ -78,28 +78,60 @@ function initializeBusinessReports() {
         fromDateInput.max = toISODate(today);
     }
 
-    // Default period = this month
-    const defaultRange = getPeriodRange('month', today);
+    // Default period = today
+    const defaultRange = getPeriodRange('day', today);
     if (fromDateInput) fromDateInput.value = defaultRange.from;
     if (toDateInput) toDateInput.value = defaultRange.to;
-    if (periodSelect) periodSelect.value = 'month';
+    if (periodSelect) periodSelect.value = 'day';
 
     // Ensure manual date picks are treated as custom ranges
     const markManualAndReload = (inputEl) => {
         if (!inputEl) return;
         inputEl.dataset.userChanged = 'true';
+        if (fromDateInput) delete fromDateInput.dataset.weekAnchor;
         loadBusinessReports();
     };
 
+    const applyWeekSpanFromStart = () => {
+        if (!fromDateInput) return false;
+        const fromISO = normalizeDateInput(fromDateInput.value);
+        if (!fromISO) return false;
+        if (toDateInput) {
+            const start = toLocalDateFromISO(fromISO);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            toDateInput.value = toISODate(end);
+            delete toDateInput.dataset.userChanged;
+        }
+        fromDateInput.dataset.weekAnchor = 'true';
+        delete fromDateInput.dataset.userChanged;
+        return true;
+    };
+
     if (fromDateInput) {
-        fromDateInput.onchange = () => markManualAndReload(fromDateInput);
+        fromDateInput.onchange = () => {
+            const isWeek = periodSelect && periodSelect.value === 'week';
+            const handledWeek = isWeek ? applyWeekSpanFromStart() : false;
+            if (!handledWeek) {
+                delete fromDateInput.dataset.weekAnchor;
+                markManualAndReload(fromDateInput);
+            } else {
+                loadBusinessReports();
+            }
+        };
     }
     if (toDateInput) {
-        toDateInput.onchange = () => markManualAndReload(toDateInput);
+        toDateInput.onchange = () => {
+            if (fromDateInput) delete fromDateInput.dataset.weekAnchor;
+            markManualAndReload(toDateInput);
+        };
     }
     if (periodSelect) {
         periodSelect.onchange = () => {
-            if (fromDateInput) delete fromDateInput.dataset.userChanged;
+            if (fromDateInput) {
+                delete fromDateInput.dataset.userChanged;
+                delete fromDateInput.dataset.weekAnchor;
+            }
             if (toDateInput) delete toDateInput.dataset.userChanged;
             loadBusinessReports();
         };
@@ -132,6 +164,7 @@ async function loadBusinessReports() {
         // If user manually selected dates (especially To Date), treat as custom range
         const fromUserChanged = fromDateInput && fromDateInput.dataset.userChanged === 'true';
         const toUserChanged = toDateInput && toDateInput.dataset.userChanged === 'true';
+        const weekAnchored = fromDateInput && fromDateInput.dataset.weekAnchor === 'true';
 
         let period = currentReportsFilter.period;
         if (period !== 'custom' && (toUserChanged || (fromUserChanged && normalizedTo))) {
@@ -141,8 +174,16 @@ async function loadBusinessReports() {
         currentReportsFilter.period = period;
 
         if (period !== 'custom') {
-            // For single-day view, honor the chosen date if provided; otherwise default to today
-            if (period === 'day') {
+            // Week preset with manual start date: auto-extend To Date by 6 days
+            if (period === 'week' && weekAnchored && normalizedFrom) {
+                const startDate = toLocalDateFromISO(normalizedFrom);
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 6);
+                normalizedTo = toISODate(endDate);
+                if (fromDateInput) fromDateInput.value = normalizedFrom;
+                if (toDateInput) toDateInput.value = normalizedTo;
+            } else if (period === 'day') {
+                // For single-day view, honor the chosen date if provided; otherwise default to today
                 const singleDay = anchorISO;
                 normalizedFrom = singleDay;
                 normalizedTo = singleDay;
@@ -242,6 +283,22 @@ async function loadBusinessReports() {
             summaryData = salesSummaryResp.data;
         }
 
+        // If we still don't have rows but have summary numbers, synthesize a single row so charts render
+        if ((!rows || rows.length === 0) && summaryData && Object.keys(summaryData).length > 0) {
+            const fallbackDate = currentReportsFilter.fromDate || currentReportsFilter.toDate || toISODate(new Date());
+            rows = [{
+                report_date: fallbackDate,
+                total_sales: Number(summaryData.total_sales ?? summaryData.total_revenue ?? 0),
+                total_transactions: Number(summaryData.total_transactions || 0),
+                total_items_sold: Number(summaryData.total_items || summaryData.total_items_sold || 0),
+                average_transaction: Number(summaryData.average_order || summaryData.avg_transaction || 0),
+                cash_sales: Number(summaryData.cash_sales || 0),
+                card_sales: Number(summaryData.card_sales || 0),
+                gcash_sales: Number(summaryData.gcash_sales || summaryData.ewallet_sales || 0),
+                is_finalized: false
+            }];
+        }
+
         // If summary still empty, aggregate from rows as a fallback
         if (!summaryData || Object.keys(summaryData).length === 0) {
             const totalSales = rows.reduce((sum, r) => sum + (parseFloat(r.total_sales) || 0), 0);
@@ -276,8 +333,39 @@ async function loadBusinessReports() {
             if (todayAov > 0) summaryData.average_order = todayAov;
         }
 
+        // Respect selected date range for the rendered table/charts; fallback to full rows if filtering empties data
+        let filteredRows = rows || [];
+        if ((currentReportsFilter.fromDate || currentReportsFilter.toDate) && rows && rows.length) {
+            const fromDate = currentReportsFilter.fromDate ? new Date(currentReportsFilter.fromDate) : null;
+            const toDate = currentReportsFilter.toDate ? new Date(currentReportsFilter.toDate) : null;
+            filteredRows = rows.filter(r => {
+                if (!r.report_date) return false;
+                const d = new Date(r.report_date);
+                if (isNaN(d.getTime())) return false;
+                if (fromDate && d < fromDate) return false;
+                if (toDate && d > toDate) return false;
+                return true;
+            });
+            if (!filteredRows.length) filteredRows = rows;
+        }
+
+        // If a single-day view has empty payment breakdown, hydrate it from the summary totals
+        if (filteredRows.length === 1 && summaryData) {
+            const r = filteredRows[0];
+            const paymentTotal = (parseFloat(r.cash_sales || 0) + parseFloat(r.card_sales || 0) + parseFloat(r.gcash_sales || 0));
+            const summaryPayment = (parseFloat(summaryData.cash_sales || 0) + parseFloat(summaryData.card_sales || 0) + parseFloat(summaryData.gcash_sales || summaryData.ewallet_sales || 0));
+            if (paymentTotal === 0 && summaryPayment > 0) {
+                r.cash_sales = Number(summaryData.cash_sales || 0);
+                r.card_sales = Number(summaryData.card_sales || 0);
+                r.gcash_sales = Number(summaryData.gcash_sales || summaryData.ewallet_sales || 0);
+            }
+        }
+
+        // For any rows still missing payment breakdowns, fetch per-day sales summary from cashier transactions
+        await hydratePaymentBreakdown(filteredRows);
+
         if (reportsResp.success || salesSummaryResp.success) {
-            businessReportsData = rows || [];
+            businessReportsData = filteredRows || [];
             updateReportsSummary(summaryData || {});
             renderReportsTable();
             renderBusinessReportsCharts();
@@ -293,6 +381,33 @@ async function loadBusinessReports() {
     }
 }
 
+// Hydrate payment methods using cashier transactions when snapshots lack breakdowns
+async function hydratePaymentBreakdown(rows = []) {
+    const tasks = (rows || []).map(async (r) => {
+        if (!r || !r.report_date) return;
+        const paymentTotal = (parseFloat(r.cash_sales || 0) + parseFloat(r.card_sales || 0) + parseFloat(r.gcash_sales || 0));
+        if (paymentTotal > 0 || !(parseFloat(r.total_sales || 0) > 0)) return;
+
+        try {
+            const params = new URLSearchParams({
+                action: 'get_sales_summary',
+                start_date: r.report_date,
+                end_date: r.report_date
+            });
+            const resp = await fetch(`php/sales-analytics-api.php?${params}`).then(res => res.json());
+            if (resp && resp.success && resp.data) {
+                r.cash_sales = Number(resp.data.cash_sales || 0);
+                r.card_sales = Number(resp.data.card_sales || 0);
+                r.gcash_sales = Number(resp.data.ewallet_sales || resp.data.gcash_sales || 0);
+            }
+        } catch (e) {
+            console.warn('Payment hydrate failed for', r.report_date, e);
+        }
+    });
+
+    await Promise.all(tasks);
+    return rows;
+}
 // Compute start/end based on period selection using the anchor date (from date if provided)
 function getPeriodRange(period, anchorDate) {
     const today = anchorDate instanceof Date ? new Date(anchorDate) : new Date();
@@ -374,8 +489,9 @@ function renderDetailedReportNarrative() {
 
     const s = detailedInsights.salesSummary || {};
     const d = detailedInsights.todaySummary || {};
-    const expenses = currentExpenses || 0;
-    const profit = expenses - (s.total_sales || 0);
+    const expenses = Number(currentExpenses || 0);
+    const totalSales = Number(s.total_sales || 0);
+    const profit = computeProfit(totalSales, expenses);
 
     const sections = [
         `Executive Summary\nRevenue ${formatCurrency(s.total_sales || 0)}; Net Sales ${formatCurrency(s.net_sales || s.total_sales || 0)}; Orders ${formatNumber(s.total_transactions || 0)}; AOV ${formatCurrency(s.avg_order_value || 0)}; Profit ${formatCurrency(profit)}.`,
@@ -418,7 +534,9 @@ function updateReportsSummary(summary) {
     const expensesEl = document.getElementById('reports-total-expenses');
     const profitEl = document.getElementById('reports-total-profit');
     if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
-    if (profitEl) profitEl.textContent = formatCurrency(currentExpenses - (summary.total_sales || 0));
+    const totalSales = Number(summary.total_sales || 0);
+    const profit = computeProfit(totalSales, currentExpenses);
+    if (profitEl) profitEl.textContent = formatCurrency(profit);
 }
 
 /**
@@ -525,8 +643,9 @@ async function loadInventoryExpensesAndProfit() {
 
     const expensesEl = document.getElementById('reports-total-expenses');
     const profitEl = document.getElementById('reports-total-profit');
-    const totalSales = currentSummary.total_sales || (businessReportsData || []).reduce((sum, r) => sum + (parseFloat(r.total_sales) || 0), 0);
-    const profit = currentExpenses - totalSales;
+    const fallbackSales = (businessReportsData || []).reduce((sum, r) => sum + (parseFloat(r.total_sales) || 0), 0);
+    const totalSales = Number(currentSummary.total_sales ?? fallbackSales);
+    const profit = computeProfit(totalSales, currentExpenses);
     if (expensesEl) expensesEl.textContent = formatCurrency(currentExpenses);
     if (profitEl) profitEl.textContent = formatCurrency(profit);
 }
@@ -538,7 +657,19 @@ function viewReportDetails(date) {
     const report = businessReportsData.find(r => r.report_date === date);
     if (!report) return;
 
-    const cardGcash = parseFloat(report.card_sales || 0) + parseFloat(report.gcash_sales || 0);
+    let cashSales = parseFloat(report.cash_sales || 0);
+    let cardSales = parseFloat(report.card_sales || 0);
+    let gcashSales = parseFloat(report.gcash_sales || 0);
+
+    // If payment breakdown is missing/zero, fallback to the current summary (live sales) for accuracy
+    const hasPayments = (cashSales + cardSales + gcashSales) > 0;
+    if (!hasPayments && currentSummary && Object.keys(currentSummary).length > 0) {
+        cashSales = parseFloat(currentSummary.cash_sales || 0);
+        cardSales = parseFloat(currentSummary.card_sales || 0);
+        gcashSales = parseFloat(currentSummary.gcash_sales || currentSummary.ewallet_sales || 0);
+    }
+
+    const cardGcash = cardSales + gcashSales;
 
     const reportHTML = `
         <div style="max-width: 700px; padding: 30px;">
@@ -556,16 +687,15 @@ function viewReportDetails(date) {
                     <tr><td>Total Items Sold:</td><td style="text-align: right;"><strong>${formatNumber(report.total_items_sold)}</strong></td></tr>
                     <tr><td>Average Transaction:</td><td style="text-align: right;">${formatCurrency(report.average_transaction)}</td></tr>
                     <tr><td>Total Discount:</td><td style="text-align: right; color: #EF4444;">-${formatCurrency(report.total_discount)}</td></tr>
-                    <tr><td>Total VAT:</td><td style="text-align: right;">${formatCurrency(report.total_vat)}</td></tr>
                 </table>
             </div>
 
             <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
                 <h3 style="margin-bottom: 15px; color: #374151;">💳 Payment Methods</h3>
                 <table style="width: 100%;">
-                    <tr><td>Cash:</td><td style="text-align: right;">${formatCurrency(report.cash_sales)}</td></tr>
-                    <tr><td>Card:</td><td style="text-align: right;">${formatCurrency(report.card_sales)}</td></tr>
-                    <tr><td>GCash:</td><td style="text-align: right;">${formatCurrency(report.gcash_sales)}</td></tr>
+                    <tr><td>Cash:</td><td style="text-align: right;">${formatCurrency(cashSales)}</td></tr>
+                    <tr><td>Card:</td><td style="text-align: right;">${formatCurrency(cardSales)}</td></tr>
+                    <tr><td>GCash:</td><td style="text-align: right;">${formatCurrency(gcashSales)}</td></tr>
                 </table>
             </div>
 
@@ -602,16 +732,39 @@ function closeReportModal() {
 }
 
 /**
+ * Build exportable rows, falling back to summary when there are no table rows
+ */
+function getExportableBusinessRows() {
+    if (businessReportsData && businessReportsData.length > 0) return businessReportsData;
+    if (currentSummary && Object.keys(currentSummary).length > 0) {
+        const fallbackDate = currentReportsFilter.fromDate || currentReportsFilter.toDate || toISODate(new Date());
+        return [{
+            report_date: fallbackDate,
+            total_sales: Number(currentSummary.total_sales ?? currentSummary.total_revenue ?? 0),
+            total_transactions: Number(currentSummary.total_transactions || 0),
+            total_items_sold: Number(currentSummary.total_items || currentSummary.total_items_sold || 0),
+            average_transaction: Number(currentSummary.average_order || currentSummary.avg_transaction || 0),
+            cash_sales: Number(currentSummary.cash_sales || 0),
+            card_sales: Number(currentSummary.card_sales || 0),
+            gcash_sales: Number(currentSummary.gcash_sales || currentSummary.ewallet_sales || 0),
+            is_finalized: false
+        }];
+    }
+    return [];
+}
+
+/**
  * Generate PDF report (simple printable view)
  * Builds a lightweight HTML table and opens the browser print-to-PDF dialog.
  */
 function generateReportPDF() {
-    if (!businessReportsData || businessReportsData.length === 0) {
+    const exportRows = getExportableBusinessRows();
+    if (!exportRows || exportRows.length === 0) {
         alert('No report data to export.');
         return;
     }
 
-    const rows = businessReportsData.map(r => `
+    const rows = exportRows.map(r => `
         <tr>
             <td>${formatReportDate(r.report_date)}</td>
             <td>${formatCurrency(r.total_sales)}</td>
@@ -674,7 +827,8 @@ function generateReportPDF() {
  * Generate Excel/CSV export of report data
  */
 function generateReportExcel() {
-    if (!businessReportsData || businessReportsData.length === 0) {
+    const exportRows = getExportableBusinessRows();
+    if (!exportRows || exportRows.length === 0) {
         alert('No report data to export.');
         return;
     }
@@ -690,7 +844,7 @@ function generateReportExcel() {
         'Status'
     ];
 
-    const rows = businessReportsData.map(r => ([
+    const rows = exportRows.map(r => ([
         formatReportDate(r.report_date),
         (r.total_sales || 0),
         (r.total_transactions || 0),
@@ -757,10 +911,20 @@ function showReportsError(message) {
  * Format currency
  */
 function formatCurrency(amount) {
-    return '₱' + parseFloat(amount || 0).toLocaleString('en-PH', {
+    const parsed = Number(amount);
+    const safeAmount = Number.isFinite(parsed) ? parsed : 0;
+    const normalized = Math.abs(safeAmount) < 1e-6 ? 0 : safeAmount;
+    return '₱' + normalized.toLocaleString('en-PH', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
+}
+
+function computeProfit(totalSales, expenses) {
+    const sales = Number(totalSales) || 0;
+    const cost = Number(expenses) || 0;
+    if (Math.abs(sales) < 1e-6 && Math.abs(cost) < 1e-6) return 0;
+    return sales - cost;
 }
 
 /**

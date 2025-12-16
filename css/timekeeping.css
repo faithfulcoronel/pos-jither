@@ -98,6 +98,9 @@ body {
     min-height: 100vh;
     background: linear-gradient(to bottom, #F9FAFB 0%, #F3F4F6 100%);
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     position: relative;
     overflow-y: auto;
     overflow-x: hidden;
@@ -131,12 +134,19 @@ body {
     width: 48px;
     height: 48px;
     background: var(--pos-white);
-    border-radius: var(--radius-md);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 28px;
     box-shadow: var(--shadow-md);
+}
+
+.pos-logo img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    border-radius: 50%;
 }
 
 .pos-brand-text h1 {
@@ -213,9 +223,24 @@ body {
 }
 
 .tk-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 88px;
+    height: 88px;
+    background: var(--pos-white);
+    border-radius: 50%;
+    box-shadow: var(--shadow-lg);
     font-size: 64px;
     margin-bottom: var(--space-md);
     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+.tk-logo img {
+    width: 70px;
+    height: 70px;
+    object-fit: contain;
+    border-radius: 50%;
 }
 
 .tk-title {
@@ -387,6 +412,55 @@ body {
 
 .tk-btn-time-out:active {
     transform: translateY(0);
+}
+
+.tk-login-inline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    width: 100%;
+    padding: 14px 18px;
+    margin-top: var(--space-md);
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--pos-dark-brown) 0%, var(--pos-espresso) 100%);
+    color: var(--pos-white);
+    text-decoration: none;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    transition: all var(--transition-base);
+}
+
+.tk-login-inline:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-xl);
+}
+
+.tk-login-icon {
+    font-size: 26px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
+}
+
+.tk-login-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+    text-align: center;
+}
+
+.tk-login-text strong {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--pos-white);
+}
+
+.tk-login-text small {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Disabled State */

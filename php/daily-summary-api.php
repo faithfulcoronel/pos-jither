@@ -63,9 +63,9 @@ function getTodaySummary($pdo) {
             COALESCE(SUM(discount_amount), 0) as total_discount,
             COALESCE(SUM(tax_amount), 0) as total_vat,
             COALESCE(AVG(total), 0) as average_transaction,
-            COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total ELSE 0 END), 0) as cash_sales,
-            COALESCE(SUM(CASE WHEN payment_method = 'card' THEN total ELSE 0 END), 0) as card_sales,
-            COALESCE(SUM(CASE WHEN payment_method = 'gcash' THEN total ELSE 0 END), 0) as gcash_sales,
+            COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'cash' THEN total ELSE 0 END), 0) as cash_sales,
+            COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'card' THEN total ELSE 0 END), 0) as card_sales,
+            COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'gcash' THEN total ELSE 0 END), 0) as gcash_sales,
             MIN(occurred_at) as opening_time,
             MAX(occurred_at) as closing_time
         FROM sales_transactions
@@ -122,9 +122,9 @@ function saveDailySnapshot($pdo) {
                 COALESCE(SUM(discount_amount), 0) as total_discount,
                 COALESCE(SUM(tax_amount), 0) as total_vat,
                 COALESCE(AVG(total), 0) as average_transaction,
-                COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total ELSE 0 END), 0) as cash_sales,
-                COALESCE(SUM(CASE WHEN payment_method = 'card' THEN total ELSE 0 END), 0) as card_sales,
-                COALESCE(SUM(CASE WHEN payment_method = 'gcash' THEN total ELSE 0 END), 0) as gcash_sales,
+            COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'cash' THEN total ELSE 0 END), 0) as cash_sales,
+            COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'card' THEN total ELSE 0 END), 0) as card_sales,
+            COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'gcash' THEN total ELSE 0 END), 0) as gcash_sales,
                 MIN(occurred_at) as opening_time,
                 MAX(occurred_at) as closing_time
             FROM sales_transactions

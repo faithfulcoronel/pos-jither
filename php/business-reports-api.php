@@ -89,6 +89,34 @@ function getBusinessReports($pdo) {
         $stmt->execute($params);
         $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Helper to compute payment breakdown for a given date when missing
+        $computePayments = function($date) use ($pdo) {
+            $paymentStmt = $pdo->prepare("
+                SELECT
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'cash' THEN total ELSE 0 END), 0) AS cash_sales,
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'card' THEN total ELSE 0 END), 0) AS card_sales,
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'gcash' THEN total ELSE 0 END), 0) AS gcash_sales
+                FROM sales_transactions
+                WHERE DATE(occurred_at) = ?
+            ");
+            $paymentStmt->execute([$date]);
+            return $paymentStmt->fetch(PDO::FETCH_ASSOC) ?: ['cash_sales' => 0, 'card_sales' => 0, 'gcash_sales' => 0];
+        };
+
+        // Rehydrate payment methods when snapshots have zeros
+        foreach ($reports as &$report) {
+            $paymentsTotal = floatval($report['cash_sales'] ?? 0) + floatval($report['card_sales'] ?? 0) + floatval($report['gcash_sales'] ?? 0);
+            $totalSales = floatval($report['total_sales'] ?? 0);
+
+            if ($totalSales > 0 && $paymentsTotal <= 0 && !empty($report['report_date'])) {
+                $payments = $computePayments($report['report_date']);
+                $report['cash_sales'] = $payments['cash_sales'] ?? 0;
+                $report['card_sales'] = $payments['card_sales'] ?? 0;
+                $report['gcash_sales'] = $payments['gcash_sales'] ?? 0;
+            }
+        }
+        unset($report);
+
         // Calculate summary
         $summary = [
             'total_sales' => 0,

@@ -114,6 +114,21 @@ function inventifyUpdateSummary() {
  */
 function inventifyPopulateCategories() {
     const categoriesSet = new Set();
+    const standardCategories = [
+        'Coffee & Beverage Ingredients',
+        'Milk & Dairy / Alternatives',
+        'Food Ingredients',
+        'Frozen & Refrigerated Items',
+        'Packaging & Disposables',
+        'Equipment & Machines',
+        'Smallwares & Utensils',
+        'Cleaning & Maintenance Supplies',
+        'Retail Merchandise',
+        'Safety & Miscellaneous'
+    ];
+
+    // Always seed with the standard categories so they're available even before data loads
+    standardCategories.forEach(cat => categoriesSet.add(cat));
 
     // From API categories list
     (inventifyData.categories || []).forEach(cat => {
@@ -125,12 +140,11 @@ function inventifyPopulateCategories() {
         if (item.category) categoriesSet.add(item.category);
     });
 
-    // Fallback defaults if empty
-    if (categoriesSet.size === 0) {
-        ['General', 'Beverages', 'Food', 'Supplies', 'Raw Materials', 'Equipment'].forEach(c => categoriesSet.add(c));
-    }
-
-    const categories = Array.from(categoriesSet).sort((a, b) => a.localeCompare(b));
+    // Preserve the provided order, append any extras alphabetically
+    const categories = [
+        ...standardCategories,
+        ...Array.from(categoriesSet).filter(cat => !standardCategories.includes(cat)).sort((a, b) => a.localeCompare(b))
+    ].filter((cat, index, self) => self.indexOf(cat) === index);
 
     // Filter dropdown
     const filterSelect = document.getElementById('inventify-category-filter');
@@ -170,9 +184,9 @@ function inventifyGetFilteredItems() {
     }
 
     // Category filter
-    if (inventifyData.filters.category) {
-        const targetCategory = inventifyData.filters.category.toLowerCase();
-        filtered = filtered.filter(item => (item.category || '').toLowerCase() === targetCategory);
+    const categoryFilter = (inventifyData.filters.category || '').trim().toLowerCase();
+    if (categoryFilter && categoryFilter !== 'all') {
+        filtered = filtered.filter(item => (item.category || '').trim().toLowerCase() === categoryFilter);
     }
 
     // Status filter
@@ -469,7 +483,13 @@ function inventifySearch() {
  * Filter by category
  */
 function inventifyFilterByCategory() {
-    inventifyData.filters.category = document.getElementById('inventify-category-filter').value;
+    const select = document.getElementById('inventify-category-filter');
+    const value = select ? select.value.trim() : '';
+    inventifyData.filters.category = value;
+    if (select && !value) {
+        // Normalize selection to the explicit "All Categories" option
+        select.value = '';
+    }
     inventifyUpdateSummary();
     inventifyRenderCurrentTab();
 }

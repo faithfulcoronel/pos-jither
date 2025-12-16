@@ -64,11 +64,13 @@
     padding: var(--sales-space-xl);
     font-family: 'Poppins', sans-serif;
     min-height: calc(100vh - 60px);
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 /* Dashboard Header */
 .sales-header {
-    background: linear-gradient(135deg, var(--sales-secondary) 0%, #6D5738 100%);
+    background: linear-gradient(135deg, #8D6B3C 0%, #8D6B3C 100%);
     padding: var(--sales-space-xl);
     border-radius: var(--sales-radius-lg);
     margin-bottom: var(--sales-space-xl);
@@ -84,14 +86,14 @@
     font-family: 'Poppins', sans-serif;
     font-size: 32px;
     font-weight: 700;
-    color: var(--sales-white);
+    color: #ffffff;
     margin: 0;
     letter-spacing: -0.5px;
 }
 
 .sales-title strong {
     font-weight: 800;
-    color: var(--sales-accent);
+    color: #ffffff;
 }
 
 /* Filter Section */

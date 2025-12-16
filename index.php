@@ -95,7 +95,9 @@ $currentUsername = $_SESSION['username'] ?? '';
                 <div class="pos-header">
                     <div class="pos-header-content">
                         <div class="pos-brand">
-                            <div class="pos-logo">☕</div>
+                            <div class="pos-logo">
+                                <img src="images/jowens.png" alt="Jowen's Kitchen & Cafe Logo" class="pos-logo-img">
+                            </div>
                             <div class="pos-brand-text">
                                 <h1>Employee Time Keeping</h1>
                                 <p>Jowen's Kitchen & Cafe</p>
@@ -113,7 +115,9 @@ $currentUsername = $_SESSION['username'] ?? '';
                     <div class="tk-panel-left">
                         <!-- Terminal Header -->
                         <div class="tk-header">
-                            <div class="tk-logo">⏱️</div>
+                            <div class="tk-logo">
+                                <img src="images/jowens.png" alt="Jowen's Kitchen & Cafe Logo" class="tk-logo-img">
+                            </div>
                             <h1 class="tk-title">Time Clock Terminal</h1>
                             <p class="tk-subtitle">Clock In & Clock Out</p>
                         </div>
@@ -169,6 +173,13 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         <small>End Your Shift</small>
                                     </span>
                                 </button>
+                                <a href="?login=1" class="tk-login-inline">
+                                    <span class="tk-login-text">
+                                        <strong>Manager / Cashier Login</strong>
+                                        <small>Access full system features</small>
+                                    </span>
+                                </a>
+
                             </div>
                         </form>
 
@@ -293,17 +304,7 @@ $currentUsername = $_SESSION['username'] ?? '';
                 </div>
             </section>
 
-            <!-- Manager Login Button (Floating Bottom) -->
-            <div class="tk-bottom-button">
-                <a href="?login=1" class="tk-manager-login-btn">
-                    <span class="tk-btn-icon">🔐</span>
-                    <span class="tk-manager-text">
-                        <strong>Manager / Cashier Login</strong>
-                        <small>Access full system features</small>
-                    </span>
-                </a>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
 
         <?php if (!$currentRole && $showLogin): ?>
             <section id="login-section" class="full-screen-section">
@@ -377,22 +378,22 @@ $currentUsername = $_SESSION['username'] ?? '';
 
                                 <div class="home-kpi-row">
                                     <div class="home-kpi-card">
-                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-icon" aria-hidden="true">💰</div>
                                         <div class="home-kpi-label">Revenue</div>
                                         <div class="home-kpi-value" id="home-kpi-revenue">?0</div>
                                     </div>
                                     <div class="home-kpi-card">
-                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-icon" aria-hidden="true">📈</div>
                                         <div class="home-kpi-label">Profit</div>
                                         <div class="home-kpi-value" id="home-kpi-profit">?0</div>
                                     </div>
                                     <div class="home-kpi-card">
-                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-icon" aria-hidden="true">💵</div>
                                         <div class="home-kpi-label">Cash Flow</div>
                                         <div class="home-kpi-value" id="home-kpi-cashflow">?0</div>
                                     </div>
                                     <div class="home-kpi-card">
-                                        <div class="home-kpi-icon">??</div>
+                                        <div class="home-kpi-icon" aria-hidden="true">📊</div>
                                         <div class="home-kpi-label">Avg Order</div>
                                         <div class="home-kpi-value" id="home-kpi-aov">?0</div>
                                     </div>
@@ -818,7 +819,7 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         <div class="reports-filter-group">
                                             <label class="reports-filter-label">📅 Date Range</label>
                                             <select id="reports-period-filter" class="reports-filter-select" onchange="loadBusinessReports()">
-                                                <option value="day">Today</option>
+                                                <option value="day">Single Day</option>
                                                 <option value="week">This Week</option>
                                                 <option value="month" selected>This Month</option>
                                                 <option value="quarter">This Quarter</option>
@@ -914,9 +915,6 @@ $currentUsername = $_SESSION['username'] ?? '';
                                             <h3 class="reports-detailed-title">Detailed Business Report</h3>
                                             <p class="reports-detailed-subtitle">Auto-generated using Daily Summary and View Sales data</p>
                                         </div>
-                                        <button class="reports-btn reports-btn-secondary" onclick="downloadDetailedReport()">
-                                            <span>📥</span> Export Narrative
-                                        </button>
                                     </div>
                                 </div>
 
@@ -1185,6 +1183,17 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         <div class="sales-filter-group">
                                             <label class="sales-filter-label">📅 Select Date</label>
                                             <input type="date" id="sales-date-filter" class="sales-filter-input sales-date-picker" onchange="updateFiltersFromDate()">
+                                        </div>
+
+                                        <div class="sales-filter-group">
+                                            <label class="sales-filter-label">Date Range</label>
+                                            <select id="sales-range-filter" class="sales-filter-select" onchange="updateDateRange()">
+                                                <option value="day">Single Day</option>
+                                                <option value="week">Week</option>
+                                                <option value="month" selected>Month</option>
+                                                <option value="quarter">Quarter</option>
+                                                <option value="year">Year</option>
+                                            </select>
                                         </div>
 
                                         <div class="sales-filter-group">

@@ -34,27 +34,30 @@
     background: var(--inventify-bg);
     min-height: 100vh;
     padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 /* Header Section */
 .inventify-header {
-    background: var(--inventify-white);
+    background: linear-gradient(135deg, #8D6B3C, #8D6B3C);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
     box-shadow: var(--inventify-shadow);
+    color: #ffffff;
 }
 
 .inventify-title {
     font-size: 28px;
     font-weight: 700;
-    color: var(--inventify-gray-900);
+    color: #ffffff;
     margin: 0 0 8px 0;
 }
 
 .inventify-subtitle {
     font-size: 14px;
-    color: var(--inventify-gray-500);
+    color: rgba(255, 255, 255, 0.9);
     margin: 0;
 }
 

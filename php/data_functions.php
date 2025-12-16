@@ -18,6 +18,51 @@ function loadDataFromDatabase(PDO $pdo): array
 }
 
 /**
+ * Check once if inventory_items has a category column
+ */
+function inventoryHasCategoryColumn(PDO $pdo): bool
+{
+    static $hasCategory = null;
+    if ($hasCategory !== null) {
+        return $hasCategory;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) 
+            FROM information_schema.columns 
+            WHERE table_schema = DATABASE() 
+              AND table_name = 'inventory_items' 
+              AND column_name = 'category'
+        ");
+        $stmt->execute();
+        $hasCategory = ((int)$stmt->fetchColumn()) > 0;
+    } catch (Throwable $e) {
+        $hasCategory = false;
+    }
+
+    return $hasCategory;
+}
+
+/**
+ * Attempt to add inventory_items.category if missing (safe-noop if present)
+ */
+function ensureInventoryCategoryColumn(PDO $pdo): bool
+{
+    if (inventoryHasCategoryColumn($pdo)) {
+        return true;
+    }
+
+    try {
+        $pdo->exec("ALTER TABLE inventory_items ADD COLUMN category VARCHAR(191) DEFAULT 'General' AFTER item");
+    } catch (Throwable $e) {
+        // Swallow and fall back to legacy behavior
+    }
+
+    return inventoryHasCategoryColumn($pdo);
+}
+
+/**
  * @return array<int, array<string, mixed>>
  */
 function fetchProductCategories(PDO $pdo): array
@@ -63,7 +108,8 @@ function fetchProducts(PDO $pdo): array
  */
 function fetchInventoryItems(PDO $pdo): array
 {
-    $statement = $pdo->query('SELECT id, item, quantity, unit FROM inventory_items ORDER BY item');
+    $selectCategory = ensureInventoryCategoryColumn($pdo) ? ', category' : '';
+    $statement = $pdo->query("SELECT id, item, quantity, unit{$selectCategory} FROM inventory_items ORDER BY item");
 
     $inventory = [];
     foreach ($statement as $row) {
@@ -73,6 +119,7 @@ function fetchInventoryItems(PDO $pdo): array
             'item' => (string)($row['item'] ?? ''),
             'qty' => is_numeric($quantity) ? (float)$quantity : 0.0,
             'unit' => (string)($row['unit'] ?? ''),
+            'category' => isset($row['category']) ? (string)$row['category'] : '',
         ];
     }
 
@@ -428,12 +475,24 @@ function createInventoryItem(PDO $pdo, array $payload): void
         throw new InvalidArgumentException('Inventory unit is required.');
     }
 
-    $statement = $pdo->prepare('INSERT INTO inventory_items (item, quantity, unit) VALUES (:item, :quantity, :unit)');
-    $statement->execute([
+    $hasCategory = ensureInventoryCategoryColumn($pdo);
+    $category = $hasCategory ? trim((string)($payload['category'] ?? '')) : null;
+
+    $sql = $hasCategory
+        ? 'INSERT INTO inventory_items (item, quantity, unit, category) VALUES (:item, :quantity, :unit, :category)'
+        : 'INSERT INTO inventory_items (item, quantity, unit) VALUES (:item, :quantity, :unit)';
+
+    $statement = $pdo->prepare($sql);
+    $params = [
         'item' => $item,
         'quantity' => $quantity,
         'unit' => $unit,
-    ]);
+    ];
+    if ($hasCategory) {
+        $params['category'] = $category;
+    }
+
+    $statement->execute($params);
 }
 
 function updateInventoryItem(PDO $pdo, array $payload): void
@@ -460,13 +519,25 @@ function updateInventoryItem(PDO $pdo, array $payload): void
         throw new InvalidArgumentException('Inventory unit is required.');
     }
 
-    $statement = $pdo->prepare('UPDATE inventory_items SET item = :item, quantity = :quantity, unit = :unit WHERE id = :id');
-    $statement->execute([
+    $hasCategory = ensureInventoryCategoryColumn($pdo);
+    $category = $hasCategory ? trim((string)($payload['category'] ?? '')) : null;
+
+    $sql = $hasCategory
+        ? 'UPDATE inventory_items SET item = :item, quantity = :quantity, unit = :unit, category = :category WHERE id = :id'
+        : 'UPDATE inventory_items SET item = :item, quantity = :quantity, unit = :unit WHERE id = :id';
+
+    $statement = $pdo->prepare($sql);
+    $params = [
         'id' => $id,
         'item' => $item,
         'quantity' => $quantity,
         'unit' => $unit,
-    ]);
+    ];
+    if ($hasCategory) {
+        $params['category'] = $category;
+    }
+
+    $statement->execute($params);
 
     if ($statement->rowCount() === 0) {
         $existsStatement = $pdo->prepare('SELECT COUNT(*) FROM inventory_items WHERE id = :id');

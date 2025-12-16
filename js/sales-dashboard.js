@@ -71,7 +71,9 @@ function updateFiltersFromDate() {
         }
 
         currentFilters.selectedDate = parsedDate;
-        currentFilters.dateRange = rangeFilter ? rangeFilter.value : 'month';
+        // Manual date pick should show a single day view
+        currentFilters.dateRange = 'day';
+        if (rangeFilter) rangeFilter.value = 'day';
 
         // Calculate date range based on selected date and range type
         calculateDateRange();
