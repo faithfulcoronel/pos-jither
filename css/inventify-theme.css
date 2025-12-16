@@ -112,14 +112,15 @@
     margin-bottom: 24px;
     box-shadow: var(--inventify-shadow);
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 12px;
     align-items: center;
+    overflow-x: auto;
 }
 
 .inventify-search {
     flex: 1;
-    min-width: 300px;
+    min-width: 260px;
     position: relative;
 }
 
@@ -158,6 +159,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    white-space: nowrap;
 }
 
 .inventify-btn-primary {

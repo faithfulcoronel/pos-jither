@@ -1683,7 +1683,8 @@ $currentUsername = $_SESSION['username'] ?? '';
                                     <div id="receipt" class="receipt">
                                         <div class="receipt-header">
                                             <h4>Jowen's Kitchen & Cafe</h4>
-                                            <p class="receipt-subtitle">Tax Invoice / Official Receipt</p>
+                                            <p class="receipt-subtitle">Pantay Cawong, Calaca City</p>
+                                            <p class="receipt-subtitle">09620517657</p>
                                         </div>
                                         <div class="receipt-divider">════════════════════════════════</div>
                                         <p class="receipt-info">Date: <span id="receipt-date"></span></p>
@@ -1748,7 +1749,6 @@ $currentUsername = $_SESSION['username'] ?? '';
                                         <div class="receipt-divider">════════════════════════════════</div>
                                         <div class="receipt-footer">
                                             <p>Thank you for your purchase!</p>
-                                            <p class="receipt-tin">VAT Reg TIN: 123-456-789-000</p>
                                         </div>
                                     </div>
                                 </div>
