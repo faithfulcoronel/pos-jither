@@ -911,8 +911,18 @@ async function editStaff(index) {
 
     const newRole = prompt('Update role:', staff.role);
     const newName = prompt('Update name:', staff.name);
-    if (!newRole || !newName) {
+    const newEmployeeNumberRaw = prompt('Update employee number:', staff.employee_number || '');
+
+    // Basic validation
+    if (!newRole || !newName || !newEmployeeNumberRaw) {
         alert('Invalid input. No changes were made.');
+        return;
+    }
+
+    const newEmployeeNumber = newEmployeeNumberRaw.trim().toUpperCase();
+    const employeeNumberPattern = /^[A-Z0-9]+$/;
+    if (!employeeNumberPattern.test(newEmployeeNumber) || newEmployeeNumber.length < 3) {
+        alert('Employee Number must be at least 3 characters and contain only letters and numbers (e.g., EMP001).');
         return;
     }
 
@@ -921,8 +931,23 @@ async function editStaff(index) {
             id: staff.id,
             role: newRole.trim(),
             name: newName.trim(),
+            employee_number: newEmployeeNumber,
             status: staff.status
         });
+
+        // Update local cache so UI reflects changes immediately
+        staffAccounts[index] = {
+            ...staff,
+            role: newRole.trim(),
+            name: newName.trim(),
+            employee_number: newEmployeeNumber
+        };
+
+        // Reload data if available to keep global state consistent
+        if (typeof reloadData === 'function') {
+            await reloadData();
+        }
+
         displayStaff();
     } catch (error) {
         alert(error.message || 'Unable to update the staff member.');
@@ -1731,12 +1756,10 @@ async function updateReceipt() {
     const discountAmount = (subtotal * discountRate) / 100;
     const afterDiscount = subtotal - discountAmount;
 
-    // VAT display disabled: treat all as VAT-exempt and hide breakdown
-    const vatableSales = 0;
-    const vatExemptSales = afterDiscount;
-    const vat = 0;
+    // VAT breakdown (12% inclusive pricing, exempt for eligible discounts)
+    const { vatableAmount, vatExemptAmount, vatAmount } = calculateVatBreakdown(afterDiscount, isVatExempt);
     const receiptVatBlock = document.querySelector('.receipt-vat-breakdown');
-    if (receiptVatBlock) receiptVatBlock.style.display = 'none';
+    if (receiptVatBlock) receiptVatBlock.style.display = 'block';
 
     // Show/hide discount on receipt
     const discountLine = document.getElementById('receipt-discount-line');
@@ -1756,9 +1779,9 @@ async function updateReceipt() {
 
     // Update receipt display
     if (receiptSubtotal) receiptSubtotal.textContent = subtotal.toFixed(2);
-    if (receiptVatable) receiptVatable.textContent = vatableSales.toFixed(2);
-    if (receiptVatExempt) receiptVatExempt.textContent = vatExemptSales.toFixed(2);
-    if (receiptVat) receiptVat.textContent = vat.toFixed(2);
+    if (receiptVatable) receiptVatable.textContent = vatableAmount.toFixed(2);
+    if (receiptVatExempt) receiptVatExempt.textContent = vatExemptAmount.toFixed(2);
+    if (receiptVat) receiptVat.textContent = vatAmount.toFixed(2);
     receiptTotalEl.textContent = afterDiscount.toFixed(2);
 
     if (receiptDate) receiptDate.textContent = new Date().toLocaleString();
@@ -2213,37 +2236,72 @@ function filterMenuGalleryBySearch(query) {
     });
 }
 
+function calculateCheckoutTotals() {
+    const subtotal = currentOrder.reduce((sum, item) => sum + (item.qty * item.price), 0);
+    const discountRate = (typeof currentDiscount !== 'undefined' && currentDiscount.rate) ? currentDiscount.rate : 0;
+    const discountAmount = (subtotal * discountRate) / 100;
+    const total = Math.max(subtotal - discountAmount, 0);
+
+    return { subtotal, discountAmount, total };
+}
+
+function calculateVatBreakdown(amount, isVatExempt) {
+    const VAT_RATE = 0.12;
+    const safeAmount = Number(amount) || 0;
+
+    if (safeAmount <= 0) {
+        return { vatableAmount: 0, vatExemptAmount: 0, vatAmount: 0 };
+    }
+
+    if (isVatExempt) {
+        return { vatableAmount: 0, vatExemptAmount: safeAmount, vatAmount: 0 };
+    }
+
+    const vatableAmount = safeAmount / (1 + VAT_RATE);
+    const vatAmount = safeAmount - vatableAmount;
+
+    return { vatableAmount, vatExemptAmount: 0, vatAmount };
+}
+
 // Enhanced Checkout with Payment Methods
-function checkOut() {
+async function checkOut() {
     if (!currentOrder || currentOrder.length === 0) {
         alert('No items in the order. Please add items before checkout.');
         return;
     }
 
-    // Calculate total
-    const total = currentOrder.reduce((sum, item) => sum + (item.qty * item.price), 0);
+    // Require discount selection before payment
+    const discountSelected = await showDiscountSelectionDialog();
+    if (!discountSelected) {
+        return;
+    }
+
+    // Calculate total after selected discount
+    const { total } = calculateCheckoutTotals();
 
     // Show payment method selection
     showPaymentModal(total);
 }
 
 function showPaymentModal(total) {
+    const payableTotal = Number.isFinite(total) ? total : 0;
+    const displayTotal = payableTotal.toFixed(2);
     const modal = document.createElement('div');
     modal.id = 'payment-modal';
     modal.className = 'payment-modal';
     modal.innerHTML = `
         <div class="payment-modal-content">
             <h2>Select Payment Method</h2>
-            <p class="payment-total">Total Amount: ₱${total.toFixed(2)}</p>
+            <p class="payment-total">Total Amount: ₱${displayTotal}</p>
 
             <div class="payment-methods">
-                <button class="payment-btn cash-btn" onclick="processPayment('Cash', ${total})">
+                <button class="payment-btn cash-btn" onclick="processPayment('Cash', ${payableTotal})">
                     💵 Cash
                 </button>
-                <button class="payment-btn card-btn" onclick="processPayment('Card', ${total})">
+                <button class="payment-btn card-btn" onclick="processPayment('Card', ${payableTotal})">
                     💳 Card
                 </button>
-                <button class="payment-btn gcash-btn" onclick="processPayment('GCash', ${total})">
+                <button class="payment-btn gcash-btn" onclick="processPayment('GCash', ${payableTotal})">
                     📱 GCash
                 </button>
             </div>
@@ -2284,10 +2342,7 @@ async function processPayment(paymentMethod, total) {
         alert(`Processing ${paymentMethod} payment of ₱${total.toFixed(2)}...\nPayment confirmed!`);
     }
 
-    // Show discount selection AFTER payment
-    await showDiscountSelectionDialog();
-
-    // Process the receipt and finalize sale
+    // Discount already selected before payment; process the receipt and finalize sale
     await updateReceipt();
 
     // Print receipt option
@@ -2296,7 +2351,7 @@ async function processPayment(paymentMethod, total) {
     }
 }
 
-// Show discount selection dialog after payment
+// Show discount selection dialog before payment
 function showDiscountSelectionDialog() {
     return new Promise((resolve) => {
         const modal = document.createElement('div');
@@ -2345,20 +2400,22 @@ function showDiscountSelectionDialog() {
 
         document.body.appendChild(modal);
 
-        const closeModal = () => {
-            document.body.removeChild(modal);
-            resolve();
+        const closeModal = (proceed = false) => {
+            if (document.body.contains(modal)) {
+                document.body.removeChild(modal);
+            }
+            resolve(proceed);
         };
 
         modal.addEventListener('click', (event) => {
             if (event.target === modal) {
-                closeModal();
+                closeModal(false);
             }
         });
 
         const closeButton = modal.querySelector('.discount-close-btn');
         if (closeButton) {
-            closeButton.addEventListener('click', closeModal);
+            closeButton.addEventListener('click', () => closeModal(false));
         }
 
         // Handle discount selection
@@ -2374,7 +2431,7 @@ function showDiscountSelectionDialog() {
                 }
 
                 // Close modal
-                closeModal();
+                closeModal(true);
             });
         });
     });
@@ -2389,13 +2446,41 @@ function printTransactionReceipt(transaction) {
         }
 
         const items = transaction.items || [];
-        const subtotal = parseFloat(transaction.total) || 0;
-        const tendered = parseFloat(transaction.amount_tendered || subtotal);
-        const change = parseFloat(transaction.change_amount || (tendered - subtotal));
+        const calcItemTotal = () => {
+            let sum = 0;
+            items.forEach(item => {
+                const price = Number(item.price || item.unit_price || 0);
+                const qty = Number(item.qty || item.quantity || 0);
+                sum += price * qty;
+            });
+            return sum;
+        };
+
+        const rawSubtotal = Number.isFinite(Number(transaction.subtotal)) ? Number(transaction.subtotal) : calcItemTotal();
+        const discountAmount = Number(transaction.discount_amount) || 0;
+        const total = Number.isFinite(Number(transaction.total)) ? Number(transaction.total) : Math.max(rawSubtotal - discountAmount, 0);
+        const tendered = Number(transaction.amount_tendered) || total;
+        const change = Number(transaction.change_amount) || (tendered - total);
         const ref = transaction.reference || transaction.id || 'N/A';
         const cashier = window.currentUsername || 'Cashier';
         const paymentMethod = (transaction.payment_method || 'Cash').toString().toUpperCase();
         const orderType = transaction.order_type || 'Takeout';
+        const discountType = transaction.discount_type;
+        const discountLabel = (typeof getDiscountLabel === 'function')
+            ? getDiscountLabel(discountType || 'none')
+            : (discountType || 'Discount');
+
+        const isVatExempt = transaction.vat_exempt_amount > 0 ||
+            transaction.is_vat_exempt === true ||
+            (discountType && ['senior', 'pwd'].includes(discountType.toString().toLowerCase()));
+
+        const vatFallback = calculateVatBreakdown(total, isVatExempt);
+        const vatableAmount = Number.isFinite(Number(transaction.vatable_amount))
+            ? Number(transaction.vatable_amount) : vatFallback.vatableAmount;
+        const vatExemptAmount = Number.isFinite(Number(transaction.vat_exempt_amount))
+            ? Number(transaction.vat_exempt_amount) : vatFallback.vatExemptAmount;
+        const vatAmount = Number.isFinite(Number(transaction.vat_amount))
+            ? Number(transaction.vat_amount) : vatFallback.vatAmount;
 
         const formatPeso = (val) => `₱${(Number(val) || 0).toFixed(2)}`;
 
@@ -2466,11 +2551,34 @@ function printTransactionReceipt(transaction) {
         doc.text('------------------------------', pageWidth / 2, y, { align: 'center' });
         y += lineHeight;
 
-        // Summary
+        // Summary with VAT breakdown
         doc.setFont('courier', 'bold');
+        doc.setFontSize(10);
+        doc.text('Subtotal:', 5, y);
+        doc.text(formatPeso(rawSubtotal), 75, y, { align: 'right' });
+        y += lineHeight;
+
+        if (discountAmount > 0) {
+            doc.text(`Discount (${discountLabel}):`, 5, y);
+            doc.text(`- ${formatPeso(discountAmount)}`, 75, y, { align: 'right' });
+            y += lineHeight;
+        }
+
+        doc.text('Vatable Sales:', 5, y);
+        doc.text(formatPeso(vatableAmount), 75, y, { align: 'right' });
+        y += lineHeight;
+
+        doc.text('VAT-Exempt Sales:', 5, y);
+        doc.text(formatPeso(vatExemptAmount), 75, y, { align: 'right' });
+        y += lineHeight;
+
+        doc.text('VAT (12%):', 5, y);
+        doc.text(formatPeso(vatAmount), 75, y, { align: 'right' });
+        y += lineHeight;
+
         doc.setFontSize(12);
-        doc.text('Total', 5, y);
-        doc.text(formatPeso(subtotal), 75, y, { align: 'right' });
+        doc.text('Total:', 5, y);
+        doc.text(formatPeso(total), 75, y, { align: 'right' });
         y += lineHeight + 2;
 
         doc.setFontSize(10);
@@ -4312,6 +4420,14 @@ function clearProductForm() {
     document.getElementById('newItemPrice').value = '';
     document.getElementById('newItemCategory').value = '';
     document.getElementById('newItemImage').value = '';
+    const ingredientSelect = document.getElementById('ingredientSelect');
+    const ingredientQty = document.getElementById('ingredientQuantity');
+    const ingredientUnit = document.getElementById('ingredientUnit');
+    const ingredientCost = document.getElementById('ingredientCost');
+    if (ingredientSelect) ingredientSelect.value = '';
+    if (ingredientQty) ingredientQty.value = '';
+    if (ingredientUnit) ingredientUnit.value = '';
+    if (ingredientCost) ingredientCost.value = '0';
 
     // Clear ingredients - always use window object
     window.productIngredients = [];
@@ -4352,13 +4468,16 @@ async function loadProductRecipeForEdit(productId) {
             // Convert recipe data to productIngredients format
             recipeData.data.recipes.forEach(recipe => {
                 console.log('Adding recipe ingredient:', recipe);
+                const quantity = parseFloat(recipe.quantity) || 0;
+                const costPerUnit = Math.max(0, Number(recipe.costPerUnit) || 0);
+                const ingredientCost = Math.max(0, Number(recipe.ingredientCost) || (quantity * costPerUnit));
                 window.productIngredients.push({
                     inventoryItemId: recipe.inventoryItemId,
                     ingredientName: recipe.ingredientName,
-                    quantity: parseFloat(recipe.quantity),
+                    quantity: quantity,
                     unit: recipe.unit,
-                    costPerUnit: parseFloat(recipe.costPerUnit),
-                    totalCost: parseFloat(recipe.ingredientCost)
+                    costPerUnit: costPerUnit,
+                    totalCost: ingredientCost
                 });
             });
 
@@ -4519,7 +4638,7 @@ async function updateProduct() {
                         action: 'update',
                         data: {
                             inventory_item_id: ingredient.inventoryItemId,
-                            cost_per_unit: ingredient.costPerUnit
+                            cost_per_unit: Math.max(0, Number(ingredient.costPerUnit) || 0)
                         }
                     })
                 });

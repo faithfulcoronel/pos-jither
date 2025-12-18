@@ -17,6 +17,7 @@ var productIngredients = window.productIngredients;
 function initializeIngredientSelect() {
     const select = document.getElementById('ingredientSelect');
     if (!select) return;
+    const costInput = document.getElementById('ingredientCost');
 
     select.innerHTML = '<option value="">-- Select Ingredient --</option>';
 
@@ -28,6 +29,11 @@ function initializeIngredientSelect() {
         option.dataset.cost = item.costPerUnit || 0;
         select.appendChild(option);
     });
+
+    // Ensure cost input is initialized to 0 when opening the form
+    if (costInput && !costInput.value) {
+        costInput.value = '0';
+    }
 }
 
 /**
@@ -48,6 +54,15 @@ function addIngredientToProduct() {
         alert('Please fill in all ingredient fields');
         return;
     }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+        alert('Quantity must be greater than 0.');
+        return;
+    }
+    if (!Number.isFinite(costPerUnit) || costPerUnit <= 0) {
+        alert('Cost per unit must be greater than 0.');
+        return;
+    }
+    const safeCostPerUnit = Math.max(0, isNaN(costPerUnit) ? 0 : costPerUnit);
 
     // Get ingredient name
     const selectedOption = ingredientSelect.options[ingredientSelect.selectedIndex];
@@ -66,17 +81,17 @@ function addIngredientToProduct() {
         ingredientName,
         quantity,
         unit,
-        costPerUnit,
-        totalCost: quantity * costPerUnit
+        costPerUnit: safeCostPerUnit,
+        totalCost: quantity * safeCostPerUnit
     };
 
     productIngredients.push(ingredient);
 
-    // Clear form
+    // Clear form with safe defaults
     ingredientSelect.value = '';
     quantityInput.value = '';
     unitInput.value = '';
-    costInput.value = '';
+    costInput.value = '0';
 
     // Refresh display
     displayIngredientsList();
@@ -104,13 +119,16 @@ function displayIngredientsList() {
         return;
     }
 
-    container.innerHTML = productIngredients.map((ing, index) => `
+    container.innerHTML = productIngredients.map((ing, index) => {
+        const cost = Number.isFinite(ing.costPerUnit) ? ing.costPerUnit : 0;
+        const total = Number.isFinite(ing.totalCost) ? ing.totalCost : 0;
+        return `
         <div class="ingredient-item">
             <div class="ingredient-info">
                 <div class="ingredient-name">${ing.ingredientName}</div>
                 <div class="ingredient-quantity">${ing.quantity} ${ing.unit}</div>
-                <div class="ingredient-cost">₱${ing.costPerUnit.toFixed(4)}/unit</div>
-                <div class="ingredient-total">₱${ing.totalCost.toFixed(2)}</div>
+                <div class="ingredient-cost">₱${cost.toFixed(4)}/unit</div>
+                <div class="ingredient-total">₱${total.toFixed(2)}</div>
             </div>
             <div class="ingredient-actions">
                 <button type="button" class="btn-remove-ingredient" onclick="removeIngredientFromProduct(${index})">
@@ -118,7 +136,8 @@ function displayIngredientsList() {
                 </button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 /**
@@ -166,10 +185,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 costInput.value = cost;
                 unitInput.value = unit;
             } else {
-                costInput.value = '';
+                costInput.value = '0';
                 unitInput.value = '';
             }
         });
+
+        // Ensure default value is 0 on load
+        if (!costInput.value) {
+            costInput.value = '0';
+        }
     }
 
     // Update profitability when price changes

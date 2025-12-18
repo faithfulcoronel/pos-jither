@@ -3,7 +3,7 @@
  * Handles discount types, VAT calculations, and receipt formatting
  */
 
-// Global state for current discount (VAT handling disabled)
+// Global state for current discount
 let currentDiscount = {
     type: 'none',
     rate: 0,
@@ -44,6 +44,24 @@ function selectDiscountType(type, rate, label) {
     }
 }
 
+function calculateVatBreakdown(amount, isVatExempt) {
+    const VAT_RATE = 0.12;
+    const safeAmount = Number(amount) || 0;
+
+    if (safeAmount <= 0) {
+        return { vatableAmount: 0, vatExemptAmount: 0, vatAmount: 0 };
+    }
+
+    if (isVatExempt) {
+        return { vatableAmount: 0, vatExemptAmount: safeAmount, vatAmount: 0 };
+    }
+
+    const vatableAmount = safeAmount / (1 + VAT_RATE);
+    const vatAmount = safeAmount - vatableAmount;
+
+    return { vatableAmount, vatExemptAmount: 0, vatAmount };
+}
+
 /**
  * Calculate order totals with discount and VAT
  */
@@ -64,10 +82,8 @@ function calculateOrderTotal() {
     const discountAmount = (subtotal * currentDiscount.rate) / 100;
     const afterDiscount = subtotal - discountAmount;
 
-    // VAT disabled: treat everything as non-vatable
-    const vatableAmount = 0;
-    const vatExemptAmount = afterDiscount;
-    const vatAmount = 0;
+    // VAT breakdown (12% inclusive pricing, exempt for eligible discounts)
+    const { vatableAmount, vatExemptAmount, vatAmount } = calculateVatBreakdown(afterDiscount, currentDiscount.isVatExempt);
     const total = afterDiscount;
 
     // Update UI
@@ -131,6 +147,11 @@ function showDiscountNotification(label, rate, isVatExempt) {
  * @param {object} transaction - Transaction data
  */
 function updateReceiptDisplay(transaction) {
+    const toNumber = (val) => {
+        const num = Number(val);
+        return Number.isFinite(num) ? num : 0;
+    };
+
     // Rebuild receipt markup to match desired slip format (once)
     const receiptRoot = document.getElementById('receipt');
     if (receiptRoot && !receiptRoot.dataset.customized) {
@@ -211,13 +232,25 @@ function updateReceiptDisplay(transaction) {
     }
 
     // Update totals
-    const subtotal = parseFloat(transaction.subtotal || 0);
-    const discountAmount = parseFloat(transaction.discount_amount || 0);
+    const subtotal = toNumber(transaction.subtotal);
+    const discountAmount = toNumber(transaction.discount_amount);
     const discountType = transaction.discount_type;
-    const vatableAmount = 0;
-    const vatExemptAmount = parseFloat(transaction.total || transaction.subtotal || 0);
-    const vatAmount = 0;
-    const total = parseFloat(transaction.total || 0);
+    const total = toNumber(transaction.total || (subtotal - discountAmount));
+
+    const isVatExempt = transaction.vat_exempt_amount > 0 ||
+        transaction.is_vat_exempt === true ||
+        (discountType && ['senior', 'pwd'].includes(discountType.toString().toLowerCase()));
+
+    const fallbackVat = calculateVatBreakdown(total, isVatExempt);
+    const vatableAmount = toNumber(
+        (typeof transaction.vatable_amount !== 'undefined') ? transaction.vatable_amount : fallbackVat.vatableAmount
+    );
+    const vatExemptAmount = toNumber(
+        (typeof transaction.vat_exempt_amount !== 'undefined') ? transaction.vat_exempt_amount : fallbackVat.vatExemptAmount
+    );
+    const vatAmount = toNumber(
+        (typeof transaction.vat_amount !== 'undefined') ? transaction.vat_amount : fallbackVat.vatAmount
+    );
 
     document.getElementById('receipt-subtotal').textContent = subtotal.toFixed(2);
 
@@ -236,6 +269,15 @@ function updateReceiptDisplay(transaction) {
     }
 
     // Update VAT breakdown
+    const receiptVatBlock = document.querySelector('.receipt-vat-breakdown');
+    if (receiptVatBlock) receiptVatBlock.style.display = 'block';
+    const receiptVatable = document.getElementById('receipt-vatable');
+    const receiptVatExempt = document.getElementById('receipt-vat-exempt');
+    const receiptVat = document.getElementById('receipt-vat');
+    if (receiptVatable) receiptVatable.textContent = vatableAmount.toFixed(2);
+    if (receiptVatExempt) receiptVatExempt.textContent = vatExemptAmount.toFixed(2);
+    if (receiptVat) receiptVat.textContent = vatAmount.toFixed(2);
+
     const totalEl = document.getElementById('receipt-total');
     if (totalEl) totalEl.textContent = total.toFixed(2);
 
@@ -276,10 +318,7 @@ function prepareTransactionData(items, paymentInfo) {
     const discountAmount = (subtotal * currentDiscount.rate) / 100;
     const afterDiscount = subtotal - discountAmount;
 
-    // VAT disabled: classify all as VAT-exempt, set VAT to zero
-    const vatableAmount = 0;
-    const vatExemptAmount = afterDiscount;
-    const vatAmount = 0;
+    const { vatableAmount, vatExemptAmount, vatAmount } = calculateVatBreakdown(afterDiscount, currentDiscount.isVatExempt);
 
     return {
         subtotal: subtotal,

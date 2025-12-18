@@ -530,6 +530,8 @@ function inventifyShowAddModal() {
     document.getElementById('inventify-modal-title').textContent = 'Add New Item';
     document.getElementById('inventify-item-id').value = '';
     document.getElementById('inventify-item-form').reset();
+    const unitSelect = document.getElementById('inventify-item-unit');
+    if (unitSelect) unitSelect.value = '';
     document.getElementById('inventify-movement-history-section').classList.add('hidden');
     document.getElementById('inventify-item-modal').classList.remove('hidden');
 }
@@ -618,15 +620,43 @@ async function inventifySaveItem() {
     const itemId = document.getElementById('inventify-item-id').value;
     const isEdit = itemId !== '';
 
+    const name = (document.getElementById('inventify-item-name').value || '').trim();
+    const category = (document.getElementById('inventify-item-category').value || '').trim();
+    const unit = (document.getElementById('inventify-item-unit').value || '').trim();
+    const unitSize = parseFloat(document.getElementById('inventify-item-unit-size').value);
+    const purchaseCost = parseFloat(document.getElementById('inventify-item-cost').value);
+    const quantity = parseFloat(document.getElementById('inventify-item-quantity').value);
+    const reorderLevel = parseFloat(document.getElementById('inventify-item-reorder').value);
+    const allowedUnits = ['g', 'ml', 'pcs', 'kg', 'L', 'oz'];
+    const isValidUnit = allowedUnits.includes(unit);
+
+    const requiredIssues = [];
+    if (!name) requiredIssues.push('Item Name');
+    if (!category) requiredIssues.push('Category');
+    if (!unit) {
+        requiredIssues.push('Unit of Measurement');
+    } else if (!isValidUnit) {
+        requiredIssues.push('Unit of Measurement (select a valid option)');
+    }
+    if (!Number.isFinite(unitSize) || unitSize <= 0) requiredIssues.push('Unit Size must be greater than 0');
+    if (!Number.isFinite(purchaseCost) || purchaseCost <= 0) requiredIssues.push('Purchase Cost must be greater than 0');
+    if (!Number.isFinite(quantity) || quantity <= 0) requiredIssues.push('Initial Quantity must be greater than 0');
+    if (!Number.isFinite(reorderLevel) || reorderLevel < 0) requiredIssues.push('Reorder Level is required (0 allowed)');
+
+    if (requiredIssues.length > 0) {
+        alert('Please complete the required fields:\n- ' + requiredIssues.join('\n- '));
+        return;
+    }
+
     const formData = {
-        item: document.getElementById('inventify-item-name').value,
-        category: document.getElementById('inventify-item-category').value,
-        unit: document.getElementById('inventify-item-unit').value,
-        unit_size: parseFloat(document.getElementById('inventify-item-unit-size').value),
-        purchase_cost: parseFloat(document.getElementById('inventify-item-cost').value),
+        item: name,
+        category: category,
+        unit: unit,
+        unit_size: unitSize,
+        purchase_cost: purchaseCost,
         sku: document.getElementById('inventify-item-sku').value || null,
-        quantity: parseFloat(document.getElementById('inventify-item-quantity').value),
-        reorder_level: parseFloat(document.getElementById('inventify-item-reorder').value),
+        quantity: quantity,
+        reorder_level: reorderLevel,
         max_stock: parseFloat(document.getElementById('inventify-item-max-stock').value) || null,
         location: document.getElementById('inventify-item-location').value || null,
         barcode: document.getElementById('inventify-item-barcode').value || null,

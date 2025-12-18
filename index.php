@@ -687,14 +687,15 @@ $currentUsername = $_SESSION['username'] ?? '';
                                                     </select>
                                                 </div>
 
-                                                <div class="inventify-form-group">
-                                                    <label class="inventify-form-label">Unit of Measurement *</label>
-                                                    <select id="inventify-item-unit" class="inventify-form-select" required>
-                                                        <option value="g">Grams (g)</option>
-                                                        <option value="ml">Milliliters (ml)</option>
-                                                        <option value="pcs">Pieces (pcs)</option>
-                                                        <option value="kg">Kilograms (kg)</option>
-                                                        <option value="L">Liters (L)</option>
+                                        <div class="inventify-form-group">
+                                            <label class="inventify-form-label">Unit of Measurement *</label>
+                                            <select id="inventify-item-unit" class="inventify-form-select" required>
+                                                <option value="">Select Measurement</option>
+                                                <option value="g">Grams (g)</option>
+                                                <option value="ml">Milliliters (ml)</option>
+                                                <option value="pcs">Pieces (pcs)</option>
+                                                <option value="kg">Kilograms (kg)</option>
+                                                <option value="L">Liters (L)</option>
                                                         <option value="oz">Ounces (oz)</option>
                                                     </select>
                                                 </div>
