@@ -147,7 +147,7 @@ function applyServerData(data) {
     renderOrderList();
 }
 
-function renderCategorySelectOptions(selectId, includeAllOption = false) {
+function renderCategorySelectOptions(selectId, includeAllOption = false, placeholderText = '') {
     const select = document.getElementById(selectId);
     if (!select) {
         return;
@@ -163,6 +163,15 @@ function renderCategorySelectOptions(selectId, includeAllOption = false) {
         select.appendChild(option);
     }
 
+    if (placeholderText) {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = placeholderText;
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        select.appendChild(placeholder);
+    }
+
     const sortedCategories = [...productCategories].sort((a, b) => a.name.localeCompare(b.name));
     sortedCategories.forEach(category => {
         const option = document.createElement('option');
@@ -172,9 +181,9 @@ function renderCategorySelectOptions(selectId, includeAllOption = false) {
     });
 
     const hasPrevious = [...select.options].some(option => option.value === previousValue);
-    if (hasPrevious) {
+    if (hasPrevious && previousValue !== '') {
         select.value = previousValue;
-    } else if (!includeAllOption && sortedCategories.length > 0) {
+    } else if (!placeholderText && !includeAllOption && sortedCategories.length > 0) {
         select.value = sortedCategories[0].id;
     } else {
         select.value = '';
@@ -209,7 +218,7 @@ function renderCategoryList() {
 
 function refreshCategoryUI() {
     renderCategorySelectOptions('menuCategoryFilter', true);
-    renderCategorySelectOptions('newItemCategory');
+    renderCategorySelectOptions('newItemCategory', false, 'Select Category *');
     renderCategorySelectOptions('cashierCategoryFilter', true);
     renderCategoryList();
 }
@@ -4329,6 +4338,9 @@ function openProductModal(mode = 'add', productIndex = null) {
     }
 
     console.log('Modal found:', modal);
+
+    // Always refresh categories so the dropdown is populated when the modal opens
+    renderCategorySelectOptions('newItemCategory', false, 'Select Category *');
 
     // Reset current editing index
     if (typeof currentEditingProductIndex === 'undefined') {

@@ -167,6 +167,30 @@ function handleTimeIn($pdo, $data) {
             return;
         }
 
+        // Require staff account to be Active as well
+        $staffStmt = $pdo->prepare('SELECT status FROM staff_accounts WHERE employee_number = ? LIMIT 1');
+        $staffStmt->execute([$employeeNumber]);
+        $staff = $staffStmt->fetch(PDO::FETCH_ASSOC);
+        $staffStatus = $staff['status'] ?? '';
+        $isActiveStaff = strcasecmp($staffStatus, 'active') === 0;
+        if (!$isActiveStaff) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Staff account is not active. Please contact your manager.']);
+            return;
+        }
+
+        // Require staff account to be Active as well
+        $staffStmt = $pdo->prepare('SELECT status FROM staff_accounts WHERE employee_number = ? LIMIT 1');
+        $staffStmt->execute([$employeeNumber]);
+        $staff = $staffStmt->fetch(PDO::FETCH_ASSOC);
+        $staffStatus = $staff['status'] ?? '';
+        $isActiveStaff = strcasecmp($staffStatus, 'active') === 0;
+        if (!$isActiveStaff) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Staff account is not active. Please contact your manager.']);
+            return;
+        }
+
         $today = date('Y-m-d');
         $now = date('Y-m-d H:i:s');
 
